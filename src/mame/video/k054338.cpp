@@ -117,6 +117,7 @@ k054338_device::k054338_device(const machine_config &mconfig, const char *tag, d
 {
 	m_palette_tag = nullptr;
 	m_palette = nullptr;
+	m_skipped_bits = 0;
 	memset(m_bitmaps, 0, sizeof(m_bitmaps));
 }
 
@@ -165,7 +166,6 @@ void k054338_device::device_reset()
 	memset(m_mix_add, 0, sizeof(m_mix_add));
 	m_system = 0x00;
 }
-
 
 WRITE16_MEMBER( k054338_device::backr_w)
 {
@@ -286,6 +286,12 @@ void k054338_device::bitmap_update(bitmap_rgb32 *bitmap, const rectangle &clipre
 	const uint8_t *shadow_wrap = (m_system & 0x20 ? m_through_shadow_table : m_clip_shadow_table) + 0x100;
 	const uint32_t *pens = m_palette->pens();
 	uint16_t mask = m_palette->entries() - 1;
+	std::function<uint16_t (uint16_t)> line_mapper = [mask](uint16_t col) -> uint16_t { return col & mask; };
+	if(m_skipped_bits == 2)
+		line_mapper = [mask](uint16_t col) -> uint16_t { return (((col & 0xfc00) >> 2) | (col & 0x00ff)) & mask; };
+
+	bool zz = false;
+
 	for(int y = cliprect.min_y; y <= cliprect.max_y; y++) {
 		const uint16_t *b0color = &m_bitmaps[BITMAP_FRONT_COLOR]->pix16(y, cliprect.min_x);
 		const uint16_t *b0attr  = &m_bitmaps[BITMAP_FRONT_ATTRIBUTES]->pix16(y, cliprect.min_x);
@@ -293,18 +299,22 @@ void k054338_device::bitmap_update(bitmap_rgb32 *bitmap, const rectangle &clipre
 		const uint16_t *b1attr  = &m_bitmaps[BITMAP_LAYER2_ATTRIBUTES]->pix16(y, cliprect.min_x);
 		uint32_t *dest = &bitmap->pix32(y, cliprect.min_x);
 		for(int x = cliprect.min_x; x <= cliprect.max_x; x++) {
-			uint16_t b0c = *b0color++;
+			uint16_t b0c = line_mapper(*b0color++);
 			uint16_t b0a = *b0attr++;
-			uint16_t b1c = *b1color++;
+			uint16_t b1c = line_mapper(*b1color++);
 			uint16_t b1a = *b1attr++;
 			uint16_t ma  = m_system & 2 ? b1a : b0a;
 			uint16_t sa  = m_system & 4 ? b1a : b0a;
 			uint16_t ba  = m_system & 8 ? b1a : b0a;
 
-			uint32_t col0 = b0a & 0x8000 ? pens[b0c & mask] : m_back;
+			uint32_t col0 = b0a & 0x8000 ? pens[b0c] : m_back;
 			if(ma & 0x30) {
-				uint32_t col1 = b1a & 0x8000 ? pens[b1c & mask] : m_back;
+				uint32_t col1 = b1a & 0x8000 ? pens[b1c] : m_back;
 				int code = ((ma >> 4) & 3) - 1;
+				if(!zz) {
+					//					logerror("mix %d active\n", code+1);
+					zz = true;
+				}
 				uint32_t r, g, b;
 				if(m_mix_add[code]) {
 					if(m_system & 2) {

@@ -66,6 +66,9 @@ public:
 	uint8_t m_sound_ctrl;
 	uint8_t m_sound_nmi_clk;
 
+	DECLARE_WRITE_LINE_MEMBER(objdmairq_w);
+	DECLARE_WRITE_LINE_MEMBER(objdmaact_w);
+	DECLARE_WRITE_LINE_MEMBER(vblankirq_w);
 	DECLARE_READ16_MEMBER(eeprom_r);
 	DECLARE_WRITE16_MEMBER(mweeprom_w);
 	DECLARE_READ16_MEMBER(dddeeprom_r);
@@ -113,6 +116,7 @@ public:
 	TIMER_DEVICE_CALLBACK_MEMBER(metamrph_interrupt);
 	TIMER_DEVICE_CALLBACK_MEMBER(mchamp_interrupt);
 
+	void sprites_wiring(uint32_t output, uint16_t &color, uint16_t &attr);
 	void blender_update(bitmap_ind16 **bitmaps, const rectangle &cliprect);
 	void mixer_init(bitmap_ind16 **bitmaps);
 	void mixer_update(bitmap_ind16 **bitmaps, const rectangle &cliprect);

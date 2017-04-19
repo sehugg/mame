@@ -110,13 +110,8 @@ DEVICE_ADDRESS_MAP_START(objset1_8, 8, k053246_055673_device)
 ADDRESS_MAP_END
 
 k053246_055673_device::k053246_055673_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, K053246_055673, "053246/055673 Sprite Generator Combo", tag, owner, clock, "k055673", __FILE__),
-	  device_gfx_interface(mconfig, *this),
-	  m_dmairq_cb(*this),
-	  m_dmaact_cb(*this),
-	  m_region(*this, DEVICE_SELF)
+	: k053246_055673_device(mconfig, K053246_055673, "053246/055673 Sprite Generator Combo", tag, owner, clock, "k055673", __FILE__)
 {
-	m_is_053247 = false;
 }
 
 k053246_055673_device::k053246_055673_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source)
@@ -127,6 +122,8 @@ k053246_055673_device::k053246_055673_device(const machine_config &mconfig, devi
 	  m_region(*this, DEVICE_SELF)
 {
 	m_is_053247 = false;
+	m_no_vrcbk = false;
+	m_dma_skip_bits = 0;
 }
 
 void k053246_055673_device::set_info(const char *palette_tag, const char *spriteram_tag)
@@ -294,22 +291,36 @@ WRITE16_MEMBER(k053246_055673_device::opset_w)
 
 READ8_MEMBER(k053246_055673_device::rom8_r)
 {
-	uint32_t off = ((m_vrcbk[(m_ocha >> 20) & 3] << 22) | ((m_ocha & 0xffffc) << 2) | offset) & (m_region->bytes() - 1);
-	const uint8_t *rom = m_region->base() + (off^1);
+	uint32_t off;
+	if(m_no_vrcbk)
+		off = (((m_ocha & 0x3ffffc) << 2) | offset) & (m_region->bytes() - 1);
+	else
+		off = ((m_vrcbk[(m_ocha >> 20) & 3] << 22) | ((m_ocha & 0xffffc) << 2) | offset) & (m_region->bytes() - 1);
+	const uint8_t *rom = m_region->base() + (off^9);
 	return rom[0];
 }
 
 READ16_MEMBER(k053246_055673_device::rom16_r)
 {
-	uint32_t off = ((m_vrcbk[(m_ocha >> 20) & 3] << 22) | ((m_ocha & 0xffffc) << 2) | (offset << 1)) & (m_region->bytes() - 1);
-	const uint8_t *rom = m_region->base() + off;
+	uint32_t off;
+	if(m_no_vrcbk)
+		off = (((m_ocha & 0x3ffffc) << 2) | (offset << 1)) & (m_region->bytes() - 1);
+	else
+		off = ((m_vrcbk[(m_ocha >> 20) & 3] << 22) | ((m_ocha & 0xffffc) << 2) | (offset << 1)) & (m_region->bytes() - 1);
+
+	const uint8_t *rom = m_region->base() + (off ^ 8);
+	//	logerror("rom %06x: %04x\n", off, (rom[1] << 8) | rom[0]);
 	return (rom[1] << 8) | rom[0];
 }
 
 READ32_MEMBER(k053246_055673_device::rom32_r)
 {
-	uint32_t off = ((m_vrcbk[(m_ocha >> 20) & 3] << 22) | ((m_ocha & 0xffffc) << 2) | (offset << 2)) & (m_region->bytes() - 1);
-	const uint8_t *rom = m_region->base() + off;
+	uint32_t off;
+	if(m_no_vrcbk)
+		off = (((m_ocha & 0x3ffffc) << 2) | (offset << 2)) & (m_region->bytes() - 1);
+	else
+		off = ((m_vrcbk[(m_ocha >> 20) & 3] << 22) | ((m_ocha & 0xffffc) << 2) | (offset << 2)) & (m_region->bytes() - 1);
+	const uint8_t *rom = m_region->base() + (off ^ 8);
 	return (rom[1] << 24) | (rom[0] << 16) | (rom[3] << 8) | rom[2];
 }
 
@@ -332,31 +343,55 @@ WRITE_LINE_MEMBER(k053246_055673_device::vblank_w)
 void k053246_055673_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
 {
 	switch(m_timer_objdma_state) {
-	case OD_WAIT_START:
+	case OD_WAIT_START: {
 		m_timer_objdma_state = OD_WAIT_END;
 		m_timer_objdma->adjust(attotime::from_ticks(2048, clock()));
 		m_dmaact_cb(ASSERT_LINE);
+		uint32_t skip = m_dma_skip_bits ? ((1 << m_dma_skip_bits) - 1)*16/m_spriteram->bytewidth() : 0;
 		switch(m_spriteram->bytewidth()) {
 		case 1: {
 			const uint8_t *base = (const uint8_t *)m_spriteram->ptr();
-			for(uint32_t i=0; i<0x800; i++)
-				m_sram[i] = (base[2*i] << 8) | base[2*i+1];
+			uint32_t src = 0;
+			uint32_t dst = 0;
+			for(uint32_t i=0; i<0x100; i++) {
+				for(uint32_t j=0; j<8; j++) {
+					m_sram[dst++] = (base[src] << 8) | base[src+1];
+					src += 2;
+				}
+				src += skip;
+			}
 			break;
 		}
 		case 2: {
-			memcpy(m_sram, m_spriteram->ptr(), 0x1000);
+			const uint16_t *base = (const uint16_t *)m_spriteram->ptr();
+			uint32_t src = 0;
+			uint32_t dst = 0;
+			for(uint32_t i=0; i<0x100; i++) {
+				for(uint32_t j=0; j<8; j++) {
+					//					logerror("DMA %04x %03x\n", src*2, dst*2);
+					m_sram[dst++] = base[src++];
+				}
+				src += skip;
+			}
 			break;
 		}
 		case 4: {
 			const uint32_t *base = (const uint32_t *)m_spriteram->ptr();
-			for(uint32_t i=0; i<0x800; i+=2) {
-				m_sram[i] = base[i>>1] >> 16;
-				m_sram[i+1] = base[i>>1];
+			uint32_t src = 0;
+			uint32_t dst = 0;
+			for(uint32_t i=0; i<0x100; i++) {
+				for(uint32_t j=0; j<4; j++) {
+					m_sram[dst++] = base[src] >> 16;
+					m_sram[dst++] = base[src];
+					src ++;
+				}
+				src += skip;
 			}
 			break;
 		}
 		}
 		break;
+	}
 
 	case OD_WAIT_END:
 		m_timer_objdma_state = OD_IDLE;
@@ -635,6 +670,8 @@ void k053246_055673_device::bitmap_update(bitmap_ind16 *bcolor, bitmap_ind16 *ba
 		offx = 0x02c;
 	else if( flip && off == 0x296 && 1)
 		offx = 0x156;
+	else if(!flip && off == 0x027 && 1)
+		offx = 0x3be;
 
 	else {
 		if(machine().input().code_pressed(KEYCODE_D))
@@ -658,9 +695,9 @@ void k053246_055673_device::bitmap_update(bitmap_ind16 *bcolor, bitmap_ind16 *ba
 		offy = 0x0ff;
 
 	else {
-		if(machine().input().code_pressed(KEYCODE_S))
+		if(machine().input().code_pressed(KEYCODE_X))
 			cury++;
-		if(machine().input().code_pressed(KEYCODE_W))
+		if(machine().input().code_pressed(KEYCODE_S))
 			cury--;
 		cury &= 0x3ff;
 		logerror("Unknown Y offset, vscr=%03x, flip=%s, cur=%03x\n", off, flip ? "on" : "off", cury);
@@ -699,7 +736,7 @@ void k053246_055673_device::bitmap_update(bitmap_ind16 *bcolor, bitmap_ind16 *ba
 			int osy = (spr[0] >> 10) & 3;
 
 			uint32_t tile_base_id = spr[1];
-			if(!m_is_053247)
+			if(!m_no_vrcbk)
 				tile_base_id = ((tile_base_id & 0x3fff) | (m_vrcbk[(tile_base_id >> 14) & 3] << 14));
 
 			int dx = unwrap[tile_base_id & 0x1f];
@@ -863,6 +900,7 @@ k053246_053247_device::k053246_053247_device(const machine_config &mconfig, cons
 	: k053246_055673_device(mconfig, K053246_053247, "K053246/053247 Sprite Generator Combo", tag, owner, clock, "k053247", __FILE__)
 {
 	m_is_053247 = true;
+	m_no_vrcbk = true;
 }
 
 READ8_MEMBER(k053246_053247_device::rom8_r)

@@ -11,8 +11,17 @@
 #define MCFG_K054156_054157_INT1_CB(_devcb) \
 	devcb = &k054156_054157_device::set_int1_cb(*device, DEVCB_##_devcb);
 
+#define MCFG_K054156_054157_INT2_CB(_devcb) \
+	devcb = &k054156_054157_device::set_int2_cb(*device, DEVCB_##_devcb);
+
+#define MCFG_K054156_054157_INT3_CB(_devcb) \
+	devcb = &k054156_054157_device::set_int3_cb(*device, DEVCB_##_devcb);
+
 #define MCFG_K054156_054157_VBLANK_CB(_devcb) \
 	devcb = &k054156_054157_device::set_vblank_cb(*device, DEVCB_##_devcb);
+
+#define MCFG_K054156_054157_VSYNC_CB(_devcb) \
+	devcb = &k054156_054157_device::set_vsync_cb(*device, DEVCB_##_devcb);
 
 #define MCFG_K054156_054157_5BPP_ADD(_tag, _dotclock,_sizex, _sizey, _vramwidth, _palette) \
 	MCFG_DEVICE_ADD(_tag, K054156_054157, _dotclock)								\
@@ -41,7 +50,10 @@ public:
 	k054156_056832_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source);
 
 	template<class _Object> static devcb_base &set_int1_cb(device_t &device, _Object object) { return downcast<k054156_056832_device &>(device).m_int1_cb.set_callback(object); }
+	template<class _Object> static devcb_base &set_int2_cb(device_t &device, _Object object) { return downcast<k054156_056832_device &>(device).m_int2_cb.set_callback(object); }
+	template<class _Object> static devcb_base &set_int3_cb(device_t &device, _Object object) { return downcast<k054156_056832_device &>(device).m_int3_cb.set_callback(object); }
 	template<class _Object> static devcb_base &set_vblank_cb(device_t &device, _Object object) { return downcast<k054156_056832_device &>(device).m_vblank_cb.set_callback(object); }
+	template<class _Object> static devcb_base &set_vsync_cb(device_t &device, _Object object) { return downcast<k054156_056832_device &>(device).m_vsync_cb.set_callback(object); }
 
 	void set_info(int _sizex, int _sizey, int _vramwidth, const char *_palette);
 
@@ -130,7 +142,7 @@ private:
 		l32w24 = 2*2+1
 	};
 
-	devcb_write_line m_int1_cb, m_vblank_cb;
+	devcb_write_line m_int1_cb,  m_int2_cb, m_int3_cb, m_vblank_cb, m_vsync_cb;
 	required_memory_region m_region;
 
 	int m_sizex, m_sizey, m_vramwidth;
@@ -144,6 +156,8 @@ private:
 	uint8_t m_reg1h, m_reg1l, m_reg2, m_reg3h, m_reg3l, m_reg4, m_reg5;
 	uint8_t m_rzs, m_ars, m_mpz, m_mpa, m_cadh;
 	uint8_t m_reg1b, m_reg2b, m_reg3b, m_reg4b;
+
+	uint8_t m_irq_state;
 
 	std::vector<uint32_t> m_videoram;
 	uint32_t *m_page_pointers[8][8];

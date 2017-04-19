@@ -35,6 +35,15 @@
 #define MCFG_K053246_053247_WIRING_CB(_class, _method)	\
 	downcast<k053246_053247_device *>(device)->set_wiring_cb(k053246_055673_device::wiring_delegate(&_class::_method, #_class "::" #_method, downcast<_class *>(owner)));
 
+#define MCFG_K053246_055673_DISABLE_VRCBK()	\
+	downcast<k053246_055673_device *>(device)->disable_vrcbk();
+
+#define MCFG_K053246_055673_DMA_SKIP_BITS(_count)	\
+	downcast<k053246_055673_device *>(device)->set_dma_skip_bits(_count);
+
+#define MCFG_K053246_053247_DMA_SKIP_BITS(_count)	\
+	downcast<k053246_053247_device *>(device)->set_dma_skip_bits(_count);
+
 class k053246_055673_device : public device_t,
 							  public device_gfx_interface
 {
@@ -48,6 +57,8 @@ public:
 
 	void set_info(const char *palette_tag, const char *spriteram_tag);
 	void set_wiring_cb(wiring_delegate cb);
+	void disable_vrcbk() { m_no_vrcbk = true; }
+	void set_dma_skip_bits(int count) { m_dma_skip_bits = count; }
 
 	template<class _cb> static devcb_base &set_dmaact_cb(device_t &device, _cb cb) { return downcast<k053246_055673_device &>(device).m_dmaact_cb.set_callback(cb); }
 	template<class _cb> static devcb_base &set_dmairq_cb(device_t &device, _cb cb) { return downcast<k053246_055673_device &>(device).m_dmairq_cb.set_callback(cb); }
@@ -105,7 +116,8 @@ protected:
 	uint16_t m_hscr, m_vscr, m_atrbk[4];
 	uint8_t m_vrcbk[4], m_oms, m_coreg, m_opset;
 
-	bool m_is_053247;
+	bool m_is_053247, m_no_vrcbk;
+	int m_dma_skip_bits;
 
 	bool m_dmairq_on;
 

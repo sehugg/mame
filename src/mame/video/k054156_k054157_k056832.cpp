@@ -423,10 +423,6 @@ DEVICE_ADDRESS_MAP_START(vsccs8, 8, k054156_054157_device)
 	AM_RANGE(0x07, 0x07) AM_WRITE(reg4b_w)
 ADDRESS_MAP_END
 
-WRITE_LINE_MEMBER(k054156_056832_device::vsync_w)
-{
-}
-
 WRITE16_MEMBER(k054156_056832_device::reg1_w)
 {
 	static const char *depths[8] = { "4bpp", "5bpp", "6bpp", "7bpp", "8bpp", "8bpp", "8bpp", "8bpp" };
@@ -442,7 +438,7 @@ WRITE16_MEMBER(k054156_056832_device::reg1_w)
 				 depths[(data >> 8) & 7]);
 	}
 
-	if(ACCESSING_BITS_0_7 && m_reg1l != (0x100|(data & 0xff))) {
+	if(ACCESSING_BITS_0_7 && m_reg1l != (data & 0xff)) {
 		m_reg1l = data;
 		logerror("reg1_w type=%s dot=%s fli=%c%c ov=%s ex=%s ext_z=%s layers=%c\n",
 				 data & 0x80 ? "vrom" : "vram",
@@ -488,9 +484,10 @@ WRITE16_MEMBER(k054156_056832_device::reg3_w)
 
 	if(ACCESSING_BITS_0_7 && m_reg3l != (data & 0xff)) {
 		m_reg3l = data;
-		logerror("reg3_w v=%02x cr=%c%c vrc=%s\n", m_reg3l,
+		logerror("reg3_w v=%02x cr=%c%c 5bpp=%s vrc=%s\n", m_reg3l,
 				 data & 0x40 ? '1' : '0',
 				 data & 0x20 ? '1' : '0',
+				 data & 0x08 ? "on" : "off",
 				 data & 1 ? "3-2" : data & 2 ? "1-0" : data & 4 ? "7-6" : "off");
 	}
 }
@@ -500,9 +497,19 @@ WRITE16_MEMBER(k054156_056832_device::reg4_w)
 	if(ACCESSING_BITS_0_7 && m_reg4 != (data & 0xff)) {
 		if((m_reg4 & 0xf8) != (data & 0xf8))
 			logerror("reg4_w flipbits=%d-%d mode=%d vram=%d ext=%s int=%x\n", 7^((data & 0xc0)>>5), 6^((data & 0xc0)>>5), data & 0x20 ? 8 : 16, data & 0x10 ? 24 : 16, data & 0x10 ? "off" : "on", data & 7);
+
+		if((m_irq_state & data) != m_irq_state) {
+			uint8_t old = m_irq_state;
+			m_irq_state &= data;
+			old = old ^ m_irq_state;
+			if(old & 1)
+				m_int1_cb(CLEAR_LINE);
+			if(old & 2)
+				m_int2_cb(CLEAR_LINE);
+			if(old & 4)
+				m_int3_cb(CLEAR_LINE);
+		}
 		m_reg4 = data;
-		if(m_screen && !(data & 7))
-			m_int1_cb(CLEAR_LINE);
 	}
 }
 
@@ -967,6 +974,17 @@ READ16_MEMBER (k054156_056832_device::rom16_r)
 		off = (m_vrc2[(m_cadlm >> 5) & 7] << 17) | ((m_cadlm & 0x1f) << 12) | m_cur_a0;
 		off |= offset & ~1;
 		off = (off << 2) | ((offset & 1) << 1);
+	} else if(m_is_5bpp) {
+		if(m_reg3l & 8) {
+			off = (m_cadlm << 14) | ((offset & ~3) << 1) | 2;
+			uint16_t res = m_region->base()[off];
+			res = res >> (2*(~offset & 3));
+			res = ((res & 2) ? 0x1000 : 0) | ((res & 1) ? 0x10 : 0);
+			return res;
+		}
+
+		off = (m_cadlm << 12) | offset;
+		off = off << 2;
 	} else {
 		off = (m_cadlm << 12) | offset;
 		off = off << 1;
@@ -990,20 +1008,8 @@ READ32_MEMBER (k054156_056832_device::rom32_r)
 }
 
 k054156_056832_device::k054156_056832_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, K054156_056832, "054156/056832 Tilemap Generator Combo", tag, owner, clock, "k054156_056832", __FILE__),
-	  device_gfx_interface(mconfig, *this),
-	  device_video_interface(mconfig, *this, false),
-	  m_int1_cb(*this),
-	  m_vblank_cb(*this),
-	  m_region(*this, DEVICE_SELF)
+	: k054156_056832_device(mconfig, K054156_056832, "054156/056832 Tilemap Generator Combo", tag, owner, clock, "k054156_056832", __FILE__)
 {
-	m_is_054157 = false;
-	m_is_5bpp = false;
-	m_is_dual = false;
-	memset(m_page_pointers, 0, sizeof(m_page_pointers));
-	memset(m_tilemap_page, 0, sizeof(m_tilemap_page));
-	m_cur_a0 = 0;
-	m_screen_tag = nullptr;
 }
 
 k054156_056832_device::k054156_056832_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source)
@@ -1011,7 +1017,10 @@ k054156_056832_device::k054156_056832_device(const machine_config &mconfig, devi
 	  device_gfx_interface(mconfig, *this),
 	  device_video_interface(mconfig, *this, false),
 	  m_int1_cb(*this),
+	  m_int2_cb(*this),
+	  m_int3_cb(*this),
 	  m_vblank_cb(*this),
+	  m_vsync_cb(*this),
 	  m_region(*this, DEVICE_SELF)
 {
 	m_is_054157 = false;
@@ -1048,7 +1057,10 @@ k058143_056832_device::k058143_056832_device(const machine_config &mconfig, cons
 void k054156_056832_device::device_start()
 {
 	m_int1_cb.resolve_safe();
+	m_int2_cb.resolve_safe();
+	m_int3_cb.resolve_safe();
 	m_vblank_cb.resolve_safe();
+	m_vsync_cb.resolve_safe();
 
 	save_item(NAME(m_mv));
 	save_item(NAME(m_mh));
@@ -1075,6 +1087,7 @@ void k054156_056832_device::device_start()
 	save_item(NAME(m_reg3b));
 	save_item(NAME(m_reg4b));
 	save_item(NAME(m_vrc2));
+	save_item(NAME(m_irq_state));
 
 	memset(m_mv, 0, sizeof(m_mv));
 	memset(m_mh, 0, sizeof(m_mh));
@@ -1102,6 +1115,8 @@ void k054156_056832_device::device_start()
 	m_reg2b = 0x00;
 	m_reg3b = 0x00;
 	m_reg4b = 0x00;
+
+	m_irq_state = 0;
 
 	memset(m_vrc2, 0, sizeof(m_vrc2));
 
@@ -1139,10 +1154,36 @@ void k054156_056832_device::device_post_load()
 	decode_character_roms();
 }
 
+WRITE_LINE_MEMBER(k054156_056832_device::vsync_w)
+{
+	m_vsync_cb(state);
+	if(state) {
+		uint8_t old = m_irq_state;
+		m_irq_state |= m_reg4 & 7;
+		old = old ^ m_irq_state;
+		if(old & 1)
+			m_int1_cb(ASSERT_LINE);
+		if(old & 2)
+			m_int2_cb(ASSERT_LINE);
+		if(old & 4)
+			m_int3_cb(ASSERT_LINE);
+	}
+}
+
 void k054156_056832_device::screen_vblank(screen_device &src, bool state)
 {
 	m_vblank_cb(state);
-	m_int1_cb(state && (m_reg4 & 1));
+	if(state) {
+		uint8_t old = m_irq_state;
+		m_irq_state |= m_reg4 & 7;
+		old = old ^ m_irq_state;
+		if(old & 1)
+			m_int1_cb(ASSERT_LINE);
+		if(old & 2)
+			m_int2_cb(ASSERT_LINE);
+		if(old & 4)
+			m_int3_cb(ASSERT_LINE);
+	}
 }
 
 void k054156_056832_device::select_cpu_page()
@@ -1254,16 +1295,18 @@ template<bool gflipx, bool gflipy> void k054156_056832_device::draw_page_8x8(bit
 	uint32_t vrcm = 0;
 	if(m_reg3l & 7) {
 		vrcb = m_reg3l & 1 ? 10 : m_reg3l & 2 ? 8 : 14;
-		vrcb = 14;
 		vrcm = 0xffff ^ (3 << vrcb);
 	}
-	vrcb = 0;
+
+	uint32_t ttmask = 0;
 
 	for(uint32_t y = tile_min_y; y <= tile_max_y; y++) {
 		const uint32_t *tiles = page + (y << 6) + tile_min_x;
 		for(uint32_t x = tile_min_x; x <= tile_max_x; x++) {
 			uint32_t info = *tiles;
 			uint32_t code = info & 0xffff;
+
+			ttmask |= info;
 
 			if(vrcb) {
 				uint16_t vrc = m_vrc >> (4*((code >> vrcb) & 3));
@@ -1301,11 +1344,20 @@ template<bool gflipx, bool gflipy> void k054156_056832_device::draw_page_8x8(bit
 				flipy = 0;
 			}
 
+			if(m_is_5bpp)
+				color = ((color >> 2) & 0x7) | ((color & 3) << 3);
+
+			//			if(x == 50 && y == 30)
+			//				logerror("%d %06x %03x fp=%d\n", layer, info, color << 5, flipbits);
+			//			if(info & 0x100000)
+			//				logerror("pos %d %d\n", x, y);
+
 			g->opaque(*bitmap, cliprect, code, color, flipx, flipy, basex + ((gflipx ? x^0x3f : x) << 3), basey + ((gflipy ? y^0x1f : y) << 3));
 
 			tiles++;
 		}
 	}
+	//	logerror("layer %d: %06x\n", layer, ttmask);
 }
 
 template<bool gflipy> uint32_t k054156_056832_device::screen_to_tile_y(int32_t y, uint32_t delta)
@@ -1329,22 +1381,27 @@ template<bool gflipy> int32_t k054156_056832_device::tile_to_screen_y(uint32_t t
 	return y;
 }
 
+// gx
+#define dd 22
+
+// mystwarr
+// #define dd 17
 
 template<bool gflipx> uint32_t k054156_056832_device::screen_to_tile_x(int32_t x, uint32_t delta)
 {
 	if(gflipx)
-		return (~(x - 22) + delta) & 0xfff;
+		return (~(x - dd) + delta) & 0xfff;
 	else
-		return (x - 22 + delta) & 0xfff;
+		return (x - dd + delta) & 0xfff;
 }
 
 template<bool gflipx> int32_t k054156_056832_device::tile_to_screen_x(uint32_t tx, uint32_t delta)
 {
 	int32_t x;
 	if(gflipx)
-		x = ~(tx - delta) + 22;
+		x = ~(tx - delta) + dd;
 	else
-		x = tx - delta + 22;
+		x = tx - delta + dd;
 	x = x & 0xfff;
 	if(x & 0x800)
 		x -= 0x1000;
@@ -1544,18 +1601,10 @@ void k054156_056832_device::convert_chunky_planar()
 	uint8_t *data = m_region->base();
 	for(uint32_t pos = 0; pos < size; pos += 8) {
 		uint32_t bits = (data[pos] << 24) | (data[pos+1] << 16) | (data[pos+4] << 8) | data[pos+5];
-		uint32_t ov = bits;
-		bits = BITSWAP32(bits,
-						 31, 27, 23, 19, 15, 11, 7, 3,
-						 30, 26, 22, 18, 14, 10, 6, 2,
-						 29, 25, 21, 17, 13,  9, 5, 1,
-						 28, 24, 20, 16, 12,  8, 4, 0);
-		data[pos  ] = bits >> 24;
-		data[pos+1] = bits >> 16;
-		data[pos+4] = bits >> 8;
-		data[pos+5] = bits;
-		if(pos < 32)
-			logerror("%x %08x -> %08x\n", pos, ov, bits);
+		data[pos+0] = BITSWAP8(bits, 28, 24, 20, 16, 12,  8, 4, 0);
+		data[pos+1] = BITSWAP8(bits, 30, 26, 22, 18, 14, 10, 6, 2);
+		data[pos+4] = BITSWAP8(bits, 29, 25, 21, 17, 13,  9, 5, 1);
+		data[pos+5] = BITSWAP8(bits, 31, 27, 23, 19, 15, 11, 7, 3);
 	}
 }
 
@@ -1566,14 +1615,9 @@ void k054156_056832_device::convert_planar_chunky()
 	uint8_t *data = m_region->base();
 	for(uint32_t pos = 0; pos < size; pos += 8) {
 		uint32_t bits = (data[pos] << 24) | (data[pos+1] << 16) | (data[pos+4] << 8) | data[pos+5];
-		bits = BITSWAP32(bits,
-						 0, 4,  8, 12, 16, 20, 24, 28,
-						 1, 5,  9, 13, 17, 21, 25, 29,
-						 2, 6, 10, 14, 18, 22, 26, 30,
-						 3, 7, 11, 15, 19, 23, 27, 31);
-		data[pos  ] = bits >> 24;
-		data[pos+1] = bits >> 16;
-		data[pos+4] = bits >> 8;
-		data[pos+5] = bits;
+		data[pos  ] = BITSWAP8(bits,  7, 23, 15, 31,  6, 22, 14, 30);
+		data[pos+1] = BITSWAP8(bits,  5, 21, 13, 29,  4, 20, 12, 28);
+		data[pos+4] = BITSWAP8(bits,  3, 19, 11, 27,  2, 18, 10, 26);
+		data[pos+5] = BITSWAP8(bits,  1, 17,  9, 25,  0, 16,  8, 24);
 	}
 }

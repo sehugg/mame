@@ -151,11 +151,9 @@ void mystwarr_state::blender_update(bitmap_ind16 **bitmaps, const rectangle &cli
 
 void mystwarr_state::mixer_init(bitmap_ind16 **bitmaps)
 {
-	bitmaps[k055555_device::LAYERO_COLOR]->fill(0);
 	bitmaps[k055555_device::LAYERS1_COLOR]->fill(0);
 	bitmaps[k055555_device::LAYERS2_COLOR]->fill(0);
 	bitmaps[k055555_device::LAYERS3_COLOR]->fill(0);
-	bitmaps[k055555_device::LAYERO_ATTR]->fill(0);
 	bitmaps[k055555_device::LAYERS1_ATTR]->fill(0);
 	bitmaps[k055555_device::LAYERS2_ATTR]->fill(0);
 	bitmaps[k055555_device::LAYERS3_ATTR]->fill(0);
@@ -167,6 +165,9 @@ void mystwarr_state::mixer_update(bitmap_ind16 **bitmaps, const rectangle &clipr
 	m_tilemap->bitmap_update(bitmaps[k055555_device::LAYERB_COLOR], cliprect, 1);
 	m_tilemap->bitmap_update(bitmaps[k055555_device::LAYERC_COLOR], cliprect, 2);
 	m_tilemap->bitmap_update(bitmaps[k055555_device::LAYERD_COLOR], cliprect, 3);
+	m_sprites->bitmap_update(bitmaps[k055555_device::LAYERO_COLOR],
+							 bitmaps[k055555_device::LAYERO_ATTR],
+							 cliprect);
 }
 
 WRITE16_MEMBER(mystwarr_state::ddd_053936_enable_w)
@@ -342,8 +343,32 @@ WRITE16_MEMBER(mystwarr_state::mmeeprom_w)
 }
 
 
+
 /**********************************************************************************/
 /* IRQ controllers */
+
+// level 2 - vblank - cleared on vacset.7.0
+// level 4 - ? - cleared on vacset.7.1
+// level 6 - ? - cleared on mweeprom.5
+
+WRITE_LINE_MEMBER(mystwarr_state::objdmaact_w)
+{
+}
+
+WRITE_LINE_MEMBER(mystwarr_state::objdmairq_w)
+{
+}
+
+WRITE_LINE_MEMBER(mystwarr_state::vblankirq_w)
+{
+	m_maincpu->set_input_line(M68K_IRQ_2, state);
+}
+
+void mystwarr_state::sprites_wiring(uint32_t output, uint16_t &color, uint16_t &attr)
+{
+	color = output & 0xff;
+	attr  = output >> 6;
+}
 
 TIMER_DEVICE_CALLBACK_MEMBER(mystwarr_state::mystwarr_interrupt)
 {
@@ -1323,7 +1348,6 @@ static MACHINE_CONFIG_START( mystwarr, mystwarr_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)   /* 16 MHz (confirmed) */
 	MCFG_CPU_PROGRAM_MAP(mystwarr_map)
-	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", mystwarr_state, mystwarr_interrupt, "screen", 0, 1)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 8000000)
 	MCFG_CPU_PROGRAM_MAP(mystwarr_sound_map)
@@ -1333,6 +1357,9 @@ static MACHINE_CONFIG_START( mystwarr, mystwarr_state )
 	MCFG_EEPROM_SERIAL_ER5911_8BIT_ADD("eeprom")
 
 	MCFG_DEVICE_ADD("video_timings", K053252, 6000000) // 6 MHz?
+	MCFG_K053252_VSYNC_CB(DEVWRITELINE(":tilemap", k054156_056832_device, vsync_w))
+	MCFG_K053252_VBLANK_CB(DEVWRITELINE(":sprites", k053246_055673_device, vblank_w))
+	MCFG_VIDEO_SET_SCREEN("screen")
 //	MCFG_K053252_OFFSETS(24, 16)
 
 	MCFG_MACHINE_START_OVERRIDE(mystwarr_state,mystwarr)
@@ -1341,30 +1368,29 @@ static MACHINE_CONFIG_START( mystwarr, mystwarr_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
-//  MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_RAW_PARAMS(6000000, 288+16+32+48, 0, 287, 224+16+8+16, 0, 223)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(600))
-	MCFG_SCREEN_SIZE(64*8, 32*8)
-//	MCFG_SCREEN_VISIBLE_AREA(24, 24+288-1, 16, 16+224-1)
-	MCFG_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 32*8-1)
+	MCFG_SCREEN_RAW_PARAMS(6000000, 384, 48, 48+288, 264, 15, 15+224)
 	MCFG_SCREEN_UPDATE_DEVICE("blender", k054338_device, screen_update)
 
 	MCFG_PALETTE_ADD("palette", 2048)
 	MCFG_PALETTE_FORMAT(XRGB)
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", empty)
-
 	MCFG_K054156_054157_5BPP_ADD("tilemap", 6000000, 4, 4, 24, "palette")
+	MCFG_K054156_054157_INT1_CB(WRITELINE(mystwarr_state, vblankirq_w))
+
+	MCFG_K053246_055673_ADD("sprites", 6000000, "palette", "spriteram")
+	MCFG_K053246_055673_DISABLE_VRCBK()
+	MCFG_K053246_055673_DMA_SKIP_BITS(4)
+	MCFG_K053246_055673_WIRING_CB(mystwarr_state, sprites_wiring)
+	MCFG_K053246_055673_DMAACT_CB(WRITELINE(mystwarr_state, objdmaact_w))
+	MCFG_K053246_055673_DMAIRQ_CB(WRITELINE(mystwarr_state, objdmairq_w))
 
 	MCFG_K055555_ADD("mixer")
 	MCFG_K055555_SET_INIT_CB(DEVICE_SELF, mystwarr_state, mixer_init)
 	MCFG_K055555_SET_UPDATE_CB(DEVICE_SELF, mystwarr_state, mixer_update)
 
-	MCFG_DEVICE_ADD("blender", K054338, 0)
+	MCFG_K054338_ADD("blender", "palette")
 	MCFG_K054338_SET_UPDATE_CB(DEVICE_SELF, mystwarr_state, blender_update)
-	MCFG_K054338_PALETTE("palette")
-
-	MCFG_K053246_055673_ADD("sprites", 6000000, "palette", "spriteram")
+	MCFG_K054338_SKIPPED_BITS(2)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -1395,8 +1421,8 @@ static MACHINE_CONFIG_DERIVED( viostorm, mystwarr )
 	/* basic machine hardware */
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(viostorm_map)
-	MCFG_TIMER_MODIFY("scantimer")
-	MCFG_TIMER_DRIVER_CALLBACK(mystwarr_state, metamrph_interrupt)
+//	MCFG_TIMER_MODIFY("scantimer")
+//	MCFG_TIMER_DRIVER_CALLBACK(mystwarr_state, metamrph_interrupt)
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
@@ -1412,8 +1438,8 @@ static MACHINE_CONFIG_DERIVED( metamrph, mystwarr )
 	/* basic machine hardware */
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(metamrph_map)
-	MCFG_TIMER_MODIFY("scantimer")
-	MCFG_TIMER_DRIVER_CALLBACK(mystwarr_state, metamrph_interrupt)
+//	MCFG_TIMER_MODIFY("scantimer")
+//	MCFG_TIMER_DRIVER_CALLBACK(mystwarr_state, metamrph_interrupt)
 
 	MCFG_DEVICE_MODIFY("video_timings")
 //	MCFG_K053252_OFFSETS(24, 15)
@@ -1435,7 +1461,7 @@ static MACHINE_CONFIG_DERIVED( dadandrn, mystwarr )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(dadandrn_map)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", mystwarr_state,  ddd_interrupt)
-	MCFG_DEVICE_REMOVE("scantimer")
+//	MCFG_DEVICE_REMOVE("scantimer")
 
 	MCFG_DEVICE_MODIFY("video_timings")
 //	MCFG_K053252_OFFSETS(24, 16+1)
@@ -1457,7 +1483,7 @@ static MACHINE_CONFIG_DERIVED( gaiapols, mystwarr )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(gaiapols_map)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", mystwarr_state,  ddd_interrupt)
-	MCFG_DEVICE_REMOVE("scantimer")
+//	MCFG_DEVICE_REMOVE("scantimer")
 
 	MCFG_DEVICE_MODIFY("video_timings")
 //	MCFG_K053252_OFFSETS(40, 16)
@@ -1481,8 +1507,8 @@ static MACHINE_CONFIG_DERIVED( martchmp, mystwarr )
 	/* basic machine hardware */
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(martchmp_map)
-	MCFG_TIMER_MODIFY("scantimer")
-	MCFG_TIMER_DRIVER_CALLBACK(mystwarr_state, mchamp_interrupt)
+//	MCFG_TIMER_MODIFY("scantimer")
+//	MCFG_TIMER_DRIVER_CALLBACK(mystwarr_state, mchamp_interrupt)
 
 	MCFG_DEVICE_REPLACE("video_timings", K053252, 16000000/2)
 //	MCFG_K053252_OFFSETS(32, 24-1)
@@ -1507,6 +1533,9 @@ MACHINE_CONFIG_END
 #define TILE_1BYTE_ROM_LOAD(name,offset,length,crc) ROMX_LOAD(name, offset, length, crc, ROM_GROUPBYTE | ROM_SKIP(7)) ROM_RELOAD(offset+4, length)
 #define TILE_2BYTE_ROM_LOAD(name,offset,length,crc) ROMX_LOAD(name, offset, length, crc, ROM_GROUPBYTE | ROM_SKIP(3))
 
+#define SPR_1WORD_ROM_LOAD(name,offset,length,crc) ROMX_LOAD(name, offset, length, crc, ROM_GROUPWORD | ROM_SKIP(14))
+#define SPR_1BYTE_ROM_LOAD(name,offset,length,crc) ROMX_LOAD(name, offset, length, crc, ROM_GROUPBYTE | ROM_SKIP(15))
+
 ROM_START( mystwarr )
 	/* main program */
 	ROM_REGION( 0x200000, "maincpu", 0 )
@@ -1527,13 +1556,13 @@ ROM_START( mystwarr )
 	TILE_1BYTE_ROM_LOAD( "128a10.3h", 0x000002, 512*1024, CRC(558e545a) SHA1(cac53e545f3f8980d431443f2c3b8b95e6077d1c) )
 
 	/* sprites */
-	ROM_REGION( 0x500000, "sprites", ROMREGION_ERASE00 )
-	ROM_LOAD64_WORD( "128a16.22k", 0x000000, 1*1024*1024, CRC(459b6407) SHA1(e4dace4912f9558bee75a8e95ee2637f5e950b47) )
-	ROM_LOAD64_WORD( "128a15.20k", 0x000002, 1*1024*1024, CRC(6bbfedf4) SHA1(0b3acb2b34c722ddc60c0e64e12baa1f225e4fbb) )
-	ROM_LOAD64_WORD( "128a14.19k", 0x000004, 1*1024*1024, CRC(f7bd89dd) SHA1(c9b2ebd5a49840f8b260d53c25cfcc238d21c75c) )
-	ROM_LOAD64_WORD( "128a13.17k", 0x000006, 1*1024*1024, CRC(e89b66a2) SHA1(fce6e56d1759ffe987766426ecb28e9015a500b7) )
-	ROM_LOAD16_BYTE( "128a12.12k", 0x400000, 512*1024, CRC(63de93e2) SHA1(c9a50e7beff1cbbc5d5820664adbd54d52782c54) )
-	ROM_LOAD16_BYTE( "128a11.10k", 0x400001, 512*1024, CRC(4eac941a) SHA1(c0a33f4b975ebee217fd335001839992f4c0bdc8) )
+	ROM_REGION( 0x800000, "sprites", ROMREGION_ERASE00 )
+	SPR_1WORD_ROM_LOAD( "128a16.22k", 0x000000, 1*1024*1024, CRC(459b6407) SHA1(e4dace4912f9558bee75a8e95ee2637f5e950b47) )
+	SPR_1WORD_ROM_LOAD( "128a15.20k", 0x000002, 1*1024*1024, CRC(6bbfedf4) SHA1(0b3acb2b34c722ddc60c0e64e12baa1f225e4fbb) )
+	SPR_1BYTE_ROM_LOAD( "128a12.12k", 0x000004,    512*1024, CRC(63de93e2) SHA1(c9a50e7beff1cbbc5d5820664adbd54d52782c54) )
+	SPR_1WORD_ROM_LOAD( "128a14.19k", 0x000008, 1*1024*1024, CRC(f7bd89dd) SHA1(c9b2ebd5a49840f8b260d53c25cfcc238d21c75c) )
+	SPR_1WORD_ROM_LOAD( "128a13.17k", 0x00000a, 1*1024*1024, CRC(e89b66a2) SHA1(fce6e56d1759ffe987766426ecb28e9015a500b7) )
+	SPR_1BYTE_ROM_LOAD( "128a11.10k", 0x00000c,    512*1024, CRC(4eac941a) SHA1(c0a33f4b975ebee217fd335001839992f4c0bdc8) )
 
 	/* road generator */
 	ROM_REGION( 0x40000, "gfx3", ROMREGION_ERASE00 )

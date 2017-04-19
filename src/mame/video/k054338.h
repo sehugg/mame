@@ -29,6 +29,12 @@
 // The class proposes either bitmap_update to call the callbacks as
 // needed and compute the new image, or screen_update with the normal
 // screen updating interface.
+//
+// Sometimes bits under bit 10 are skipped when routing the lines on
+// the pcb to reduce the palette size while keeping the palette
+// banking bits of the mixer.  For instance Mystic Warriors skips bits
+// 8-9 of the 055555 output.  Use MCFG_K054338_SKIPPED_BITS(count) to
+// say so.
 
 class k054338_device : public device_t
 {
@@ -49,6 +55,7 @@ public:
 	void set_init_cb(init_cb _cb) { m_init_cb = _cb; }
 	void set_update_cb(update_cb _cb) { m_update_cb = _cb; }
 	void set_palette_tag(const char *tag) { m_palette_tag = tag; }
+	void set_skipped_bits(int count) { m_skipped_bits = count; }
 
 	DECLARE_WRITE16_MEMBER(backr_w);
 	DECLARE_WRITE16_MEMBER(backgb_w);
@@ -78,6 +85,8 @@ private:
 
 	bitmap_ind16 *m_bitmaps[4];
 
+	int m_skipped_bits;
+
 	uint8_t m_through_shadow_table[0x300];
 	uint8_t m_clip_shadow_table[0x300];
 	int32_t m_shadow[3][3];
@@ -94,12 +103,6 @@ extern const device_type K054338;
 	MCFG_DEVICE_ADD(_tag, K054338, 0)		 \
 	downcast<k054338_device *>(device)->set_palette_tag(_palette_tag);
 
-#define MCFG_K054338_MIXER(_tag) \
-	k054338_device::set_mixer_tag(*device, _tag);
-
-#define MCFG_K054338_ALPHAINV(_alphainv) \
-	k054338_device::set_alpha_invert(*device, _alphainv);
-
 #define MCFG_K054338_SET_INIT_CB(_tag, _class, _method)					\
 	downcast<k054338_device *>(device)->set_init_cb(k054338_device::init_cb(&_class::_method, #_class "::" #_method, _tag, (_class *)nullptr));
 
@@ -109,6 +112,7 @@ extern const device_type K054338;
 #define MCFG_K054338_PALETTE(_palette_tag) \
 	downcast<k054338_device *>(device)->set_palette_tag(_palette_tag);
 
-#define MCFG_K054338_SET_SCREEN MCFG_VIDEO_SET_SCREEN
+#define MCFG_K054338_SKIPPED_BITS(_count) \
+	downcast<k054338_device *>(device)->set_skipped_bits(_count);
 
 #endif
