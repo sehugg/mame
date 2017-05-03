@@ -697,6 +697,10 @@ void running_machine::pause()
 
 	// call the callbacks
 	call_notifiers(MACHINE_NOTIFY_PAUSE);
+
+#if defined(EMSCRIPTEN)
+	emscripten_set_main_loop_timing( EM_TIMING_SETTIMEOUT, 100 );
+#endif
 }
 
 
@@ -713,6 +717,10 @@ void running_machine::resume()
 
 	// call the callbacks
 	call_notifiers(MACHINE_NOTIFY_RESUME);
+
+#if defined(EMSCRIPTEN)
+	emscripten_set_main_loop_timing( EM_TIMING_RAF, 1 );
+#endif
 }
 
 
