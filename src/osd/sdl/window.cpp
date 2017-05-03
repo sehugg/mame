@@ -736,8 +736,12 @@ int sdl_window_info::complete_create()
 
 	// create the SDL window
 	// soft driver also used | SDL_WINDOW_INPUT_GRABBED | SDL_WINDOW_MOUSE_FOCUS
+#if defined(EMSCRIPTEN)
+	m_extra_flags |= (fullscreen() ? SDL_WINDOW_INPUT_FOCUS | SDL_WINDOW_FULLSCREEN : 0);
+#else
 	m_extra_flags |= (fullscreen() ?
 			/*SDL_WINDOW_BORDERLESS |*/ SDL_WINDOW_INPUT_FOCUS | SDL_WINDOW_FULLSCREEN : SDL_WINDOW_RESIZABLE);
+#endif
 
 #if defined(SDLMAME_WIN32)
 	SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
