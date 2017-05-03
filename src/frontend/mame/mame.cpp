@@ -365,3 +365,16 @@ void emulator_info::layout_file_cb(util::xml::data_node &layout)
 }
 
 bool emulator_info::standalone() { return false; }
+
+//**************************************************************************
+//  JAVASCRIPT PORT-SPECIFIC
+//**************************************************************************
+
+#if defined(EMSCRIPTEN)
+
+void js_lua_string(const char* val) {
+        mame_machine_manager::instance()->lua()->load_string(val);
+}
+
+#endif /* defined(EMSCRIPTEN) */
+
