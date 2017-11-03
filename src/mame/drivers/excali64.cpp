@@ -112,7 +112,7 @@ private:
 	required_device<z80dma_device> m_dma;
 	required_device<ttl74123_device> m_u12;
 	required_device<centronics_device> m_centronics;
-	required_device<wd2793_t> m_fdc;
+	required_device<wd2793_device> m_fdc;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
 };
@@ -140,7 +140,7 @@ static ADDRESS_MAP_START(excali64_io, AS_IO, 8, excali64_state)
 	AM_RANGE(0xe4, 0xe7) AM_WRITE(porte4_w)
 	AM_RANGE(0xe8, 0xeb) AM_READ(porte8_r)
 	AM_RANGE(0xec, 0xef) AM_WRITE(portec_w)
-	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE("fdc", wd2793_t, read, write)
+	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE("fdc", wd2793_device, read, write)
 ADDRESS_MAP_END
 
 
@@ -236,8 +236,7 @@ FLOPPY_FORMATS_MEMBER( excali64_state::floppy_formats )
 FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( excali64_floppies )
-	SLOT_INTERFACE( "drive0", FLOPPY_525_QD )
-	SLOT_INTERFACE( "drive1", FLOPPY_525_QD )
+	SLOT_INTERFACE( "525qd", FLOPPY_525_QD )
 SLOT_INTERFACE_END
 
 // pulses from port E4 bit 5 restart the 74123. After 3.6 secs without a pulse, the motor gets turned off.
@@ -544,7 +543,7 @@ MC6845_UPDATE_ROW( excali64_state::update_row )
 	}
 }
 
-static MACHINE_CONFIG_START( excali64, excali64_state )
+static MACHINE_CONFIG_START( excali64 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_16MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(excali64_mem)
@@ -598,9 +597,9 @@ static MACHINE_CONFIG_START( excali64, excali64_state )
 
 	MCFG_WD2793_ADD("fdc", XTAL_16MHz / 16)
 	MCFG_WD_FDC_DRQ_CALLBACK(DEVWRITELINE("dma", z80dma_device, rdy_w))
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", excali64_floppies, "drive0", excali64_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", excali64_floppies, "525qd", excali64_state::floppy_formats)
 	MCFG_FLOPPY_DRIVE_SOUND(true)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", excali64_floppies, "drive1", excali64_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", excali64_floppies, "525qd", excali64_state::floppy_formats)
 	MCFG_FLOPPY_DRIVE_SOUND(true)
 
 	MCFG_DEVICE_ADD("dma", Z80DMA, XTAL_16MHz/4)
@@ -647,5 +646,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT     CLASS         INIT        COMPANY         FULLNAME        FLAGS */
-COMP( 1984, excali64, 0,      0,       excali64,  excali64, driver_device, 0,  "BGR Computers", "Excalibur 64", 0 )
+//    YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT     CLASS           INIT  COMPANY          FULLNAME        FLAGS
+COMP( 1984, excali64, 0,      0,       excali64,  excali64, excali64_state, 0,    "BGR Computers", "Excalibur 64", 0 )

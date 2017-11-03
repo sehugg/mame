@@ -190,6 +190,7 @@ Release:                         November 1999
 
 #include "emu.h"
 #include "cpu/nec/nec.h"
+#include "machine/timer.h"
 #include "sound/okim6295.h"
 #include "sound/ymz280b.h"
 #include "screen.h"
@@ -1438,7 +1439,7 @@ GFXDECODE_END
 
 
 /***************************************************************************************/
-static MACHINE_CONFIG_START( gunpey, gunpey_state )
+static MACHINE_CONFIG_START( gunpey )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V30, 57242400 / 4)
@@ -1457,7 +1458,7 @@ static MACHINE_CONFIG_START( gunpey, gunpey_state )
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker","rspeaker")
 
-	MCFG_OKIM6295_ADD("oki", XTAL_16_9344MHz / 8, OKIM6295_PIN7_LOW)
+	MCFG_OKIM6295_ADD("oki", XTAL_16_9344MHz / 8, PIN7_LOW)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.25)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.25)
 
@@ -1500,4 +1501,4 @@ DRIVER_INIT_MEMBER(gunpey_state,gunpey)
 	// ...
 }
 
-GAME( 2000, gunpey, 0, gunpey, gunpey, gunpey_state, gunpey,    ROT0, "Banpresto", "Gunpey (Japan)",MACHINE_NOT_WORKING|MACHINE_IMPERFECT_GRAPHICS)
+GAME( 2000, gunpey, 0, gunpey, gunpey, gunpey_state, gunpey,    ROT0, "Banpresto", "Gunpey (Japan)", MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS )

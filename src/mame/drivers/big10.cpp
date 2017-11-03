@@ -3,16 +3,13 @@
 /***************************************************************************
 
   BIG 10
-  ------
+  Success, 1985.
 
   Driver by Angelo Salese, Roberto Fresca & Tomasz Slanina.
-
 
 ****************************************************************************
 
   Dumper Notes:
-
-  Possibly some kind of gambling game.
 
   Z80A
   XTAL is 21.?727
@@ -21,7 +18,6 @@
   RAM 6264 x1
   RAM 41464 x4
   unknown SDIP64 chip with welded heatsink! Might be a video chip or MCU?
-
 
 ****************************************************************************
 
@@ -221,7 +217,7 @@ INPUT_PORTS_END
 *           Machine Driver            *
 **************************************/
 
-static MACHINE_CONFIG_START( big10, big10_state )
+static MACHINE_CONFIG_START( big10 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)    /* guess */
@@ -263,5 +259,5 @@ ROM_END
 *           Game Driver(s)            *
 **************************************/
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     STATE          INIT      ROT      COMPANY      FULLNAME   FLAGS  */
-GAME( 198?, big10,    0,        big10,    big10,    driver_device, 0,        ROT0,   "<unknown>", "Big 10",   0 )
+/*    YEAR  NAME      PARENT    MACHINE   INPUT     STATE          INIT    ROT      COMPANY     FULLNAME   FLAGS  */
+GAME( 1985, big10,    0,        big10,    big10,    big10_state,   0,      ROT0,   "Success",  "Big 10",   0 )

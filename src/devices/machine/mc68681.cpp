@@ -4,18 +4,22 @@
     2681 DUART
     68681 DUART
     28C94 QUART
+    68340 serial module
 
     Written by Mariusz Wojcieszek
     Updated by Jonathan Gevaryahu AKA Lord Nightmare
     Improved interrupt handling by R. Belmont
     Rewrite and modernization in progress by R. Belmont
+    Addition of the duart compatible 68340 serial module support by Edstrom
 */
 
 #include "emu.h"
 #include "mc68681.h"
 
-#define VERBOSE 0
-#define LOG(x)  do { if (VERBOSE) logerror x; } while (0)
+//#define VERBOSE 1
+//#define LOG_OUTPUT_FUNC printf
+#include "logmacro.h"
+
 
 static const char *const duart68681_reg_read_names[0x10] =
 {
@@ -56,28 +60,18 @@ static const int baud_rate_ACR_1[] = { 75, 110, 134, 150, 300, 600, 1200, 2000, 
 #define CHAND_TAG   "chd"
 
 // device type definition
-const device_type MC68681 = device_creator<mc68681_device>;
-const device_type SC28C94 = device_creator<sc28c94_device>;
-const device_type MC68681_CHANNEL = device_creator<mc68681_channel>;
+DEFINE_DEVICE_TYPE(MC68681, mc68681_device, "mc68681", "MC68681 DUART")
+DEFINE_DEVICE_TYPE(SC28C94, sc28c94_device, "sc28c94", "SC28C94 QUART")
+DEFINE_DEVICE_TYPE(MC68340_DUART, mc68340_duart_device, "mc68340duart", "MC68340 DUART Device")
+DEFINE_DEVICE_TYPE(MC68681_CHANNEL, mc68681_channel, "mc68681_channel", "MC68681 DUART channel")
 
-MACHINE_CONFIG_FRAGMENT( duart68681 )
-	MCFG_DEVICE_ADD(CHANA_TAG, MC68681_CHANNEL, 0)
-	MCFG_DEVICE_ADD(CHANB_TAG, MC68681_CHANNEL, 0)
-MACHINE_CONFIG_END
-
-MACHINE_CONFIG_FRAGMENT( quart28c94 )
-	MCFG_DEVICE_ADD(CHANA_TAG, MC68681_CHANNEL, 0)
-	MCFG_DEVICE_ADD(CHANB_TAG, MC68681_CHANNEL, 0)
-	MCFG_DEVICE_ADD(CHANC_TAG, MC68681_CHANNEL, 0)
-	MCFG_DEVICE_ADD(CHAND_TAG, MC68681_CHANNEL, 0)
-MACHINE_CONFIG_END
 
 //**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
 
-mc68681_base_device::mc68681_base_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source)
-	: device_t(mconfig, type, name, tag, owner, clock, shortname, source),
+mc68681_base_device::mc68681_base_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
+	: device_t(mconfig, type, tag, owner, clock),
 	m_chanA(*this, CHANA_TAG),
 	m_chanB(*this, CHANB_TAG),
 	m_chanC(*this, CHANC_TAG),
@@ -100,12 +94,29 @@ mc68681_base_device::mc68681_base_device(const machine_config &mconfig, device_t
 }
 
 mc68681_device::mc68681_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: mc68681_base_device(mconfig, MC68681, "MC68681 DUART", tag, owner, clock, "mc68681", __FILE__)
+	: mc68681_base_device(mconfig, MC68681, tag, owner, clock)
 {
 }
 
 sc28c94_device::sc28c94_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: mc68681_base_device(mconfig, SC28C94, "SC28C94 QUART", tag, owner, clock, "sc28c94", __FILE__)
+	: mc68681_base_device(mconfig, SC28C94, tag, owner, clock)
+{
+}
+
+//--------------------------------------------------------------------------------------------------------------------
+// The read and write methods are meant to catch all differences in the register model between 68681 and 68340
+// serial module. Eg some registers are (re)moved into the 68340 like the vector register. There are also no counter
+// in the 68340. The CSR clock register is also different for the external clock modes. The implementation assumes
+// that the code knows all of this and will not warn if those registers are accessed as it could be ported code.
+// TODO: A lot of subtle differences and also detect misuse of unavailable registers as they should be ignored
+//--------------------------------------------------------------------------------------------------------------------
+mc68340_duart_device::mc68340_duart_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
+	: mc68681_base_device(mconfig, type, tag, owner, clock)
+{
+}
+
+mc68340_duart_device::mc68340_duart_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: mc68340_duart_device(mconfig, MC68340_DUART, tag, owner, clock)
 {
 }
 
@@ -169,15 +180,22 @@ void mc68681_base_device::device_reset()
 	write_outport(OPR ^ 0xff);
 }
 
-machine_config_constructor mc68681_base_device::device_mconfig_additions() const
-{
-	return MACHINE_CONFIG_NAME( duart68681 );
-}
+MACHINE_CONFIG_MEMBER( mc68681_base_device::device_add_mconfig )
+	MCFG_DEVICE_ADD(CHANA_TAG, MC68681_CHANNEL, 0)
+	MCFG_DEVICE_ADD(CHANB_TAG, MC68681_CHANNEL, 0)
+MACHINE_CONFIG_END
 
-machine_config_constructor sc28c94_device::device_mconfig_additions() const
-{
-	return MACHINE_CONFIG_NAME( quart28c94 );
-}
+MACHINE_CONFIG_MEMBER( sc28c94_device::device_add_mconfig )
+	MCFG_DEVICE_ADD(CHANA_TAG, MC68681_CHANNEL, 0)
+	MCFG_DEVICE_ADD(CHANB_TAG, MC68681_CHANNEL, 0)
+	MCFG_DEVICE_ADD(CHANC_TAG, MC68681_CHANNEL, 0)
+	MCFG_DEVICE_ADD(CHAND_TAG, MC68681_CHANNEL, 0)
+MACHINE_CONFIG_END
+
+MACHINE_CONFIG_MEMBER( mc68340_duart_device::device_add_mconfig )
+	MCFG_DEVICE_ADD(CHANA_TAG, MC68681_CHANNEL, 0)
+	MCFG_DEVICE_ADD(CHANB_TAG, MC68681_CHANNEL, 0)
+MACHINE_CONFIG_END
 
 void mc68681_base_device::update_interrupts()
 {
@@ -198,12 +216,12 @@ void mc68681_base_device::update_interrupts()
 	*/
 	if ( (ISR & IMR) != 0 )
 	{
-		LOG(( "68681: Interrupt line active (IMR & ISR = %02X)\n", (ISR & IMR) ));
+		LOG( "68681: Interrupt line active (IMR & ISR = %02X)\n", (ISR & IMR) );
 		write_irq(ASSERT_LINE);
 	}
 	else
 	{
-		LOG(( "68681: Interrupt line not active (IMR & ISR = %02X)\n", ISR & IMR));
+		LOG( "68681: Interrupt line not active (IMR & ISR = %02X)\n", ISR & IMR);
 		write_irq(CLEAR_LINE);
 		m_read_vector = false;  // clear IACK too
 	}
@@ -353,6 +371,30 @@ TIMER_CALLBACK_MEMBER( mc68681_base_device::duart_timer_callback )
 
 }
 
+READ8_MEMBER( mc68340_duart_device::read )
+{
+	uint8_t r = 0;
+
+	switch (offset)
+	{
+		case 0x00: /* MR1A - does not share register address with MR2A */
+			r = m_chanA->read_MR1();
+			break;
+		case 0x08: /* MR1B - does not share register address with MR2B */
+			r = m_chanB->read_MR1();
+			break;
+		case 0x10: /* MR2A - does not share register address with MR1A */
+			r = m_chanA->read_MR2();
+			break;
+		case 0x11: /* MR2B - does not share register address with MR1B */
+			r = m_chanB->read_MR2();
+			break;
+		default:
+			r = mc68681_base_device::read(space, offset, mem_mask);
+	}
+	return r;
+}
+
 READ8_MEMBER( sc28c94_device::read )
 {
 	uint8_t r = 0;
@@ -387,7 +429,7 @@ READ8_MEMBER( mc68681_base_device::read )
 
 	offset &= 0xf;
 
-	LOG(( "Reading 68681 (%s) reg %x (%s)\n", tag(), offset, duart68681_reg_read_names[offset] ));
+	LOG( "Reading 68681 (%s) reg %x (%s)\n", tag(), offset, duart68681_reg_read_names[offset] );
 
 	switch (offset)
 	{
@@ -477,12 +519,35 @@ READ8_MEMBER( mc68681_base_device::read )
 			break;
 
 		default:
-			LOG(( "Reading unhandled 68681 reg %x\n", offset ));
+			LOG( "Reading unhandled 68681 reg %x\n", offset );
 			break;
 	}
-	LOG(("returned %02x\n", r));
+	LOG("returned %02x\n", r);
 
 	return r;
+}
+
+WRITE8_MEMBER( mc68340_duart_device::write )
+{
+	//printf("Duart write %02x -> %02x\n", data, offset);
+
+	switch(offset)
+	{
+		case 0x00: /* MR1A - does not share register address with MR2A */
+			m_chanA->write_MR1(data);
+			break;
+		case 0x08: /* MR1B - does not share register address with MR2B */
+			m_chanB->write_MR1(data);
+			break;
+		case 0x10: /* MR2A - does not share register address with MR1A */
+			m_chanA->write_MR2(data);
+			break;
+		case 0x11: /* MR2B - does not share register address with MR1B */
+			m_chanB->write_MR2(data);
+			break;
+		default:
+			mc68681_base_device::write(space, offset, data, mem_mask);
+	}
 }
 
 WRITE8_MEMBER( sc28c94_device::write )
@@ -515,7 +580,7 @@ WRITE8_MEMBER( sc28c94_device::write )
 WRITE8_MEMBER( mc68681_base_device::write )
 {
 	offset &= 0x0f;
-	LOG(( "Writing 68681 (%s) reg %x (%s) with %04x\n", tag(), offset, duart68681_reg_write_names[offset], data ));
+	LOG( "Writing 68681 (%s) reg %x (%s) with %04x\n", tag(), offset, duart68681_reg_write_names[offset], data );
 	switch(offset)
 	{
 		case 0x00: /* MRA */
@@ -746,7 +811,7 @@ int mc68681_base_device::calc_baud(int ch, uint8_t data)
 
 	if ((baud_rate == 0) && ((data & 0xf) != 0xd))
 	{
-		LOG(( "Unsupported transmitter clock: channel %d, clock select = %02x\n", ch, data ));
+		LOG( "Unsupported transmitter clock: channel %d, clock select = %02x\n", ch, data );
 	}
 
 	//printf("%s ch %d setting baud to %d\n", tag(), ch, baud_rate);
@@ -766,7 +831,7 @@ void mc68681_base_device::set_ISR_bits(int mask)
 // DUART channel class stuff
 
 mc68681_channel::mc68681_channel(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, MC68681_CHANNEL, "MC68681 DUART CHANNEL", tag, owner, clock, "mc68681_channel", __FILE__),
+	: device_t(mconfig, MC68681_CHANNEL, tag, owner, clock),
 	device_serial_interface(mconfig, *this),
 	MR1(0),
 	MR2(0),
@@ -813,17 +878,12 @@ void mc68681_channel::device_reset()
 	CSR = 0;
 }
 
-void mc68681_channel::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
-{
-	device_serial_interface::device_timer(timer, id, param, ptr);
-}
-
 // serial device virtual overrides
 void mc68681_channel::rcv_complete()
 {
 	receive_register_extract();
 
-//  printf("%s ch %d rcv complete\n", tag(), m_ch);
+	//printf("%s ch %d rcv complete\n", tag(), m_ch);
 
 	if ( rx_enabled )
 	{
@@ -845,7 +905,7 @@ void mc68681_channel::rcv_complete()
 
 void mc68681_channel::tra_complete()
 {
-//  printf("%s ch %d Tx complete\n", tag(), m_ch);
+	//printf("%s ch %d Tx complete\n", tag(), m_ch);
 	tx_ready = 1;
 	SR |= STATUS_TRANSMITTER_READY;
 
@@ -859,7 +919,7 @@ void mc68681_channel::tra_complete()
 	{
 		if (rx_fifo_num >= MC68681_RX_FIFO_SIZE)
 		{
-			LOG(( "68681: FIFO overflow\n" ));
+			LOG( "68681: FIFO overflow\n" );
 			SR |= STATUS_OVERRUN_ERROR;
 		}
 		else
@@ -1009,11 +1069,11 @@ uint8_t mc68681_channel::read_rx_fifo()
 {
 	uint8_t rv;
 
-//  printf("read_rx_fifo: rx_fifo_num %d\n", rx_fifo_num);
+	//printf("read_rx_fifo: rx_fifo_num %d\n", rx_fifo_num);
 
 	if ( rx_fifo_num == 0 )
 	{
-		LOG(( "68681 channel: rx fifo underflow\n" ));
+		LOG( "68681 channel: rx fifo underflow\n" );
 		update_interrupts();
 		return 0;
 	}
@@ -1027,7 +1087,7 @@ uint8_t mc68681_channel::read_rx_fifo()
 	rx_fifo_num--;
 	update_interrupts();
 
-//  printf("Rx read %02x\n", rv);
+	//printf("Rx read %02x\n", rv);
 
 	return rv;
 }
@@ -1077,7 +1137,7 @@ void mc68681_channel::write_chan_reg(int reg, uint8_t data)
 		CSR = data;
 		tx_baud_rate = m_uart->calc_baud(m_ch, data & 0xf);
 		rx_baud_rate = m_uart->calc_baud(m_ch, (data>>4) & 0xf);
-//      printf("%s ch %d CSR %02x Tx baud %d Rx baud %d\n", tag(), m_ch, data, tx_baud_rate, rx_baud_rate);
+	//printf("%s ch %d CSR %02x Tx baud %d Rx baud %d\n", tag(), m_ch, data, tx_baud_rate, rx_baud_rate);
 		set_rcv_rate(rx_baud_rate);
 		set_tra_rate(tx_baud_rate);
 		break;
@@ -1162,7 +1222,7 @@ void mc68681_channel::recalc_framing()
 			break;
 	}
 
-//  printf("%s ch %d MR1 %02x MR2 %02x => %d bits / char, %d stop bits, parity %d\n", tag(), m_ch, MR1, MR2, (MR1 & 3)+5, stopbits, parity);
+	//printf("%s ch %d MR1 %02x MR2 %02x => %d bits / char, %d stop bits, parity %d\n", tag(), m_ch, MR1, MR2, (MR1 & 3)+5, stopbits, parity);
 
 	set_data_frame(1, (MR1 & 3)+5, parity, stopbits);
 }
@@ -1211,7 +1271,7 @@ void mc68681_channel::write_CR(uint8_t data)
 			break;
 		/* TODO: case 6 and case 7 are start break and stop break respectively, which start or stop holding the TxDA or TxDB line low (space) after whatever data is in the buffer finishes transmitting (following the stop bit?), or after two bit-times if no data is being transmitted  */
 		default:
-			LOG(( "68681: Unhandled command (%x) in CR%d\n", (data >> 4) & 0x07, m_ch ));
+			LOG( "68681: Unhandled command (%x) in CR%d\n", (data >> 4) & 0x07, m_ch );
 			break;
 	}
 
@@ -1254,7 +1314,7 @@ void mc68681_channel::write_TX(uint8_t data)
          printf("Write %02x to TX when TX not ready!\n", data);
     }*/
 
-	//printf("%s ch %d Tx %02x\n", tag(), m_ch, data);
+	//printf("%s ch %d Tx %c [%02x]\n", tag(), m_ch, isprint(data) ? data : ' ', data);
 
 	tx_ready = 0;
 	SR &= ~STATUS_TRANSMITTER_READY;

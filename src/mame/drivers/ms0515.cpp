@@ -6,12 +6,13 @@
 
     To do:
     - softlist
-    - sound
+    . sound
     - 512K memory expansion
     - ?? refresh rate change
     - ?? parallel printer
     - ?? cassette (only with Version A firmware)
     - ?? port 177770
+    - ?? mc1702 (8086 co-processor)
 
     Docs:
     - http://www.tis.kz/docs/MC-0515/mc0515-ed.rar schematics etc.
@@ -37,6 +38,7 @@
 #include "sound/wave.h"
 
 #include "screen.h"
+#include "speaker.h"
 
 #include "formats/ms0515_dsk.h"
 
@@ -69,19 +71,9 @@ public:
 		, m_rs232(*this, "rs232")
 		, m_i8251kbd(*this, "i8251kbd")
 		, m_ms7004(*this, "ms7004")
+		, m_pit8253(*this, "pit8253")
+		, m_speaker(*this, "speaker")
 	{ }
-
-	required_device<cpu_device> m_maincpu;
-	required_device<ram_device> m_ram;
-	required_device<kr1818vg93_t> m_fdc;
-	required_device<floppy_image_device> m_floppy0;
-	required_device<floppy_image_device> m_floppy1;
-	required_device<i8251_device> m_i8251line;
-	required_device<rs232_port_device> m_rs232;
-	required_device<i8251_device> m_i8251kbd;
-	required_device<ms7004_device> m_ms7004;
-
-	virtual void machine_reset() override;
 
 	DECLARE_PALETTE_INIT(ms0515);
 	uint32_t screen_update_ms0515(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -98,15 +90,32 @@ public:
 
 	DECLARE_WRITE_LINE_MEMBER(write_keyboard_clock);
 	DECLARE_WRITE_LINE_MEMBER(write_line_clock);
+	DECLARE_WRITE_LINE_MEMBER(pit8253_out2_changed);
 
 	DECLARE_FLOPPY_FORMATS(floppy_formats);
 
-	void irq_encoder(int irq, int state);
 	DECLARE_WRITE_LINE_MEMBER(irq2_w);
 	DECLARE_WRITE_LINE_MEMBER(irq5_w);
 	DECLARE_WRITE_LINE_MEMBER(irq8_w);
 	DECLARE_WRITE_LINE_MEMBER(irq9_w);
 	DECLARE_WRITE_LINE_MEMBER(irq11_w);
+
+protected:
+	virtual void machine_reset() override;
+
+	void irq_encoder(int irq, int state);
+
+	required_device<cpu_device> m_maincpu;
+	required_device<ram_device> m_ram;
+	required_device<kr1818vg93_device> m_fdc;
+	required_device<floppy_image_device> m_floppy0;
+	required_device<floppy_image_device> m_floppy1;
+	required_device<i8251_device> m_i8251line;
+	required_device<rs232_port_device> m_rs232;
+	required_device<i8251_device> m_i8251kbd;
+	required_device<ms7004_device> m_ms7004;
+	required_device<pit8253_device> m_pit8253;
+	required_device<speaker_sound_device> m_speaker;
 
 private:
 	uint8_t *m_video_ram;
@@ -147,10 +156,10 @@ static ADDRESS_MAP_START(ms0515_mem, AS_PROGRAM, 16, ms0515_state)
 
 	AM_RANGE(0177600, 0177607) AM_DEVREADWRITE8("ppi8255_1", i8255_device, read, write, 0x00ff)
 
-	AM_RANGE(0177640, 0177641) AM_DEVREADWRITE8("vg93", kr1818vg93_t, status_r, cmd_w, 0x00ff)
-	AM_RANGE(0177642, 0177643) AM_DEVREADWRITE8("vg93", kr1818vg93_t, track_r, track_w, 0x00ff)
-	AM_RANGE(0177644, 0177645) AM_DEVREADWRITE8("vg93", kr1818vg93_t, sector_r, sector_w, 0x00ff)
-	AM_RANGE(0177646, 0177647) AM_DEVREADWRITE8("vg93", kr1818vg93_t, data_r, data_w, 0x00ff)
+	AM_RANGE(0177640, 0177641) AM_DEVREADWRITE8("vg93", kr1818vg93_device, status_r, cmd_w, 0x00ff)
+	AM_RANGE(0177642, 0177643) AM_DEVREADWRITE8("vg93", kr1818vg93_device, track_r, track_w, 0x00ff)
+	AM_RANGE(0177644, 0177645) AM_DEVREADWRITE8("vg93", kr1818vg93_device, sector_r, sector_w, 0x00ff)
+	AM_RANGE(0177646, 0177647) AM_DEVREADWRITE8("vg93", kr1818vg93_device, data_r, data_w, 0x00ff)
 
 	AM_RANGE(0177700, 0177701) AM_DEVREAD8("i8251line", i8251_device, data_r, 0x00ff)
 	AM_RANGE(0177702, 0177703) AM_DEVREADWRITE8("i8251line", i8251_device, status_r, control_w, 0x00ff)
@@ -301,8 +310,8 @@ READ8_MEMBER(ms0515_state::ms0515_portb_r)
 
 
 /*
- * b7 -- sound out ??
- * b6 -- sound out gate
+ * b7 -- sound out gate
+ * b6 -- sound out route to speaker
  * b5 -- sound ??
  * b4 -- LED VD17
  * b3 -- video resolution, 0: 320x200, 1: 640x200
@@ -312,6 +321,7 @@ WRITE8_MEMBER(ms0515_state::ms0515_portc_w)
 {
 	LOGSYSREG("Sysreg C <- %02x\n", data);
 
+	m_pit8253->write_gate2(BIT(data, 7));
 	output().set_value("led17", BIT(data, 4));
 
 	m_sysregc = data;
@@ -327,6 +337,11 @@ WRITE_LINE_MEMBER(ms0515_state::write_line_clock)
 {
 	m_i8251line->write_txc(state);
 	m_i8251line->write_rxc(state);
+}
+
+WRITE_LINE_MEMBER(ms0515_state::pit8253_out2_changed)
+{
+	m_speaker->level_w(state);
 }
 
 void ms0515_state::machine_reset()
@@ -498,9 +513,9 @@ WRITE_LINE_MEMBER(ms0515_state::irq11_w)
 	irq_encoder(11, state);
 }
 
-static MACHINE_CONFIG_START( ms0515, ms0515_state )
+static MACHINE_CONFIG_START( ms0515 )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", T11, XTAL_4MHz) // actual CPU is T11 clone, KR1807VM1
+	MCFG_CPU_ADD("maincpu", T11, XTAL_15MHz / 2) // actual CPU is T11 clone, KR1807VM1
 	MCFG_T11_INITIAL_MODE(0xf2ff)
 	MCFG_CPU_PROGRAM_MAP(ms0515_mem)
 
@@ -559,7 +574,11 @@ static MACHINE_CONFIG_START( ms0515, ms0515_state )
 	MCFG_PIT8253_CLK1(XTAL_2MHz)
 	MCFG_PIT8253_OUT0_HANDLER(WRITELINE(ms0515_state, write_line_clock))
 	MCFG_PIT8253_CLK2(XTAL_2MHz)
-//  MCFG_PIT8253_OUT2_HANDLER(WRITELINE())
+	MCFG_PIT8253_OUT2_HANDLER(WRITELINE(ms0515_state, pit8253_out2_changed))
+
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.45)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -580,5 +599,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT               COMPANY   FULLNAME       FLAGS */
-COMP( 1990, ms0515, 0,      0,       ms0515,    ms0515,  driver_device, 0,  "Elektronika",   "MS 0515",     MACHINE_NO_SOUND)
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    STATE         INIT  COMPANY        FULLNAME   FLAGS
+COMP( 1990, ms0515, 0,      0,       ms0515,    ms0515,  ms0515_state, 0,    "Elektronika", "MS 0515", 0 )

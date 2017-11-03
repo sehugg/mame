@@ -93,7 +93,7 @@ ADDRESS_MAP_START( zorba_io, AS_IO, 8, zorba_state )
 	AM_RANGE(0x25, 0x25) AM_DEVREADWRITE("uart2", i8251_device, status_r, control_w)
 	AM_RANGE(0x26, 0x26) AM_WRITE(intmask_w)
 	AM_RANGE(0x30, 0x30) AM_DEVREADWRITE("dma", z80dma_device, read, write)
-	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE("fdc", fd1793_t, read, write)
+	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE("fdc", fd1793_device, read, write)
 	AM_RANGE(0x50, 0x53) AM_DEVREADWRITE("pia0", pia6821_device, read, write)
 	AM_RANGE(0x60, 0x63) AM_DEVREADWRITE("pia1", pia6821_device, read, write)
 ADDRESS_MAP_END
@@ -131,7 +131,7 @@ GFXDECODE_START( zorba )
 GFXDECODE_END
 
 
-MACHINE_CONFIG_START( zorba, zorba_state )
+MACHINE_CONFIG_START( zorba )
 	// basic machine hardware
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_24MHz / 6)
 	MCFG_CPU_PROGRAM_MAP(zorba_mem)
@@ -150,18 +150,18 @@ MACHINE_CONFIG_START( zorba, zorba_state )
 	MCFG_SOUND_ADD("beeper", BEEP, 800) // should be horizontal frequency / 16, so depends on CRTC parameters
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_INPUT_MERGER_ACTIVE_HIGH("irq0")
+	MCFG_INPUT_MERGER_ANY_HIGH("irq0")
 	MCFG_INPUT_MERGER_OUTPUT_HANDLER(WRITELINE(zorba_state, irq_w<0>))
-	MCFG_INPUT_MERGER_ACTIVE_HIGH("irq1")
+	MCFG_INPUT_MERGER_ANY_HIGH("irq1")
 	MCFG_INPUT_MERGER_OUTPUT_HANDLER(WRITELINE(zorba_state, irq_w<1>))
-	MCFG_INPUT_MERGER_ACTIVE_HIGH("irq2")
+	MCFG_INPUT_MERGER_ANY_HIGH("irq2")
 	MCFG_INPUT_MERGER_OUTPUT_HANDLER(WRITELINE(zorba_state, irq_w<2>))
 
 	/* devices */
 	MCFG_DEVICE_ADD("dma", Z80DMA, XTAL_24MHz/6)
 	// busack on cpu connects to bai pin
 	MCFG_Z80DMA_OUT_BUSREQ_CB(WRITELINE(zorba_state, busreq_w))  //connects to busreq on cpu
-	MCFG_Z80DMA_OUT_INT_CB(DEVWRITELINE("irq0", input_merger_active_high_device, in0_w))
+	MCFG_Z80DMA_OUT_INT_CB(DEVWRITELINE("irq0", input_merger_device, in_w<0>))
 	//ba0 - not connected
 	MCFG_Z80DMA_IN_MREQ_CB(READ8(zorba_state, memory_read_byte))
 	MCFG_Z80DMA_OUT_MREQ_CB(WRITE8(zorba_state, memory_write_byte))
@@ -201,8 +201,8 @@ MACHINE_CONFIG_START( zorba, zorba_state )
 	MCFG_PIA_WRITEPB_HANDLER(WRITE8(zorba_state, pia1_portb_w))
 	MCFG_PIA_CA2_HANDLER(DEVWRITELINE(IEEE488_TAG, ieee488_device, ifc_w))
 	MCFG_PIA_CB2_HANDLER(DEVWRITELINE(IEEE488_TAG, ieee488_device, ren_w))
-	MCFG_PIA_IRQA_HANDLER(DEVWRITELINE("irq1", input_merger_active_high_device, in0_w))
-	MCFG_PIA_IRQB_HANDLER(DEVWRITELINE("irq1", input_merger_active_high_device, in1_w))
+	MCFG_PIA_IRQA_HANDLER(DEVWRITELINE("irq1", input_merger_device, in_w<0>))
+	MCFG_PIA_IRQB_HANDLER(DEVWRITELINE("irq1", input_merger_device, in_w<1>))
 
 	// PIT
 	MCFG_DEVICE_ADD("pit", PIT8254, 0)
@@ -220,12 +220,13 @@ MACHINE_CONFIG_START( zorba, zorba_state )
 	MCFG_I8275_CHARACTER_WIDTH(8)
 	MCFG_I8275_DRAW_CHARACTER_CALLBACK_OWNER(zorba_state, zorba_update_chr)
 	MCFG_I8275_DRQ_CALLBACK(DEVWRITELINE("dma", z80dma_device, rdy_w))
-	MCFG_I8275_IRQ_CALLBACK(DEVWRITELINE("irq0", input_merger_active_high_device, in1_w))
+	MCFG_I8275_IRQ_CALLBACK(DEVWRITELINE("irq0", input_merger_device, in_w<1>))
+	MCFG_VIDEO_SET_SCREEN("screen")
 
 	// Floppies
 	MCFG_FD1793_ADD("fdc", XTAL_24MHz / 24)
-	MCFG_WD_FDC_INTRQ_CALLBACK(DEVWRITELINE("irq2", input_merger_active_high_device, in0_w))
-	MCFG_WD_FDC_DRQ_CALLBACK(DEVWRITELINE("irq2", input_merger_active_high_device, in1_w))
+	MCFG_WD_FDC_INTRQ_CALLBACK(DEVWRITELINE("irq2", input_merger_device, in_w<0>))
+	MCFG_WD_FDC_DRQ_CALLBACK(DEVWRITELINE("irq2", input_merger_device, in_w<1>))
 	MCFG_FLOPPY_DRIVE_ADD("fdc:0", zorba_floppies, "525dd", floppy_image_device::default_floppy_formats)
 	MCFG_FLOPPY_DRIVE_SOUND(true)
 	MCFG_FLOPPY_DRIVE_ADD("fdc:1", zorba_floppies, "525dd", floppy_image_device::default_floppy_formats)
@@ -564,5 +565,5 @@ ROM_END
 COMP( 1984?, zorba, 0, 0, zorba, zorba, zorba_state, zorba, "Modular Micros", "Zorba (Modular Micros)", MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 
 // Undumped versions (see startup screen notes at top of file)
-// COMP( 1983, zorbat, zorba, 0, zorba, zorba, zorba_state, zorba, "Telcon Industries", "Zorba (Telcon Industries)", MACHINE_NOT_WORKING )
+// COMP( 1983, zorbat, zorba, 0, zorba, zorba, zorba_state, zorba, "Telcon Industries",  "Zorba (Telcon Industries)",  MACHINE_NOT_WORKING )
 // COMP( 1984, zorbag, zorba, 0, zorba, zorba, zorba_state, zorba, "Gemini Electronics", "Zorba (Gemini Electronics)", MACHINE_NOT_WORKING )

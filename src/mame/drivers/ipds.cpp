@@ -33,7 +33,7 @@ public:
 	DECLARE_READ8_MEMBER(ipds_b1_r);
 	DECLARE_READ8_MEMBER(ipds_c0_r);
 	DECLARE_WRITE8_MEMBER(ipds_b1_w);
-	DECLARE_WRITE8_MEMBER(kbd_put);
+	void kbd_put(u8 data);
 	I8275_DRAW_CHARACTER_MEMBER( crtc_display_pixels );
 	uint8_t m_term_data;
 	virtual void machine_reset() override;
@@ -121,12 +121,12 @@ static GFXDECODE_START( ipds )
 GFXDECODE_END
 
 
-WRITE8_MEMBER( ipds_state::kbd_put )
+void ipds_state::kbd_put(u8 data)
 {
 	m_term_data = data;
 }
 
-static MACHINE_CONFIG_START( ipds, ipds_state )
+static MACHINE_CONFIG_START( ipds )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",I8085A, XTAL_19_6608MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(ipds_mem)
@@ -147,7 +147,7 @@ static MACHINE_CONFIG_START( ipds, ipds_state )
 	MCFG_I8275_DRAW_CHARACTER_CALLBACK_OWNER(ipds_state, crtc_display_pixels)
 
 	MCFG_DEVICE_ADD("keyboard", GENERIC_KEYBOARD, 0)
-	MCFG_GENERIC_KEYBOARD_CB(WRITE8(ipds_state, kbd_put))
+	MCFG_GENERIC_KEYBOARD_CB(PUT(ipds_state, kbd_put))
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -158,11 +158,15 @@ ROM_START( ipds )
 	ROM_REGION( 0x10000, "slavecpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "164196.bin", 0x0000, 0x1000, CRC(d3e18bc6) SHA1(01bc233be154bdfea9e8015839c5885cdaa08f11) )
 
-	ROM_REGION(0x0800, "chargen",0)
+	ROM_REGION(0x0800, "chargen", 0)
 	ROM_LOAD( "163642.bin", 0x0000, 0x0800, CRC(3d81b2d1) SHA1(262a42920f15f1156ad0717c876cc0b2ed947ec5) )
+
+	ROM_REGION(0x1000, "user1", 0)
+	ROM_LOAD( "162806-001.u24", 0x0000, 0x0800, CRC(e6ba41ca) SHA1(a2d3438b728670b75c359ff49146ef57c08bf0f1) )
+	ROM_LOAD( "163775-001.u8",  0x0800, 0x0800, CRC(0442163e) SHA1(737732adcfe22823db37112e28758464f5d9af7b) )
 ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( 1982, ipds,  0,       0,       ipds,  ipds, driver_device,     0,     "Intel",   "iPDS",  MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+/*    YEAR  NAME   PARENT  COMPAT   MACHINE  INPUT  STATE        INIT   COMPANY   FULLNAME  FLAGS */
+COMP( 1982, ipds,  0,      0,       ipds,    ipds,  ipds_state,  0,     "Intel",  "iPDS",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND)

@@ -29,6 +29,7 @@
 #include "cpu/i86/i86.h"
 #include "machine/i8155.h"
 #include "machine/nvram.h"
+#include "machine/timer.h"
 #include "sound/dac.h"
 #include "sound/volt_reg.h"
 #include "video/resnet.h"
@@ -345,7 +346,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static MACHINE_CONFIG_START( meyc8088, meyc8088_state )
+static MACHINE_CONFIG_START( meyc8088 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8088, (XTAL_15MHz / 3) * 0.95) // NOTE: underclocked to prevent errors on diagnostics, MAME i8088 cycle timing is probably inaccurate
@@ -399,4 +400,4 @@ ROM_START( gldarrow )
 ROM_END
 
 
-GAMEL(1984, gldarrow, 0,        meyc8088, gldarrow, driver_device, 0, ROT0,  "Meyco Games, Inc.", "Golden Arrow (Standard G8-03)", 0, layout_gldarrow )
+GAMEL(1984, gldarrow, 0,        meyc8088, gldarrow, meyc8088_state, 0, ROT0,  "Meyco Games, Inc.", "Golden Arrow (Standard G8-03)", 0, layout_gldarrow )

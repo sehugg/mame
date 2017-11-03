@@ -13,7 +13,7 @@
 -- Dynamic recompiler objects
 --------------------------------------------------
 
-if (CPUS["SH2"]~=null or CPUS["MIPS"]~=null or CPUS["POWERPC"]~=null or CPUS["RSP"]~=null or CPUS["ARM7"]~=null or CPUS["ADSP21062"]~=null or CPUS["MB86235"]~=null) then
+if (CPUS["SH"]~=null or CPUS["MIPS"]~=null or CPUS["POWERPC"]~=null or CPUS["RSP"]~=null or CPUS["ARM7"]~=null or CPUS["ADSP21062"]~=null or CPUS["MB86235"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/drcbec.cpp",
 		MAME_DIR .. "src/devices/cpu/drcbec.h",
@@ -636,54 +636,44 @@ if (CPUS["HMCS40"]~=null or _OPTIONS["with-tools"]) then
 end
 
 --------------------------------------------------
--- Hitachi SH1/SH2
---@src/devices/cpu/sh2/sh2.h,CPUS["SH2"] = true
+-- Hitachi SuperH series (SH1/SH2/SH3/SH4)
+--@src/devices/cpu/sh/sh2.h,CPUS["SH"] = true
+--@src/devices/cpu/sh/sh4.h,CPUS["SH"] = true
 --------------------------------------------------
 
-if (CPUS["SH2"]~=null) then
+if (CPUS["SH"]~=null) then
 	files {
-		MAME_DIR .. "src/devices/cpu/sh2/sh2.cpp",
-		MAME_DIR .. "src/devices/cpu/sh2/sh2.h",
-		MAME_DIR .. "src/devices/cpu/sh2/sh2fe.cpp",
-		MAME_DIR .. "src/devices/cpu/sh2/sh7604_bus.cpp",
-		MAME_DIR .. "src/devices/cpu/sh2/sh7604_bus.h",
-		MAME_DIR .. "src/devices/cpu/sh2/sh7604_sci.cpp",
-		MAME_DIR .. "src/devices/cpu/sh2/sh7604_sci.h",
-		MAME_DIR .. "src/devices/cpu/sh2/sh7604_wdt.cpp",
-		MAME_DIR .. "src/devices/cpu/sh2/sh7604_wdt.h",
-		--MAME_DIR .. "src/devices/cpu/sh2/sh2comn.cpp",
-		--MAME_DIR .. "src/devices/cpu/sh2/sh2comn.h",
-		--MAME_DIR .. "src/devices/cpu/sh2/sh2drc.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh2.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh2.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh2comn.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh2comn.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh_fe.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh2fe.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh4fe.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh7604_bus.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh7604_bus.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh7604_sci.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh7604_sci.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh7604_wdt.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh7604_wdt.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh4.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh4.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh4comn.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh4comn.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh3comn.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh3comn.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh4tmu.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh4tmu.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh4dmac.cpp",
+		MAME_DIR .. "src/devices/cpu/sh/sh4dmac.h",
+		MAME_DIR .. "src/devices/cpu/sh/sh4regs.h",
 	}
 end
 
-if (CPUS["SH2"]~=null or _OPTIONS["with-tools"]) then
-	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/sh2/sh2dasm.cpp")
-end
-
---------------------------------------------------
--- Hitachi SH4
---@src/devices/cpu/sh4/sh4.h,CPUS["SH4"] = true
---------------------------------------------------
-
-if (CPUS["SH4"]~=null) then
-	files {
-		MAME_DIR .. "src/devices/cpu/sh4/sh4.cpp",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4.h",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4comn.cpp",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4comn.h",
-		MAME_DIR .. "src/devices/cpu/sh4/sh3comn.cpp",
-		MAME_DIR .. "src/devices/cpu/sh4/sh3comn.h",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4tmu.cpp",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4tmu.h",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4dmac.cpp",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4dmac.h",
-		MAME_DIR .. "src/devices/cpu/sh4/sh4regs.h",
-	}
-end
-
-if (CPUS["SH4"]~=null or _OPTIONS["with-tools"]) then
-	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/sh4/sh4dasm.cpp")
+if (CPUS["SH"]~=null or _OPTIONS["with-tools"]) then
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/sh/sh_dasm.cpp")
 end
 
 --------------------------------------------------
@@ -695,6 +685,7 @@ if (CPUS["HPHYBRID"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/hphybrid/hphybrid.cpp",
 		MAME_DIR .. "src/devices/cpu/hphybrid/hphybrid.h",
+		MAME_DIR .. "src/devices/cpu/hphybrid/hphybrid_defs.h",
 	}
 end
 
@@ -716,6 +707,22 @@ end
 
 if (CPUS["NANOPROCESSOR"]~=null or _OPTIONS["with-tools"]) then
 	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/nanoprocessor/nanoprocessor_dasm.cpp")
+end
+
+--------------------------------------------------
+-- HP Capricorn
+--@src/devices/cpu/capricorn/capricorn.h,CPUS["CAPRICORN"] = true
+--------------------------------------------------
+
+if (CPUS["CAPRICORN"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/cpu/capricorn/capricorn.cpp",
+		MAME_DIR .. "src/devices/cpu/capricorn/capricorn.h",
+	}
+end
+
+if (CPUS["CAPRICORN"]~=null or _OPTIONS["with-tools"]) then
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/capricorn/capricorn_dasm.cpp")
 end
 
 --------------------------------------------------
@@ -743,6 +750,7 @@ if (CPUS["E1"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/e132xs/e132xs.cpp",
 		MAME_DIR .. "src/devices/cpu/e132xs/e132xs.h",
+		MAME_DIR .. "src/devices/cpu/e132xs/32xsdefs.h",
 		MAME_DIR .. "src/devices/cpu/e132xs/e132xsop.hxx",
 	}
 end
@@ -768,19 +776,19 @@ if (CPUS["IE15"]~=null or _OPTIONS["with-tools"]) then
 end
 
 --------------------------------------------------
--- Intel 4004
---@src/devices/cpu/i4004/i4004.h,CPUS["I4004"] = true
+-- Intel MCS-40
+--@src/devices/cpu/mcs40/mcs40.h,CPUS["MCS40"] = true
 --------------------------------------------------
 
-if (CPUS["I4004"]~=null) then
+if (CPUS["MCS40"]~=null) then
 	files {
-		MAME_DIR .. "src/devices/cpu/i4004/i4004.cpp",
-		MAME_DIR .. "src/devices/cpu/i4004/i4004.h",
+		MAME_DIR .. "src/devices/cpu/mcs40/mcs40.cpp",
+		MAME_DIR .. "src/devices/cpu/mcs40/mcs40.h",
 	}
 end
 
-if (CPUS["I4004"]~=null or _OPTIONS["with-tools"]) then
-	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/i4004/4004dasm.cpp")
+if (CPUS["MCS40"]~=null or _OPTIONS["with-tools"]) then
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/mcs40/mcs40dasm.cpp")
 end
 
 --------------------------------------------------
@@ -912,7 +920,7 @@ if (CPUS["MCS96"]~=null) then
 end
 
 --------------------------------------------------
--- Intel 80x86 series
+-- Intel 80x86 series (also a dynamic recompiler target)
 --@src/devices/cpu/i86/i86.h,CPUS["I86"] = true
 --@src/devices/cpu/i86/i286.h,CPUS["I86"] = true
 --@src/devices/cpu/i386/i386.h,CPUS["I386"] = true
@@ -930,8 +938,9 @@ if (CPUS["I86"]~=null) then
 	}
 end
 
-if (CPUS["SH2"]~=null or CPUS["MIPS"]~=null or CPUS["POWERPC"]~=null or CPUS["RSP"]~=null or CPUS["ARM7"]~=null or CPUS["ADSP21062"]~=null or CPUS["MB86235"]~=null or CPUS["I86"]~=null or _OPTIONS["with-tools"]) then
+if (CPUS["SH"]~=null or CPUS["MIPS"]~=null or CPUS["POWERPC"]~=null or CPUS["RSP"]~=null or CPUS["ARM7"]~=null or CPUS["ADSP21062"]~=null or CPUS["MB86235"]~=null or CPUS["I86"]~=null or CPUS["I386"]~=null or _OPTIONS["with-tools"]) then
 	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/i386/i386dasm.cpp")
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/i386/i386dasm.h")
 end
 
 if (CPUS["I386"]~=null) then
@@ -1149,6 +1158,7 @@ if (CPUS["PSX"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/psx/psx.cpp",
 		MAME_DIR .. "src/devices/cpu/psx/psx.h",
+		MAME_DIR .. "src/devices/cpu/psx/psxdefs.h",
 		MAME_DIR .. "src/devices/cpu/psx/gte.cpp",
 		MAME_DIR .. "src/devices/cpu/psx/gte.h",
 		MAME_DIR .. "src/devices/cpu/psx/dma.cpp",
@@ -1306,12 +1316,15 @@ end
 --------------------------------------------------
 -- Motorola 680x
 --@src/devices/cpu/m6800/m6800.h,CPUS["M6800"] = true
+--@src/devices/cpu/m6800/m6801.h,CPUS["M6800"] = true
 --------------------------------------------------
 
 if (CPUS["M6800"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/m6800/m6800.cpp",
 		MAME_DIR .. "src/devices/cpu/m6800/m6800.h",
+		MAME_DIR .. "src/devices/cpu/m6800/m6801.cpp",
+		MAME_DIR .. "src/devices/cpu/m6800/m6801.h",
 		MAME_DIR .. "src/devices/cpu/m6800/6800ops.hxx",
 		MAME_DIR .. "src/devices/cpu/m6800/6800tbl.hxx",
 	}
@@ -1330,7 +1343,7 @@ if (CPUS["M6805"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/m6805/m6805.cpp",
 		MAME_DIR .. "src/devices/cpu/m6805/m6805.h",
-		MAME_DIR .. "src/devices/cpu/m6805/6805defs.h",
+		MAME_DIR .. "src/devices/cpu/m6805/m6805defs.h",
 		MAME_DIR .. "src/devices/cpu/m6805/6805ops.hxx",
 		MAME_DIR .. "src/devices/cpu/m6805/m68705.cpp",
 		MAME_DIR .. "src/devices/cpu/m6805/m68705.h",
@@ -1623,6 +1636,8 @@ if (CPUS["UPD7810"]~=null) then
 		MAME_DIR .. "src/devices/cpu/upd7810/upd7810_opcodes.cpp",
 		MAME_DIR .. "src/devices/cpu/upd7810/upd7810_table.cpp",
 		MAME_DIR .. "src/devices/cpu/upd7810/upd7810_macros.h",
+		MAME_DIR .. "src/devices/cpu/upd7810/upd7811.cpp",
+		MAME_DIR .. "src/devices/cpu/upd7810/upd7811.h",
 	}
 end
 
@@ -1676,6 +1691,7 @@ if (CPUS["RSP"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/rsp/rsp.cpp",
 		MAME_DIR .. "src/devices/cpu/rsp/rsp.h",
+		MAME_DIR .. "src/devices/cpu/rsp/rspdefs.h",
 		MAME_DIR .. "src/devices/cpu/rsp/rspdrc.cpp",
 		MAME_DIR .. "src/devices/cpu/rsp/rspfe.cpp",
 		MAME_DIR .. "src/devices/cpu/rsp/rspfe.h",
@@ -1758,7 +1774,7 @@ end
 
 if (CPUS["SM510"]~=null) then
 	files {
-		MAME_DIR .. "src/devices/cpu/sm510/sm510.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm510base.cpp",
 		MAME_DIR .. "src/devices/cpu/sm510/sm510.h",
 		MAME_DIR .. "src/devices/cpu/sm510/sm510op.cpp",
 		MAME_DIR .. "src/devices/cpu/sm510/sm510core.cpp",
@@ -1766,9 +1782,10 @@ if (CPUS["SM510"]~=null) then
 		MAME_DIR .. "src/devices/cpu/sm510/sm500.h",
 		MAME_DIR .. "src/devices/cpu/sm510/sm500op.cpp",
 		MAME_DIR .. "src/devices/cpu/sm510/sm500core.cpp",
-		MAME_DIR .. "src/devices/cpu/sm510/kb1013vk1-2.h",
-		MAME_DIR .. "src/devices/cpu/sm510/kb1013vk1-2op.cpp",
-		MAME_DIR .. "src/devices/cpu/sm510/kb1013vk1-2core.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm5acore.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm590.h",
+		MAME_DIR .. "src/devices/cpu/sm510/sm590op.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm590core.cpp",
 	}
 end
 

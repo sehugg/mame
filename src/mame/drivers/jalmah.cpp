@@ -117,6 +117,7 @@ OSC:    12.000MHz
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
+#include "machine/timer.h"
 #include "sound/okim6295.h"
 #include "screen.h"
 #include "speaker.h"
@@ -743,12 +744,16 @@ WRITE16_MEMBER(jalmah_state::urashima_dma_w)
 }
 
 /*same as $f00c0 sub-routine,but with additional work-around,to remove from here...*/
+// TODO: hackish, how the MCU actually do this?
 void jalmah_state::daireika_palette_dma(uint16_t val)
 {
 	address_space &space = m_maincpu->space(AS_PROGRAM);
 	uint32_t index_1, index_2, src_addr, tmp_addr;
 	/*a0=301c0+jm_shared_ram[0x540/2] & 0xf00 */
 	/*a1=88000*/
+	if(val == 0)
+		return;
+
 	src_addr = 0x301c0 + (val * 0x40);
 //  popmessage("%08x",src_addr);
 	for(index_1 = 0; index_1 < 0x200; index_1 += 0x20)
@@ -768,7 +773,7 @@ void jalmah_state::daireika_mcu_run()
 {
 	uint16_t *jm_shared_ram = m_jm_shared_ram;
 
-	if(((jm_shared_ram[0x550/2] & 0xf00) == 0x700) && ((jm_shared_ram[0x540/2] & 0xf00) != m_dma_old))
+	if((jm_shared_ram[0x540/2] & 0xf00) != m_dma_old && jm_shared_ram[0x54e/2] == 1)
 	{
 		m_dma_old = jm_shared_ram[0x540/2] & 0xf00;
 		daireika_palette_dma(((jm_shared_ram[0x540/2] & 0x0f00) >> 8));
@@ -1413,7 +1418,7 @@ void jalmah_state::machine_reset()
 	}
 }
 
-static MACHINE_CONFIG_START( jalmah, jalmah_state )
+static MACHINE_CONFIG_START( jalmah )
 	MCFG_CPU_ADD("maincpu" , M68000, 12000000) /* 68000-8 */
 	MCFG_CPU_PROGRAM_MAP(jalmah)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", jalmah_state,  irq2_line_hold)
@@ -1436,7 +1441,7 @@ static MACHINE_CONFIG_START( jalmah, jalmah_state )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("mcusim", jalmah_state, jalmah_mcu_sim, attotime::from_hz(10000))
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_OKIM6295_ADD("oki", 4000000, OKIM6295_PIN7_LOW)
+	MCFG_OKIM6295_ADD("oki", 4000000, PIN7_LOW)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_CONFIG_END
 
@@ -2143,8 +2148,8 @@ WRITE16_MEMBER(jalmah_state::daireika_mcu_w)
 
 		/*TX function?*/
 		jm_shared_ram[0x0126/2] = 0x4ef9;
-		jm_shared_ram[0x0128/2] = 0x0010;
-		jm_shared_ram[0x012a/2] = 0x8980;
+		jm_shared_ram[0x0128/2] = 0x0000;//0x0010;
+		jm_shared_ram[0x012a/2] = 0x2684;//0x8980;
 
 		//m_pri $f0590
 		jm_mcu_code[0x8980/2] = 0x33fc;
@@ -2475,10 +2480,10 @@ DRIVER_INIT_MEMBER(jalmah_state,suchipi)
 }
 
 /*First version of the MCU*/
-GAME( 1989, urashima, 0, urashima,  urashima, jalmah_state,   urashima, ROT0, "UPL",          "Otogizoushi Urashima Mahjong (Japan)",         MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND | MACHINE_UNEMULATED_PROTECTION )
-GAME( 1989, daireika, 0, jalmah,    daireika, jalmah_state,   daireika, ROT0, "Jaleco / NMK", "Mahjong Daireikai (Japan)",                    MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND | MACHINE_UNEMULATED_PROTECTION )
-GAME( 1990, mjzoomin, 0, jalmah,    mjzoomin, jalmah_state,   mjzoomin, ROT0, "Jaleco",       "Mahjong Channel Zoom In (Japan)",              MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND | MACHINE_UNEMULATED_PROTECTION )
+GAME( 1989, urashima, 0, urashima,  urashima,  jalmah_state,  urashima, ROT0, "UPL",          "Otogizoushi Urashima Mahjong (Japan)",         MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND | MACHINE_UNEMULATED_PROTECTION )
+GAME( 1989, daireika, 0, jalmah,    daireika,  jalmah_state,  daireika, ROT0, "Jaleco / NMK", "Mahjong Daireikai (Japan)",                    MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND | MACHINE_UNEMULATED_PROTECTION )
+GAME( 1990, mjzoomin, 0, jalmah,    mjzoomin,  jalmah_state,  mjzoomin, ROT0, "Jaleco",       "Mahjong Channel Zoom In (Japan)",              MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND | MACHINE_UNEMULATED_PROTECTION )
 /*Second version of the MCU*/
-GAME( 1990, kakumei,  0, jalmah,    kakumei, jalmah_state,    kakumei,  ROT0, "Jaleco",       "Mahjong Kakumei (Japan)",                      MACHINE_IMPERFECT_GRAPHICS )
+GAME( 1990, kakumei,  0, jalmah,    kakumei,  jalmah_state,   kakumei,  ROT0, "Jaleco",       "Mahjong Kakumei (Japan)",                      MACHINE_IMPERFECT_GRAPHICS )
 GAME( 1992, kakumei2, 0, jalmah,    kakumei2, jalmah_state,   kakumei2, ROT0, "Jaleco",       "Mahjong Kakumei 2 - Princess League (Japan)",  MACHINE_IMPERFECT_GRAPHICS | MACHINE_UNEMULATED_PROTECTION )
-GAME( 1993, suchipi,  0, jalmah,    suchipi, jalmah_state,    suchipi,  ROT0, "Jaleco",       "Idol Janshi Suchie-Pai Special (Japan)",       MACHINE_IMPERFECT_GRAPHICS )
+GAME( 1993, suchipi,  0, jalmah,    suchipi,  jalmah_state,   suchipi,  ROT0, "Jaleco",       "Idol Janshi Suchie-Pai Special (Japan)",       MACHINE_IMPERFECT_GRAPHICS )

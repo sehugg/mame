@@ -22,6 +22,7 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "imagedev/flopdrv.h"
+#include "machine/timer.h"
 #include "machine/wd_fdc.h"
 #include "sound/beep.h"
 #include "sound/sn76496.h"
@@ -54,15 +55,15 @@ class smc777_state : public driver_device
 {
 public:
 	smc777_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
-	m_maincpu(*this, "maincpu"),
-	m_crtc(*this, "crtc"),
-	m_fdc(*this, "fdc"),
-	m_floppy0(*this, "fdc:0"),
-	m_floppy1(*this, "fdc:1"),
-	m_beeper(*this, "beeper"),
-	m_gfxdecode(*this, "gfxdecode"),
-	m_palette(*this, "palette")
+		: driver_device(mconfig, type, tag)
+		, m_maincpu(*this, "maincpu")
+		, m_crtc(*this, "crtc")
+		, m_fdc(*this, "fdc")
+		, m_floppy0(*this, "fdc:0")
+		, m_floppy1(*this, "fdc:1")
+		, m_beeper(*this, "beeper")
+		, m_gfxdecode(*this, "gfxdecode")
+		, m_palette(*this, "palette")
 	{ }
 
 	DECLARE_WRITE8_MEMBER(mc6845_w);
@@ -107,7 +108,7 @@ protected:
 private:
 	required_device<cpu_device> m_maincpu;
 	required_device<mc6845_device> m_crtc;
-	required_device<mb8876_t> m_fdc;
+	required_device<mb8876_device> m_fdc;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
 	required_device<beep_device> m_beeper;
@@ -515,7 +516,7 @@ WRITE8_MEMBER(smc777_state::system_output_w)
 	{
 		case 0x00:
 			m_raminh_pending_change = ((data & 0x10) >> 4) ^ 1;
-			m_raminh_prefetch = (uint8_t)(space.device().state().state_int(Z80_R)) & 0x7f;
+			m_raminh_prefetch = (uint8_t)(m_maincpu->state_int(Z80_R)) & 0x7f;
 			break;
 		case 0x02: printf("Interlace %s\n",data & 0x10 ? "on" : "off"); break;
 		case 0x05: m_beeper->set_state(data & 0x10); break;
@@ -571,7 +572,7 @@ READ8_MEMBER(smc777_state::smc777_mem_r)
 
 	if(m_raminh_prefetch != 0xff) //do the bankswitch AFTER that the prefetch instruction is executed (FIXME: this is an hackish implementation)
 	{
-		z80_r = (uint8_t)space.device().state().state_int(Z80_R);
+		z80_r = (uint8_t)m_maincpu->state_int(Z80_R);
 
 		if(z80_r == ((m_raminh_prefetch+2) & 0x7f))
 		{
@@ -918,7 +919,7 @@ void smc777_state::machine_start()
 	save_pointer(NAME(m_gvram.get()), 0x8000);
 	save_pointer(NAME(m_pcg.get()), 0x800);
 
-	m_gfxdecode->set_gfx(0, std::make_unique<gfx_element>(*m_palette, smc777_charlayout, m_pcg.get(), 0, 8, 0));
+	m_gfxdecode->set_gfx(0, std::make_unique<gfx_element>(m_palette, smc777_charlayout, m_pcg.get(), 0, 8, 0));
 }
 
 void smc777_state::machine_reset()
@@ -963,7 +964,7 @@ static SLOT_INTERFACE_START( smc777_floppies )
 SLOT_INTERFACE_END
 
 
-static MACHINE_CONFIG_START( smc777, smc777_state )
+static MACHINE_CONFIG_START( smc777 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, MASTER_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(smc777_mem)
@@ -1026,5 +1027,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1983, smc777,  0,       0,    smc777,     smc777, driver_device,   0,  "Sony",   "SMC-777",       MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND)
+//    YEAR  NAME     PARENT   COMPAT  MACHINE   INPUT   STATE         INIT  COMPANY  FULLNAME   FLAGS
+COMP( 1983, smc777,  0,       0,      smc777,   smc777, smc777_state, 0,    "Sony",  "SMC-777", MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND)

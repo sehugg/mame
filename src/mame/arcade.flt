@@ -16,7 +16,6 @@
 8080bw.cpp
 88games.cpp
 a1supply.cpp
-acchi.cpp
 ace.cpp
 acefruit.cpp
 aces1.cpp
@@ -47,6 +46,7 @@ amerihok.cpp
 ampoker2.cpp
 amspdwy.cpp
 amusco.cpp
+anes.cpp
 angelkds.cpp
 appoooh.cpp
 aquarium.cpp
@@ -129,12 +129,12 @@ bingo.cpp
 bingoc.cpp
 bingoman.cpp
 bingor.cpp
+bingowav.cpp
 bionicc.cpp
 bishi.cpp
 bking.cpp
 blackt96.cpp
 bladestl.cpp
-blitz.cpp
 blitz68k.cpp
 blktiger.cpp
 blmbycar.cpp
@@ -360,6 +360,7 @@ exprraid.cpp
 exterm.cpp
 extrema.cpp
 exzisus.cpp
+ez2d.cpp
 f1gp.cpp
 f-32.cpp
 famibox.cpp
@@ -447,6 +448,7 @@ gng.cpp
 go2000.cpp
 goal92.cpp
 goindol.cpp
+gokidetor.cpp
 goldngam.cpp
 goldnpkr.cpp
 goldstar.cpp
@@ -661,6 +663,7 @@ magicard.cpp
 magicfly.cpp
 magictg.cpp
 magmax.cpp
+magreel.cpp
 magtouch.cpp
 mainevt.cpp
 mainsnk.cpp
@@ -750,8 +753,19 @@ mpu12wbk.cpp
 mpu2.cpp
 mpu3.cpp
 mpu4.cpp
+mpu4avan.cpp
+mpu4bwb.cpp
+mpu4concept.cpp
+mpu4crystal.cpp
 mpu4dealem.cpp
+mpu4empire.cpp
+mpu4mdm.cpp
+mpu4misc.cpp
+mpu4mod2sw.cpp
+mpu4mod4yam.cpp
 mpu4plasma.cpp
+mpu4sw.cpp
+mpu4union.cpp
 mpu4vid.cpp
 mpu5.cpp
 mquake.cpp
@@ -814,6 +828,7 @@ niyanpai.cpp
 nmg5.cpp
 nmk16.cpp
 norautp.cpp
+notechan.cpp
 nova2001.cpp
 nsm.cpp
 nsmpoker.cpp
@@ -846,6 +861,7 @@ parodius.cpp
 pasha2.cpp
 pass.cpp
 pastelg.cpp
+patapata.cpp
 pbaction.cpp
 pcat_dyn.cpp
 pcat_nit.cpp
@@ -950,6 +966,7 @@ rohga.cpp
 rollerg.cpp
 rollext.cpp
 rollrace.cpp
+ron.cpp
 rotaryf.cpp
 roul.cpp
 route16.cpp
@@ -990,6 +1007,7 @@ scramble.cpp
 scregg.cpp
 scyclone.cpp
 sderby.cpp
+sderby2.cpp
 seabattl.cpp
 sealy.cpp
 seattle.cpp
@@ -1012,6 +1030,7 @@ segasp.cpp
 segaufo.cpp
 segaxbd.cpp
 segaybd.cpp
+seibucats.cpp
 seibuspi.cpp
 seicross.cpp
 seicupbl.cpp
@@ -1030,6 +1049,7 @@ shanghai.cpp
 shangkid.cpp
 shaolins.cpp
 shisen.cpp
+shootaway2.cpp
 shootout.cpp
 shougi.cpp
 shtzone.cpp
@@ -1081,6 +1101,7 @@ speedspn.cpp
 speglsht.cpp
 spiders.cpp
 spinb.cpp
+spirit76.cpp
 splash.cpp
 splus.cpp
 spoker.cpp
@@ -1236,7 +1257,6 @@ ttchamp.cpp
 tubep.cpp
 tugboat.cpp
 tumbleb.cpp
-tumblep.cpp
 tunhunt.cpp
 turbo.cpp
 turrett.cpp
@@ -1253,7 +1273,9 @@ ultratnk.cpp
 ultrsprt.cpp
 umipoker.cpp
 undrfire.cpp
+unianapc.cpp
 unico.cpp
+unkfr.cpp
 unkhorse.cpp
 upscope.cpp
 usbilliards.cpp

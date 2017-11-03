@@ -35,6 +35,7 @@
 #include "sound/spkrdev.h"
 #include "video/cgapal.h"
 
+#include "screen.h"
 #include "softlist.h"
 #include "speaker.h"
 
@@ -630,7 +631,7 @@ static INPUT_PORTS_START( poisk1 )
 	PORT_INCLUDE( poisk1_keyboard_v91 )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( poisk1, p1_state )
+static MACHINE_CONFIG_START( poisk1 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8088, 5000000)
 	MCFG_CPU_PROGRAM_MAP(poisk1_map)
@@ -648,7 +649,8 @@ static MACHINE_CONFIG_START( poisk1, p1_state )
 	MCFG_PIT8253_CLK2(XTAL_15MHz/12) /* pio port c pin 4, and speaker polling enough */
 	MCFG_PIT8253_OUT2_HANDLER(WRITELINE(p1_state, p1_pit8253_out2_changed))
 
-	MCFG_PIC8259_ADD( "pic8259", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic8259", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	MCFG_DEVICE_ADD("ppi8255n1", I8255A, 0)
 	MCFG_I8255_IN_PORTA_CB(READ8(p1_state, p1_ppi_porta_r)) /*60H*/
@@ -736,5 +738,5 @@ ROM_END
 
 ***************************************************************************/
 
-/*     YEAR     NAME        PARENT      COMPAT  MACHINE     INPUT       INIT                COMPANY       FULLNAME */
-COMP ( 1989,    poisk1,    ibm5150,    0,      poisk1,    poisk1,    p1_state, poisk1,   "Electronmash",  "Poisk-1", 0)
+//     YEAR     NAME       PARENT      COMPAT  MACHINE   INPUT    STATE     INIT    COMPANY          FULLNAME   FLAGS
+COMP ( 1989,    poisk1,    ibm5150,    0,      poisk1,   poisk1,  p1_state, poisk1, "Electronmash",  "Poisk-1", 0 )

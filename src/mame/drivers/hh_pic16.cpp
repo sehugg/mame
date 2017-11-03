@@ -30,7 +30,7 @@
  *533     1650A   19??, "
  *536     1650    1982, GI Teleview Autodialer/Terminal Identifier
 
-  (* denotes not yet emulated by MAME, @ denotes it's in this driver)
+  (* means undumped unless noted, @ denotes it's in this driver)
 
 
   TODO:
@@ -47,6 +47,7 @@
 #include "emu.h"
 #include "cpu/pic16c5x/pic16c5x.h"
 #include "machine/clock.h"
+#include "machine/timer.h"
 #include "sound/spkrdev.h"
 #include "speaker.h"
 
@@ -70,6 +71,9 @@ public:
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_inp_matrix(*this, "IN.%u", 0),
+		m_out_x(*this, "%u.%u", 0U, 0U),
+		m_out_a(*this, "%u.a", 0U),
+		m_out_digit(*this, "digit%u", 0U),
 		m_speaker(*this, "speaker"),
 		m_display_wait(33),
 		m_display_maxy(1),
@@ -79,6 +83,9 @@ public:
 	// devices
 	required_device<cpu_device> m_maincpu;
 	optional_ioport_array<6> m_inp_matrix; // max 6
+	output_finder<0x20, 0x20> m_out_x;
+	output_finder<0x20> m_out_a;
+	output_finder<0x20> m_out_digit;
 	optional_device<speaker_sound_device> m_speaker;
 
 	// misc common
@@ -91,13 +98,12 @@ public:
 	u16 read_inputs(int columns);
 
 	// display common
-	int m_display_wait;             // led/lamp off-delay in microseconds (default 33ms)
+	int m_display_wait;             // led/lamp off-delay in milliseconds (default 33ms)
 	int m_display_maxy;             // display matrix number of rows
 	int m_display_maxx;             // display matrix number of columns (max 31 for now)
 
 	u32 m_display_state[0x20];      // display matrix rows data (last bit is used for always-on)
 	u16 m_display_segmask[0x20];    // if not 0, display matrix row is a digit, mask indicates connected segments
-	u32 m_display_cache[0x20];      // (internal use)
 	u8 m_display_decay[0x20][0x20]; // (internal use)
 
 	TIMER_DEVICE_CALLBACK_MEMBER(display_decay_tick);
@@ -116,9 +122,13 @@ protected:
 
 void hh_pic16_state::machine_start()
 {
+	// resolve handlers
+	m_out_x.resolve();
+	m_out_a.resolve();
+	m_out_digit.resolve();
+
 	// zerofill
 	memset(m_display_state, 0, sizeof(m_display_state));
-	memset(m_display_cache, ~0, sizeof(m_display_cache));
 	memset(m_display_decay, 0, sizeof(m_display_decay));
 	memset(m_display_segmask, 0, sizeof(m_display_segmask));
 
@@ -134,7 +144,6 @@ void hh_pic16_state::machine_start()
 	save_item(NAME(m_display_wait));
 
 	save_item(NAME(m_display_state));
-	/* save_item(NAME(m_display_cache)); */ // don't save!
 	save_item(NAME(m_display_decay));
 	save_item(NAME(m_display_segmask));
 
@@ -162,11 +171,9 @@ void hh_pic16_state::machine_reset()
 
 void hh_pic16_state::display_update()
 {
-	u32 active_state[0x20];
-
 	for (int y = 0; y < m_display_maxy; y++)
 	{
-		active_state[y] = 0;
+		u32 active_state = 0;
 
 		for (int x = 0; x <= m_display_maxx; x++)
 		{
@@ -176,41 +183,19 @@ void hh_pic16_state::display_update()
 
 			// determine active state
 			u32 ds = (m_display_decay[y][x] != 0) ? 1 : 0;
-			active_state[y] |= (ds << x);
+			active_state |= (ds << x);
+
+			// output to y.x, or y.a when always-on
+			if (x != m_display_maxx)
+				m_out_x[y][x] = ds;
+			else
+				m_out_a[y] = ds;
 		}
+
+		// output to digity
+		if (m_display_segmask[y] != 0)
+			m_out_digit[y] = active_state & m_display_segmask[y];
 	}
-
-	// on difference, send to output
-	for (int y = 0; y < m_display_maxy; y++)
-		if (m_display_cache[y] != active_state[y])
-		{
-			if (m_display_segmask[y] != 0)
-				output().set_digit_value(y, active_state[y] & m_display_segmask[y]);
-
-			const int mul = (m_display_maxx <= 10) ? 10 : 100;
-			for (int x = 0; x <= m_display_maxx; x++)
-			{
-				int state = active_state[y] >> x & 1;
-				char buf1[0x10]; // lampyx
-				char buf2[0x10]; // y.x
-
-				if (x == m_display_maxx)
-				{
-					// always-on if selected
-					sprintf(buf1, "lamp%da", y);
-					sprintf(buf2, "%d.a", y);
-				}
-				else
-				{
-					sprintf(buf1, "lamp%d", y * mul + x);
-					sprintf(buf2, "%d.%d", y, x);
-				}
-				output().set_value(buf1, state);
-				output().set_value(buf2, state);
-			}
-		}
-
-	memcpy(m_display_cache, active_state, sizeof(m_display_cache));
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(hh_pic16_state::display_decay_tick)
@@ -375,7 +360,7 @@ INPUT_PORTS_END
 
 static const s16 touchme_speaker_levels[] = { 0, 0x7fff, -0x8000, 0 };
 
-static MACHINE_CONFIG_START( touchme, touchme_state )
+static MACHINE_CONFIG_START( touchme )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 300000) // approximation - RC osc. R=100K, C=47pF
@@ -484,7 +469,7 @@ INPUT_CHANGED_MEMBER(pabball_state::reset_button)
 	m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static MACHINE_CONFIG_START( pabball, pabball_state )
+static MACHINE_CONFIG_START( pabball )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 1200000) // approximation - RC osc. R=18K, C=27pF
@@ -599,7 +584,7 @@ static INPUT_PORTS_START( melodym )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_CODE(KEYCODE_0) PORT_NAME("Note")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( melodym, melodym_state )
+static MACHINE_CONFIG_START( melodym )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 1000000) // approximation
@@ -699,7 +684,7 @@ INPUT_PORTS_END
 
 static const s16 maniac_speaker_levels[] = { 0, 0x7fff, -0x8000, 0 };
 
-static MACHINE_CONFIG_START( maniac, maniac_state )
+static MACHINE_CONFIG_START( maniac )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 1000000) // approximation - RC osc. R=~13.4K, C=470pF
@@ -855,7 +840,7 @@ void leboom_state::machine_start()
 	save_item(NAME(m_speaker_volume));
 }
 
-static MACHINE_CONFIG_START( leboom, leboom_state )
+static MACHINE_CONFIG_START( leboom )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 1000000) // approximation
@@ -965,7 +950,7 @@ static INPUT_PORTS_START( tbaskb )
 	PORT_CONFSETTING(    0x00, "2" )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( tbaskb, tbaskb_state )
+static MACHINE_CONFIG_START( tbaskb )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 950000) // approximation - RC osc. R=18K, C=47pF
@@ -1074,7 +1059,7 @@ INPUT_PORTS_END
 
 static const s16 rockpin_speaker_levels[] = { 0, 0x7fff, -0x8000, 0 };
 
-static MACHINE_CONFIG_START( rockpin, rockpin_state )
+static MACHINE_CONFIG_START( rockpin )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1650, 450000) // approximation - RC osc. R=47K, C=47pF
@@ -1192,7 +1177,7 @@ static INPUT_PORTS_START( hccbaskb )
 	PORT_CONFSETTING(    0x00, "2" )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( hccbaskb, hccbaskb_state )
+static MACHINE_CONFIG_START( hccbaskb )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 950000) // approximation - RC osc. R=15K, C=47pF
@@ -1344,7 +1329,7 @@ static INPUT_PORTS_START( ttfballa )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_16WAY
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( ttfball, ttfball_state )
+static MACHINE_CONFIG_START( ttfball )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1655, 1000000) // approximation - RC osc. R=27K(set 1) or 33K(set 2), C=68pF
@@ -1448,7 +1433,7 @@ static INPUT_PORTS_START( uspbball )
 	PORT_CONFSETTING(    0x00, "2" )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( uspbball, uspbball_state )
+static MACHINE_CONFIG_START( uspbball )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1650, 1000000) // approximation - RC osc. R=22K, C=47pF
@@ -1583,7 +1568,7 @@ static INPUT_PORTS_START( us2pfball )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START ) PORT_NAME("Status/Score") // S
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( us2pfball, us2pfball_state )
+static MACHINE_CONFIG_START( us2pfball )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PIC1650, 800000) // approximation - RC osc. R=39K, C=75pF
@@ -1690,24 +1675,24 @@ ROM_END
 
 
 
-/*    YEAR  NAME       PARENT COMPAT MACHINE   INPUT      INIT              COMPANY, FULLNAME, FLAGS */
-CONS( 1979, touchme,   0,        0, touchme,   touchme,   driver_device, 0, "Atari", "Touch Me (handheld, Rev 2)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME       PARENT  CMP MACHINE    INPUT      STATE         INIT  COMPANY, FULLNAME, FLAGS
+CONS( 1979, touchme,   0,       0, touchme,   touchme,   touchme_state,   0, "Atari", "Touch Me (handheld, Rev 2)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1979, pabball,   0,        0, pabball,   pabball,   driver_device, 0, "Caprice / Calfax", "Pro-Action Baseball", MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )
+CONS( 1979, pabball,   0,       0, pabball,   pabball,   pabball_state,   0, "Caprice / Calfax", "Pro-Action Baseball", MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )
 
-CONS( 1980, melodym,   0,        0, melodym,   melodym,   driver_device, 0, "GAF", "Melody Madness", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1980, melodym,   0,       0, melodym,   melodym,   melodym_state,   0, "GAF", "Melody Madness", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1979, maniac,    0,        0, maniac,    maniac,    driver_device, 0, "Ideal", "Maniac", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1979, maniac,    0,       0, maniac,    maniac,    maniac_state,    0, "Ideal", "Maniac", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1980, leboom,    0,        0, leboom,    leboom,    driver_device, 0, "Lakeside", "Le Boom", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_SOUND | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1980, leboom,    0,       0, leboom,    leboom,    leboom_state,    0, "Lakeside", "Le Boom", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_SOUND | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1979, tbaskb,    0,        0, tbaskb,    tbaskb,    driver_device, 0, "Tandy Radio Shack", "Electronic Basketball (Tandy)", MACHINE_SUPPORTS_SAVE )
+CONS( 1979, tbaskb,    0,       0, tbaskb,    tbaskb,    tbaskb_state,    0, "Tandy Radio Shack", "Electronic Basketball (Tandy)", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1979, rockpin,   0,        0, rockpin,   rockpin,   driver_device, 0, "Tiger Electronics", "Rocket Pinball", MACHINE_SUPPORTS_SAVE )
-CONS( 1979, hccbaskb,  0,        0, hccbaskb,  hccbaskb,  driver_device, 0, "Tiger Electronics", "Half Court Computer Basketball", MACHINE_SUPPORTS_SAVE )
+CONS( 1979, rockpin,   0,       0, rockpin,   rockpin,   rockpin_state,   0, "Tiger Electronics", "Rocket Pinball", MACHINE_SUPPORTS_SAVE )
+CONS( 1979, hccbaskb,  0,       0, hccbaskb,  hccbaskb,  hccbaskb_state,  0, "Tiger Electronics", "Half Court Computer Basketball", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1979, ttfball,   0,        0, ttfball,   ttfball,   driver_device, 0, "Toytronic", "Football (Toytronic, set 1)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_SOUND )
-CONS( 1979, ttfballa,  ttfball,  0, ttfball,   ttfballa,  driver_device, 0, "Toytronic", "Football (Toytronic, set 2)", MACHINE_SUPPORTS_SAVE )
+CONS( 1979, ttfball,   0,       0, ttfball,   ttfball,   ttfball_state,   0, "Toytronic", "Football (Toytronic, set 1)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_SOUND )
+CONS( 1979, ttfballa,  ttfball, 0, ttfball,   ttfballa,  ttfball_state,   0, "Toytronic", "Football (Toytronic, set 2)", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1981, uspbball,  0,        0, uspbball,  uspbball,  driver_device, 0, "U.S. Games", "Programmable Baseball", MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )
-CONS( 1981, us2pfball, 0,        0, us2pfball, us2pfball, driver_device, 0, "U.S. Games", "Electronic 2-Player Football", MACHINE_SUPPORTS_SAVE )
+CONS( 1981, uspbball,  0,       0, uspbball,  uspbball,  uspbball_state,  0, "U.S. Games", "Programmable Baseball", MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )
+CONS( 1981, us2pfball, 0,       0, us2pfball, us2pfball, us2pfball_state, 0, "U.S. Games", "Electronic 2-Player Football", MACHINE_SUPPORTS_SAVE )

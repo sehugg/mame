@@ -4,6 +4,7 @@
 #include "machine/6821pia.h"
 #include "machine/6840ptm.h"
 #include "machine/nvram.h"
+#include "machine/timer.h"
 
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
@@ -275,7 +276,7 @@ protected:
 	void mpu4_config_common();
 
 	required_device<cpu_device> m_maincpu;
-	optional_device<roc10937_t> m_vfd;
+	optional_device<roc10937_device> m_vfd;
 	optional_device<ptm6840_device> m_6840ptm;
 	optional_device<pia6821_device> m_pia3;
 	optional_device<pia6821_device> m_pia4;

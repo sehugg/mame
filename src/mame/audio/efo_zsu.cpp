@@ -12,8 +12,8 @@
    sound generators are 2 AY-3-8910As and 1 OKI MSM5205, and 2 MF10s and
    1 HC4066 are used to mix their outputs. The timing circuits are rather
    intricate, using Z80-CTCs, HC74s and HC393s and various other gates to
-   drive both the 5205 and the SGS HCF40105BE through which its samples
-   are funneled.
+   drive both the 5205 and the SGS HCF40105BE (equivalent to CD40105B)
+   through which its samples are funneled.
 
    There are no available schematics for the Cedar Magnet video game
    system (also designed by E.F.O.), but its sound board is believed to be
@@ -41,37 +41,37 @@
 #include "speaker.h"
 
 
-const device_type EFO_ZSU = device_creator<efo_zsu_device>;
-const device_type EFO_ZSU1 = device_creator<efo_zsu1_device>;
-const device_type CEDAR_MAGNET_SOUND = device_creator<cedar_magnet_sound_device>;
+DEFINE_DEVICE_TYPE(EFO_ZSU,            efo_zsu_device,            "efo_zsu",      "ZSU Sound Control Unit")
+DEFINE_DEVICE_TYPE(EFO_ZSU1,           efo_zsu1_device,           "efo_zsu1",     "ZSU1 Sound Control Unit")
+DEFINE_DEVICE_TYPE(CEDAR_MAGNET_SOUND, cedar_magnet_sound_device, "gedmag_sound", "Cedar Sound")
 
 
-efo_zsu_device::efo_zsu_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, u32 clock, const char *shortname, const char *source)
-	: device_t(mconfig, type, name, tag, owner, clock, shortname, source),
-	m_ctc0(*this, "ctc0"),
-	m_ctc1(*this, "ctc1"),
-	m_soundlatch(*this, "soundlatch"),
-	m_fifo(*this, "fifo"),
-	m_adpcm(*this, "adpcm")
+efo_zsu_device::efo_zsu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock)
+	: device_t(mconfig, type, tag, owner, clock)
+	, m_ctc0(*this, "ctc0")
+	, m_ctc1(*this, "ctc1")
+	, m_soundlatch(*this, "soundlatch")
+	, m_fifo(*this, "fifo")
+	, m_adpcm(*this, "adpcm")
 {
 }
 
 
 efo_zsu_device::efo_zsu_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: efo_zsu_device(mconfig, EFO_ZSU, "ZSU Sound Control Unit", tag, owner, clock, "efo_zsu", __FILE__)
+	: efo_zsu_device(mconfig, EFO_ZSU, tag, owner, clock)
 {
 }
 
 
 efo_zsu1_device::efo_zsu1_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: efo_zsu_device(mconfig, EFO_ZSU1, "ZSU1 Sound Control Unit", tag, owner, clock, "efo_zsu1", __FILE__)
+	: efo_zsu_device(mconfig, EFO_ZSU1, tag, owner, clock)
 {
 }
 
 
 cedar_magnet_sound_device::cedar_magnet_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: efo_zsu_device(mconfig, CEDAR_MAGNET_SOUND, "Cedar Sound", tag, owner, clock, "cedmag_sound", __FILE__),
-	cedar_magnet_board_interface(mconfig, *this, "soundcpu", "ram")
+	: efo_zsu_device(mconfig, CEDAR_MAGNET_SOUND, tag, owner, clock)
+	, cedar_magnet_board_interface(mconfig, *this, "soundcpu", "ram")
 {
 }
 
@@ -187,21 +187,20 @@ TIMER_CALLBACK_MEMBER(cedar_magnet_sound_device::reset_assert_callback)
 }
 
 
-
-static MACHINE_CONFIG_FRAGMENT( efo_zsu )
+MACHINE_CONFIG_MEMBER( efo_zsu_device::device_add_mconfig )
 	MCFG_CPU_ADD("soundcpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(zsu_map)
 	MCFG_CPU_IO_MAP(zsu_io)
 	MCFG_Z80_DAISY_CHAIN(daisy_chain)
 
 	MCFG_DEVICE_ADD("ctc0", Z80CTC, 4000000)
-	MCFG_Z80CTC_INTR_CB(DEVWRITELINE("soundirq", input_merger_device, in0_w))
+	MCFG_Z80CTC_INTR_CB(DEVWRITELINE("soundirq", input_merger_device, in_w<0>))
 	MCFG_Z80CTC_ZC0_CB(WRITELINE(efo_zsu_device, ctc0_z0_w))
 	MCFG_Z80CTC_ZC1_CB(WRITELINE(efo_zsu_device, ctc0_z1_w))
 	MCFG_Z80CTC_ZC2_CB(WRITELINE(efo_zsu_device, ctc0_z2_w))
 
 	MCFG_DEVICE_ADD("ctc1", Z80CTC, 4000000)
-	MCFG_Z80CTC_INTR_CB(DEVWRITELINE("soundirq", input_merger_device, in0_w))
+	MCFG_Z80CTC_INTR_CB(DEVWRITELINE("soundirq", input_merger_device, in_w<1>))
 	MCFG_Z80CTC_ZC0_CB(WRITELINE(efo_zsu_device, ctc1_z0_w))
 	MCFG_Z80CTC_ZC1_CB(WRITELINE(efo_zsu_device, ctc1_z1_w))
 	MCFG_Z80CTC_ZC2_CB(WRITELINE(efo_zsu_device, ctc1_z2_w))
@@ -214,9 +213,9 @@ static MACHINE_CONFIG_FRAGMENT( efo_zsu )
 #endif
 
 	MCFG_GENERIC_LATCH_8_ADD("soundlatch")
-	MCFG_GENERIC_LATCH_DATA_PENDING_CB(DEVWRITELINE("soundirq", input_merger_device, in1_w))
+	MCFG_GENERIC_LATCH_DATA_PENDING_CB(DEVWRITELINE("soundirq", input_merger_device, in_w<2>))
 
-	MCFG_INPUT_MERGER_ACTIVE_HIGH("soundirq") // 74HC03 NAND gate
+	MCFG_INPUT_MERGER_ANY_HIGH("soundirq") // 74HC03 NAND gate
 	MCFG_INPUT_MERGER_OUTPUT_HANDLER(INPUTLINE("soundcpu", INPUT_LINE_IRQ0))
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -229,7 +228,7 @@ static MACHINE_CONFIG_FRAGMENT( efo_zsu )
 	MCFG_AY8910_PORT_A_WRITE_CB(WRITE8(efo_zsu_device, ay1_porta_w))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 
-	MCFG_DEVICE_ADD("fifo", HC40105, 0)
+	MCFG_DEVICE_ADD("fifo", CD40105, 0)
 	MCFG_40105_DATA_OUT_READY_CB(WRITELINE(efo_zsu_device, fifo_dor_w))
 	MCFG_40105_DATA_OUT_CB(DEVWRITELINE("adpcm", msm5205_device, data_w))
 
@@ -237,8 +236,8 @@ static MACHINE_CONFIG_FRAGMENT( efo_zsu )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_FRAGMENT( cedar_magnet_sound )
-	MCFG_FRAGMENT_ADD(efo_zsu)
+MACHINE_CONFIG_MEMBER( cedar_magnet_sound_device::device_add_mconfig )
+	efo_zsu_device::device_add_mconfig(config);
 
 	MCFG_CPU_MODIFY("soundcpu")
 	MCFG_CPU_PROGRAM_MAP(cedar_magnet_sound_map)
@@ -246,16 +245,6 @@ static MACHINE_CONFIG_FRAGMENT( cedar_magnet_sound )
 	MCFG_SOUND_MODIFY("aysnd0")
 	MCFG_AY8910_PORT_A_WRITE_CB(WRITE8(cedar_magnet_sound_device, ay0_porta_w))
 MACHINE_CONFIG_END
-
-machine_config_constructor efo_zsu_device::device_mconfig_additions() const
-{
-	return MACHINE_CONFIG_NAME( efo_zsu );
-}
-
-machine_config_constructor cedar_magnet_sound_device::device_mconfig_additions() const
-{
-	return MACHINE_CONFIG_NAME( cedar_magnet_sound );
-}
 
 void efo_zsu_device::device_start()
 {

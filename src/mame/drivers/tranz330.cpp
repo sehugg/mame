@@ -150,7 +150,7 @@ static const z80_daisy_config tranz330_daisy_chain[] =
 
 // * - check clocks
 // ? - check purported RS232 hookup, inconsistent information found at the relevant webpage vs. user-submitted errata
-static MACHINE_CONFIG_START( tranz330, tranz330_state )
+static MACHINE_CONFIG_START( tranz330 )
 	MCFG_CPU_ADD(CPU_TAG, Z80, XTAL_7_15909MHz/2) //*
 	MCFG_CPU_PROGRAM_MAP(tranz330_mem)
 	MCFG_CPU_IO_MAP(tranz330_io)
@@ -167,7 +167,7 @@ static MACHINE_CONFIG_START( tranz330, tranz330_state )
 	MCFG_Z80PIO_IN_PA_CB(READ8(tranz330_state, card_r))
 	MCFG_Z80PIO_IN_PB_CB(READ8(tranz330_state, pio_b_r))
 
-	MCFG_Z80DART_ADD(DART_TAG, XTAL_7_15909MHz/2, 0, 0, 0, 0 ) //*
+	MCFG_DEVICE_ADD(DART_TAG, Z80DART, XTAL_7_15909MHz/2) //*
 	MCFG_Z80DART_OUT_SYNCB_CB(WRITELINE(tranz330_state, syncb_w))
 	MCFG_Z80DART_OUT_TXDB_CB(DEVWRITELINE(RS232_TAG, rs232_port_device, write_txd)) //?
 	MCFG_Z80DART_OUT_DTRB_CB(DEVWRITELINE(RS232_TAG, rs232_port_device, write_dtr)) //?
@@ -200,5 +200,5 @@ ROM_START( tranz330 )
 ROM_END
 
 
-//    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS             INIT    COMPANY     FULLNAME        FLAGS
-COMP( 1985, tranz330, 0,      0,      tranz330, tranz330, driver_device,    0,     "VeriFone",  "Tranz 330",    MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS            INIT   COMPANY      FULLNAME        FLAGS
+COMP( 1985, tranz330, 0,      0,      tranz330, tranz330, tranz330_state,  0,     "VeriFone",  "Tranz 330",    MACHINE_CLICKABLE_ARTWORK )

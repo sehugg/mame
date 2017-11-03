@@ -5,6 +5,7 @@
  *
  */
 
+#include "machine/timer.h"
 #include "video/segaic24.h"
 #include "sound/dac.h"
 #include "screen.h"
@@ -78,13 +79,12 @@ public:
 	uint8_t frc_mode;
 
 	bool m_cnt1;
-	bool m_cnt2;
 
 	uint16_t *shared_ram;
 
-	segas24_tile *vtile;
-	segas24_sprite *vsprite;
-	segas24_mixer *vmixer;
+	segas24_tile_device *vtile;
+	segas24_sprite_device *vsprite;
+	segas24_mixer_device *vmixer;
 
 	DECLARE_WRITE_LINE_MEMBER(irq_ym);
 	DECLARE_READ16_MEMBER(  sys16_paletteram_r );
@@ -103,7 +103,6 @@ public:
 	DECLARE_WRITE8_MEMBER( frc_w );
 	DECLARE_READ16_MEMBER(  mlatch_r );
 	DECLARE_WRITE16_MEMBER( mlatch_w );
-	DECLARE_READ8_MEMBER(   dials_r );
 	DECLARE_READ16_MEMBER(  iod_r );
 	DECLARE_WRITE16_MEMBER( iod_w );
 
@@ -122,7 +121,6 @@ public:
 	void irq_timer_sync();
 	void irq_timer_start(int old_tmode);
 	WRITE_LINE_MEMBER(cnt1);
-	WRITE_LINE_MEMBER(cnt2);
 	DECLARE_DRIVER_INIT(crkdown);
 	DECLARE_DRIVER_INIT(quizmeku);
 	DECLARE_DRIVER_INIT(qrouka);

@@ -26,7 +26,9 @@
 
 #include "emu.h"
 #include "includes/atarigx2.h"
+
 #include "cpu/m68000/m68000.h"
+#include "machine/eeprompar.h"
 #include "speaker.h"
 
 
@@ -1199,14 +1201,14 @@ static ADDRESS_MAP_START( main_map, AS_PROGRAM, 32, atarigx2_state )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0xc80000, 0xc80fff) AM_RAM
 	AM_RANGE(0xd00000, 0xd1ffff) AM_READ(a2d_data_r)
-	AM_RANGE(0xd20000, 0xd20fff) AM_DEVREADWRITE8("eeprom", atari_eeprom_device, read, write, 0xff00ff00)
+	AM_RANGE(0xd20000, 0xd20fff) AM_DEVREADWRITE8("eeprom", eeprom_parallel_28xx_device, read, write, 0xff00ff00)
 	AM_RANGE(0xd40000, 0xd40fff) AM_RAM_DEVWRITE("palette", palette_device, write) AM_SHARE("palette")
 	AM_RANGE(0xd72000, 0xd75fff) AM_DEVWRITE("playfield", tilemap_device, write) AM_SHARE("playfield")
 	AM_RANGE(0xd76000, 0xd76fff) AM_DEVWRITE("alpha", tilemap_device, write) AM_SHARE("alpha")
 	AM_RANGE(0xd78000, 0xd78fff) AM_RAM AM_SHARE("rle")
 	AM_RANGE(0xd7a200, 0xd7a203) AM_WRITE(mo_command_w) AM_SHARE("mo_command")
 	AM_RANGE(0xd70000, 0xd7ffff) AM_RAM
-	AM_RANGE(0xd80000, 0xd9ffff) AM_DEVWRITE("eeprom", atari_eeprom_device, unlock_write)
+	AM_RANGE(0xd80000, 0xd9ffff) AM_DEVWRITE("eeprom", eeprom_parallel_28xx_device, unlock_write)
 	AM_RANGE(0xe06000, 0xe06003) AM_DEVWRITE8("jsa", atari_jsa_iiis_device, main_command_w, 0xff000000)
 	AM_RANGE(0xe08000, 0xe08003) AM_WRITE(latch_w)
 	AM_RANGE(0xe0c000, 0xe0c003) AM_WRITE16(video_int_ack_w, 0xffffffff)
@@ -1492,7 +1494,7 @@ static const atari_rle_objects_config modesc_0x400 =
  *
  *************************************/
 
-static MACHINE_CONFIG_START( atarigx2, atarigx2_state )
+static MACHINE_CONFIG_START( atarigx2 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68EC020, ATARI_CLOCK_14MHz)
@@ -1501,7 +1503,8 @@ static MACHINE_CONFIG_START( atarigx2, atarigx2_state )
 
 	MCFG_MACHINE_RESET_OVERRIDE(atarigx2_state,atarigx2)
 
-	MCFG_ATARI_EEPROM_2816_ADD("eeprom")
+	MCFG_EEPROM_2816_ADD("eeprom")
+	MCFG_EEPROM_28XX_LOCK_AFTER_WRITE(true)
 
 	/* video hardware */
 	MCFG_GFXDECODE_ADD("gfxdecode", "palette", atarigx2)
@@ -2302,16 +2305,16 @@ DRIVER_INIT_MEMBER(atarigx2_state,rrreveng)
  *
  *************************************/
 
-GAME( 1992, spclords,  0,        atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev C)", 0 )
-GAME( 1992, spclordsb, spclords, atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev B)", 0 )
-GAME( 1992, spclordsg, spclords, atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev A, German)", 0 )
-GAME( 1992, spclordsa, spclords, atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev A)", 0 )
+GAME( 1992, spclords,  0,         atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev C)", 0 )
+GAME( 1992, spclordsb, spclords,  atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev B)", 0 )
+GAME( 1992, spclordsg, spclords,  atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev A, German)", 0 )
+GAME( 1992, spclordsa, spclords,  atarigx2_0x400, spclords, atarigx2_state, spclords, ROT0, "Atari Games", "Space Lords (rev A)", 0 )
 
 GAME( 1992, motofren,   0,        atarigx2_0x200, motofren, atarigx2_state, motofren, ROT0, "Atari Games", "Moto Frenzy", 0 )
 GAME( 1992, motofrenmd, motofren, atarigx2_0x200, motofren, atarigx2_state, motofren, ROT0, "Atari Games", "Moto Frenzy (Mini Deluxe)", 0 )
 GAME( 1992, motofrenft, motofren, atarigx2_0x200, motofren, atarigx2_state, motofren, ROT0, "Atari Games", "Moto Frenzy (Field Test Version)", 0 )
 GAME( 1992, motofrenmf, motofren, atarigx2_0x200, motofren, atarigx2_state, motofren, ROT0, "Atari Games", "Moto Frenzy (Mini Deluxe Field Test Version)", 0 )
 
-GAME( 1993, rrreveng,  0,        atarigx2_0x400, rrreveng, atarigx2_state, rrreveng, ROT0, "Atari Games", "Road Riot's Revenge (prototype, Sep 06, 1994)", MACHINE_UNEMULATED_PROTECTION | MACHINE_NOT_WORKING )
-GAME( 1993, rrrevenga, rrreveng, atarigx2_0x400, rrreveng, atarigx2_state, rrreveng, ROT0, "Atari Games", "Road Riot's Revenge (prototype, Jan 27, 1994, set 1)", MACHINE_UNEMULATED_PROTECTION | MACHINE_NOT_WORKING )
-GAME( 1993, rrrevengb, rrreveng, atarigx2_0x400, rrreveng, atarigx2_state, rrreveng, ROT0, "Atari Games", "Road Riot's Revenge (prototype, Jan 27, 1994, set 2)", MACHINE_UNEMULATED_PROTECTION | MACHINE_NOT_WORKING )
+GAME( 1993, rrreveng,  0,         atarigx2_0x400, rrreveng, atarigx2_state, rrreveng, ROT0, "Atari Games", "Road Riot's Revenge (prototype, Sep 06, 1994)", MACHINE_UNEMULATED_PROTECTION | MACHINE_NOT_WORKING )
+GAME( 1993, rrrevenga, rrreveng,  atarigx2_0x400, rrreveng, atarigx2_state, rrreveng, ROT0, "Atari Games", "Road Riot's Revenge (prototype, Jan 27, 1994, set 1)", MACHINE_UNEMULATED_PROTECTION | MACHINE_NOT_WORKING )
+GAME( 1993, rrrevengb, rrreveng,  atarigx2_0x400, rrreveng, atarigx2_state, rrreveng, ROT0, "Atari Games", "Road Riot's Revenge (prototype, Jan 27, 1994, set 2)", MACHINE_UNEMULATED_PROTECTION | MACHINE_NOT_WORKING )

@@ -60,6 +60,7 @@
 #include "machine/i8255.h"
 #include "machine/msm58321.h"
 #include "machine/pic8259.h"
+#include "machine/timer.h"
 #include "machine/upd765.h"
 #include "sound/beep.h"
 
@@ -490,7 +491,7 @@ SLOT_INTERFACE_END
 
 #define MASTER_CLOCK 6988800
 
-static MACHINE_CONFIG_START( pc100, pc100_state )
+static MACHINE_CONFIG_START( pc100 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8086, MASTER_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(pc100_map)
@@ -513,7 +514,9 @@ static MACHINE_CONFIG_START( pc100, pc100_state )
 	MCFG_I8255_OUT_PORTB_CB(WRITE8(pc100_state, upper_mask_w))
 	MCFG_I8255_OUT_PORTC_CB(WRITE8(pc100_state, crtc_bank_w))
 
-	MCFG_PIC8259_ADD( "pic8259", INPUTLINE("maincpu", 0), GND, NOOP)
+	MCFG_DEVICE_ADD("pic8259", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
+	MCFG_PIC8259_IN_SP_CB(GND) // ???
 
 	MCFG_DEVICE_ADD("uart8251", I8251, 0)
 	//MCFG_I8251_TXD_HANDLER(DEVWRITELINE("rs232", rs232_port_device, write_txd))
@@ -564,5 +567,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY  FULLNAME       FLAGS */
-COMP( 198?, pc100,  0,      0,       pc100,     pc100, driver_device,   0,      "NEC",   "PC-100", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT  STATE          INIT    COMPANY  FULLNAME  FLAGS
+COMP( 198?, pc100,  0,      0,       pc100,     pc100, pc100_state,   0,      "NEC",   "PC-100", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)

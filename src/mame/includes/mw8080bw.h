@@ -8,6 +8,7 @@
 ****************************************************************************/
 
 #include "machine/mb14241.h"
+#include "machine/timer.h"
 #include "machine/watchdog.h"
 #include "sound/discrete.h"
 #include "sound/sn76477.h"
@@ -92,8 +93,9 @@ public:
 	std::unique_ptr<uint8_t[]> m_scattered_colorram;
 	std::unique_ptr<uint8_t[]> m_scattered_colorram2;
 
-	/* timer */
+	/* timers */
 	emu_timer   *m_interrupt_timer;
+	emu_timer   *m_maze_tone_timer;
 
 	/* other devices */
 	optional_device<samples_device> m_samples;

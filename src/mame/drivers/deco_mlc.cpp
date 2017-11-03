@@ -105,7 +105,7 @@
 #include "machine/deco156.h"
 #include "machine/eepromser.h"
 #include "cpu/arm/arm.h"
-#include "cpu/sh2/sh2.h"
+#include "cpu/sh/sh2.h"
 #include "speaker.h"
 
 
@@ -502,7 +502,7 @@ MACHINE_RESET_MEMBER(deco_mlc_state,mlc)
 	m_raster_irq_timer = machine().device<timer_device>("int_timer");
 }
 
-static MACHINE_CONFIG_START( avengrgs, deco_mlc_state )
+static MACHINE_CONFIG_START( avengrgs )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", SH2,42000000/2) /* 21 MHz clock confirmed on real board */
@@ -535,7 +535,7 @@ static MACHINE_CONFIG_START( avengrgs, deco_mlc_state )
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( mlc, deco_mlc_state )
+static MACHINE_CONFIG_START( mlc )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM,42000000/6) /* 42 MHz -> 7MHz clock confirmed on real board */

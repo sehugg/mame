@@ -38,6 +38,7 @@
 
 #include "cpu/m6502/m6502.h"
 #include "machine/6532riot.h"
+#include "machine/timer.h"
 #include "sound/sn76477.h"
 #include "speaker.h"
 
@@ -220,7 +221,7 @@ TIMER_DEVICE_CALLBACK_MEMBER( spectra_state::outtimer)
 }
 
 
-static MACHINE_CONFIG_START( spectra, spectra_state )
+static MACHINE_CONFIG_START( spectra )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, XTAL_3_579545MHz/4)  // actually a M6503
 	MCFG_CPU_PROGRAM_MAP(spectra_map)
@@ -272,4 +273,4 @@ ROM_START(spectra)
 ROM_END
 
 
-GAME(1979,  spectra,  0,  spectra,  spectra, driver_device, 0,  ROT0,  "Valley", "Spectra IV", MACHINE_MECHANICAL | MACHINE_NOT_WORKING )
+GAME(1979,  spectra,  0,  spectra,  spectra, spectra_state, 0,  ROT0,  "Valley", "Spectra IV", MACHINE_MECHANICAL | MACHINE_NOT_WORKING )

@@ -12,9 +12,10 @@
 ****************************************************************************/
 
 #include "emu.h"
-#include "debugger.h"
 #include "i86.h"
+#include "debugger.h"
 #include "i86inline.h"
+#include "cpu/i386/i386dasm.h"
 
 #define I8086_NMI_INT_VECTOR 2
 
@@ -87,43 +88,50 @@ const uint8_t i8086_cpu_device::m_i8086_timing[] =
 
 /***************************************************************************/
 
-const device_type I8086 = device_creator<i8086_cpu_device>;
-const device_type I8088 = device_creator<i8088_cpu_device>;
+DEFINE_DEVICE_TYPE(I8086, i8086_cpu_device, "i8086", "I8086")
+DEFINE_DEVICE_TYPE(I8088, i8088_cpu_device, "i8088", "I8088")
 
 i8088_cpu_device::i8088_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: i8086_cpu_device(mconfig, I8088, "I8088", tag, owner, clock, "i8088", __FILE__, 8)
+	: i8086_cpu_device(mconfig, I8088, tag, owner, clock, 8)
 {
 	memcpy(m_timing, m_i8086_timing, sizeof(m_i8086_timing));
 	m_fetch_xor = 0;
 }
 
 i8086_cpu_device::i8086_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: i8086_common_cpu_device(mconfig, I8086, "I8086", tag, owner, clock, "i8086", __FILE__)
-	, m_program_config("program", ENDIANNESS_LITTLE, 16, 20, 0)
-	, m_opcodes_config("opcodes", ENDIANNESS_LITTLE, 16, 20, 0)
-	, m_io_config("io", ENDIANNESS_LITTLE, 16, 16, 0)
+	: i8086_cpu_device(mconfig, I8086, tag, owner, clock, 16)
 {
 	memcpy(m_timing, m_i8086_timing, sizeof(m_i8086_timing));
 	m_fetch_xor = BYTE_XOR_LE(0);
 }
 
-i8086_cpu_device::i8086_cpu_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source, int data_bus_size)
-	: i8086_common_cpu_device(mconfig, type, name, tag, owner, clock, shortname, source)
+i8086_cpu_device::i8086_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int data_bus_size)
+	: i8086_common_cpu_device(mconfig, type, tag, owner, clock)
 	, m_program_config("program", ENDIANNESS_LITTLE, data_bus_size, 20, 0)
 	, m_opcodes_config("opcodes", ENDIANNESS_LITTLE, data_bus_size, 20, 0)
+	, m_stack_config("stack", ENDIANNESS_LITTLE, data_bus_size, 20, 0)
+	, m_code_config("code", ENDIANNESS_LITTLE, data_bus_size, 20, 0)
+	, m_extra_config("extra", ENDIANNESS_LITTLE, data_bus_size, 20, 0)
 	, m_io_config("io", ENDIANNESS_LITTLE, data_bus_size, 16, 0)
+	, m_out_if_func(*this)
 {
 }
 
-const address_space_config *i8086_cpu_device::memory_space_config(address_spacenum spacenum) const
+device_memory_interface::space_config_vector i8086_cpu_device::memory_space_config() const
 {
-	switch(spacenum)
-	{
-	case AS_PROGRAM:           return &m_program_config;
-	case AS_IO:                return &m_io_config;
-	case AS_DECRYPTED_OPCODES: return has_configured_map(AS_DECRYPTED_OPCODES) ? &m_opcodes_config : nullptr;
-	default:                   return nullptr;
-	}
+	space_config_vector spaces = {
+			std::make_pair(AS_PROGRAM, &m_program_config),
+			std::make_pair(AS_IO,      &m_io_config)
+		};
+	if(has_configured_map(AS_OPCODES))
+		spaces.push_back(std::make_pair(AS_OPCODES, &m_opcodes_config));
+	if(has_configured_map(AS_STACK))
+		spaces.push_back(std::make_pair(AS_STACK, &m_stack_config));
+	if(has_configured_map(AS_CODE))
+		spaces.push_back(std::make_pair(AS_CODE, &m_code_config));
+	if(has_configured_map(AS_EXTRA))
+		spaces.push_back(std::make_pair(AS_EXTRA, &m_extra_config));
+	return spaces;
 }
 
 uint8_t i8086_cpu_device::fetch_op()
@@ -144,6 +152,7 @@ uint8_t i8086_cpu_device::fetch()
 
 void i8086_cpu_device::execute_run()
 {
+	u8 iflag = m_IF;
 	while(m_icount > 0 )
 	{
 		if ( m_seg_prefix_next )
@@ -274,12 +283,21 @@ void i8086_cpu_device::execute_run()
 				}
 				break;
 		}
+		if(iflag != m_IF)
+		{
+			m_out_if_func(m_IF ? ASSERT_LINE : CLEAR_LINE);
+			iflag = m_IF;
+		}
 	}
 }
 
 void i8086_cpu_device::device_start()
 {
 	i8086_common_cpu_device::device_start();
+	m_out_if_func.resolve_safe();
+	m_stack = has_space(AS_STACK) ? &space(AS_STACK) : m_program;
+	m_code = has_space(AS_CODE) ? &space(AS_CODE) : m_program;
+	m_extra = has_space(AS_EXTRA) ? &space(AS_EXTRA) : m_program;
 	state_add( I8086_ES, "ES", m_sregs[ES] ).formatstr("%04X");
 	state_add( I8086_CS, "CS", m_sregs[CS] ).callimport().formatstr("%04X");
 	state_add( I8086_SS, "SS", m_sregs[SS] ).formatstr("%04X");
@@ -291,8 +309,8 @@ void i8086_cpu_device::device_start()
 	state_add( I8086_HALT, "HALT", m_halt ).mask(1);
 }
 
-i8086_common_cpu_device::i8086_common_cpu_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source)
-	: cpu_device(mconfig, type, name, tag, owner, clock, shortname, source)
+i8086_common_cpu_device::i8086_common_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
+	: cpu_device(mconfig, type, tag, owner, clock)
 	, m_ip(0)
 	, m_TF(0)
 	, m_int_vector(0)
@@ -395,7 +413,10 @@ void i8086_common_cpu_device::state_string_export(const device_state_entry &entr
 void i8086_common_cpu_device::device_start()
 {
 	m_program = &space(AS_PROGRAM);
-	m_opcodes = has_space(AS_DECRYPTED_OPCODES) ? &space(AS_DECRYPTED_OPCODES) : m_program;
+	m_opcodes = has_space(AS_OPCODES) ? &space(AS_OPCODES) : m_program;
+	m_stack = m_program;
+	m_code = m_program;
+	m_extra = m_program;
 	m_direct = &m_program->direct();
 	m_direct_opcodes = &m_opcodes->direct();
 	m_io = &space(AS_IO);
@@ -489,6 +510,7 @@ void i8086_common_cpu_device::device_reset()
 	m_src = 0;
 	m_halt = false;
 	m_lock = false;
+	m_easeg = DS;
 }
 
 
@@ -506,8 +528,8 @@ void i8086_common_cpu_device::interrupt(int int_num, int trap)
 		m_pending_irq &= ~INT_IRQ;
 	}
 
-	uint16_t dest_off = read_word( int_num * 4 + 0 );
-	uint16_t dest_seg = read_word( int_num * 4 + 2 );
+	uint16_t dest_off = read_word( int_num * 4 + 0, CS );
+	uint16_t dest_seg = read_word( int_num * 4 + 2, CS );
 
 	PUSH(m_sregs[CS]);
 	PUSH(m_ip);
@@ -550,7 +572,6 @@ void i8086_common_cpu_device::execute_set_input( int inptnum, int state )
 
 offs_t i8086_common_cpu_device::disasm_disassemble(std::ostream &stream, offs_t pc, const uint8_t *oprom, const uint8_t *opram, uint32_t options)
 {
-	extern int i386_dasm_one(std::ostream &stream, offs_t eip, const uint8_t *oprom, int mode);
 	return i386_dasm_one(stream, pc, oprom, 1);
 }
 
@@ -578,10 +599,12 @@ uint32_t i8086_common_cpu_device::calc_addr(int seg, uint16_t offset, int size, 
 {
 	if ( m_seg_prefix && (seg==DS || seg==SS) && override )
 	{
+		m_easeg = m_seg_prefix;
 		return (m_sregs[m_prefix_seg] << 4) + offset;
 	}
 	else
 	{
+		m_easeg = seg;
 		return (m_sregs[seg] << 4) + offset;
 	}
 }

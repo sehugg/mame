@@ -54,10 +54,11 @@ public:
 
 	DECLARE_READ8_MEMBER(analog_port_r);
 	DECLARE_READ8_MEMBER(random_num_r);
-	DECLARE_WRITE8_MEMBER(led_0_w);
-	DECLARE_WRITE8_MEMBER(led_1_w);
-	DECLARE_WRITE8_MEMBER(gridlee_coin_counter_w);
-	DECLARE_WRITE8_MEMBER(gridlee_cocktail_flip_w);
+	DECLARE_WRITE8_MEMBER(latch_w);
+	DECLARE_WRITE_LINE_MEMBER(led_0_w);
+	DECLARE_WRITE_LINE_MEMBER(led_1_w);
+	DECLARE_WRITE_LINE_MEMBER(coin_counter_w);
+	DECLARE_WRITE_LINE_MEMBER(cocktail_flip_w);
 	DECLARE_WRITE8_MEMBER(gridlee_videoram_w);
 	DECLARE_WRITE8_MEMBER(gridlee_palette_select_w);
 	virtual void machine_start() override;
@@ -76,8 +77,7 @@ public:
 
 /*----------- defined in audio/gridlee.c -----------*/
 
-class gridlee_sound_device : public device_t,
-								public device_sound_interface
+class gridlee_sound_device : public device_t, public device_sound_interface
 {
 public:
 	gridlee_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
@@ -106,4 +106,4 @@ private:
 	uint8_t m_sound_data[24];
 };
 
-extern const device_type GRIDLEE;
+DECLARE_DEVICE_TYPE(GRIDLEE, gridlee_sound_device)

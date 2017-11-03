@@ -378,7 +378,7 @@ DECO16IC_BANK_CB_MEMBER(sshangha_state::bank_callback)
 	return (bank >> 4) * 0x1000;
 }
 
-static MACHINE_CONFIG_START( sshangha, sshangha_state )
+static MACHINE_CONFIG_START( sshangha )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 28000000/2)
@@ -425,6 +425,9 @@ static MACHINE_CONFIG_START( sshangha, sshangha_state )
 	MCFG_DECO_SPRITE_GFXDECODE("gfxdecode")
 
 	MCFG_DECO146_ADD("ioprot")
+	MCFG_DECO146_IN_PORTA_CB(IOPORT("INPUTS"))
+	MCFG_DECO146_IN_PORTB_CB(IOPORT("SYSTEM"))
+	MCFG_DECO146_IN_PORTC_CB(IOPORT("DSW"))
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker") /* sure it's stereo? */
@@ -434,7 +437,7 @@ static MACHINE_CONFIG_START( sshangha, sshangha_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.33)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.33)
 
-	MCFG_OKIM6295_ADD("oki", 1023924, OKIM6295_PIN7_HIGH) // clock frequency & pin 7 not verified
+	MCFG_OKIM6295_ADD("oki", 1023924, PIN7_HIGH) // clock frequency & pin 7 not verified
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.27)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.27)
 MACHINE_CONFIG_END

@@ -175,7 +175,7 @@ SLOT_INTERFACE_END
 
 
 /* Machine driver */
-static MACHINE_CONFIG_START( pk8020, pk8020_state )
+static MACHINE_CONFIG_START( pk8020 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8080, XTAL_20MHz / 8)
 	MCFG_CPU_PROGRAM_MAP(pk8020_mem)
@@ -215,7 +215,9 @@ static MACHINE_CONFIG_START( pk8020, pk8020_state )
 	MCFG_PIT8253_CLK2((XTAL_20MHz / 8) / 164)
 	MCFG_PIT8253_OUT2_HANDLER(DEVWRITELINE("pic8259", pic8259_device, ir5_w))
 
-	MCFG_PIC8259_ADD("pic8259", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic8259", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
+
 	MCFG_DEVICE_ADD("rs232", I8251, 0)
 	MCFG_DEVICE_ADD("lan", I8251, 0)
 
@@ -289,8 +291,8 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME     PARENT  COMPAT  MACHINE     INPUT                  INIT    COMPANY      FULLNAME   FLAGS */
-COMP( 1987, korvet,  0,      0,      pk8020,     pk8020, driver_device, 0,      "<unknown>", "PK8020 Korvet",    0)
-COMP( 1987, neiva,   korvet, 0,      pk8020,     pk8020, driver_device, 0,      "<unknown>", "PK8020 Neiva",     0)
-COMP( 1987, kontur,  korvet, 0,      pk8020,     pk8020, driver_device, 0,      "<unknown>", "PK8020 Kontur",    0)
-COMP( 1987, bk8t,    korvet, 0,      pk8020,     pk8020, driver_device, 0,      "<unknown>", "BK-8T",    0)
+/*    YEAR  NAME     PARENT  COMPAT  MACHINE     INPUT   STATE         INIT    COMPANY      FULLNAME         FLAGS */
+COMP( 1987, korvet,  0,      0,      pk8020,     pk8020, pk8020_state, 0,      "<unknown>", "PK8020 Korvet", 0)
+COMP( 1987, neiva,   korvet, 0,      pk8020,     pk8020, pk8020_state, 0,      "<unknown>", "PK8020 Neiva",  0)
+COMP( 1987, kontur,  korvet, 0,      pk8020,     pk8020, pk8020_state, 0,      "<unknown>", "PK8020 Kontur", 0)
+COMP( 1987, bk8t,    korvet, 0,      pk8020,     pk8020, pk8020_state, 0,      "<unknown>", "BK-8T",         0)

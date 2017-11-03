@@ -5,7 +5,7 @@ Panic Road
 ----------
 
 TODO:
- - are collisions 100%, need to find reference videos of game being played properly to check things look ok (I think they are..)
+ - collisions don't always work, you can hit the ball out of the playfield quite easily if you know how, hence MACHINE_NOT_WORKING
  - are priorities with sprites 100%, sprite-sprite priorities are ugly in many places, maybe the SEI0010BU are 3 sprite chips?
 
 --
@@ -65,6 +65,7 @@ D.9B         [f99cac4b] /
 
 #include "cpu/nec/nec.h"
 #include "cpu/z80/z80.h"
+#include "machine/timer.h"
 #include "screen.h"
 #include "speaker.h"
 
@@ -605,7 +606,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(panicr_state::scanline)
 		m_maincpu->set_input_line_and_vector(0, HOLD_LINE, 0xc8/4);
 }
 
-static MACHINE_CONFIG_START( panicr, panicr_state )
+static MACHINE_CONFIG_START( panicr )
 	MCFG_CPU_ADD("maincpu", V20,MASTER_CLOCK/2) /* Sony 8623h9 CXQ70116D-8 (V20 compatible) */
 	MCFG_CPU_PROGRAM_MAP(panicr_map)
 	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", panicr_state, scanline, "screen", 0, 1)
@@ -830,5 +831,5 @@ DRIVER_INIT_MEMBER(panicr_state,panicr)
 }
 
 
-GAME( 1986, panicr,  0,      panicr,  panicr, panicr_state,  panicr, ROT270, "Seibu Kaihatsu (Taito license)", "Panic Road (Japan)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE )
-GAME( 1986, panicrg, panicr, panicr,  panicr, panicr_state,  panicr, ROT270, "Seibu Kaihatsu (Tuning license)", "Panic Road (Germany)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE )
+GAME( 1986, panicr,  0,      panicr,  panicr, panicr_state,  panicr, ROT270, "Seibu Kaihatsu (Taito license)", "Panic Road (Japan)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )
+GAME( 1986, panicrg, panicr, panicr,  panicr, panicr_state,  panicr, ROT270, "Seibu Kaihatsu (Tuning license)", "Panic Road (Germany)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )

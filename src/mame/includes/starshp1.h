@@ -14,8 +14,16 @@
  *  probably too low.  I suspect that screen is not really
  *  512 pixels wide -- most likely 384, which would give 60Hz
  *
- *  Some of the graphics, like the starfield, is clocked with the
- *  12MHz signal, effectively doubling the horizontal resolution
+ *  Based on photographs of the PCB, and analysis of videos of
+ *  actual gameplay, the horizontal screen really is 384 clocks.
+ *
+ *  However, some of the graphics, like the starfield, are
+ *  clocked with the 12MHz signal.  This effectively doubles
+ *  the horizontal resolution:
+ *
+ *                             6.048Mhz clocks     12.096Mhz clocks
+ *  Horizontal Visible Area    384 (0x180)         768 (0x300)
+ *  Horizontal Blanking Time   128 (0x080)         256 (0x100)
  */
 
 #include "sound/discrete.h"
@@ -24,8 +32,8 @@
 
 #define STARSHP1_MASTER_CLOCK       (12096000)
 #define STARSHP1_CPU_CLOCK          (STARSHP1_MASTER_CLOCK / 16)
-#define STARSHP1_PIXEL_CLOCK        (STARSHP1_MASTER_CLOCK / 2)
-#define STARSHP1_HTOTAL             (0x200)
+#define STARSHP1_PIXEL_CLOCK        (STARSHP1_MASTER_CLOCK)
+#define STARSHP1_HTOTAL             (0x300)
 #define STARSHP1_HBEND              (0x000)
 #define STARSHP1_HBSTART            (0x200)
 #define STARSHP1_VTOTAL             (0x106)
@@ -74,14 +82,21 @@ public:
 	tilemap_t *m_bg_tilemap;
 	DECLARE_WRITE8_MEMBER(starshp1_collision_reset_w);
 	DECLARE_WRITE8_MEMBER(starshp1_analog_in_w);
-	DECLARE_WRITE8_MEMBER(starshp1_misc_w);
+	DECLARE_WRITE_LINE_MEMBER(ship_explode_w);
+	DECLARE_WRITE_LINE_MEMBER(circle_mod_w);
+	DECLARE_WRITE_LINE_MEMBER(circle_kill_w);
+	DECLARE_WRITE_LINE_MEMBER(starfield_kill_w);
+	DECLARE_WRITE_LINE_MEMBER(inverse_w);
+	DECLARE_WRITE_LINE_MEMBER(mux_w);
+	DECLARE_WRITE_LINE_MEMBER(led_w);
 	DECLARE_READ8_MEMBER(starshp1_rng_r);
 	DECLARE_WRITE8_MEMBER(starshp1_ssadd_w);
 	DECLARE_WRITE8_MEMBER(starshp1_sspic_w);
 	DECLARE_WRITE8_MEMBER(starshp1_playfield_w);
 	DECLARE_CUSTOM_INPUT_MEMBER(starshp1_analog_r);
 	DECLARE_CUSTOM_INPUT_MEMBER(collision_latch_r);
-	DECLARE_WRITE8_MEMBER(starshp1_audio_w);
+	DECLARE_WRITE_LINE_MEMBER(attract_w);
+	DECLARE_WRITE_LINE_MEMBER(phasor_w);
 	DECLARE_WRITE8_MEMBER(starshp1_analog_out_w);
 	TILE_GET_INFO_MEMBER(get_tile_info);
 	virtual void video_start() override;

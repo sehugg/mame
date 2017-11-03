@@ -575,7 +575,7 @@ static ADDRESS_MAP_START(ibmpcjx_io, AS_IO, 8, pcjr_state)
 	AM_IMPORT_FROM( ibmpcjr_io )
 ADDRESS_MAP_END
 
-static MACHINE_CONFIG_START( ibmpcjr, pcjr_state)
+static MACHINE_CONFIG_START( ibmpcjr )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8088, 4900000)
 	MCFG_CPU_PROGRAM_MAP(ibmpcjr_map)
@@ -594,7 +594,8 @@ static MACHINE_CONFIG_START( ibmpcjr, pcjr_state)
 	MCFG_PIT8253_CLK2(XTAL_14_31818MHz/12)
 	MCFG_PIT8253_OUT2_HANDLER(WRITELINE(pcjr_state, out2_changed))
 
-	MCFG_PIC8259_ADD( "pic8259", WRITELINE(pcjr_state, pic8259_set_int_line), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic8259", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(WRITELINE(pcjr_state, pic8259_set_int_line))
 
 	MCFG_DEVICE_ADD("ppi8255", I8255, 0)
 	MCFG_I8255_IN_PORTA_CB(CONSTANT(0xff))
@@ -691,7 +692,10 @@ MACHINE_CONFIG_END
 
 ROM_START( ibmpcjr )
 	ROM_REGION(0x10000,"bios", 0)
-	ROM_LOAD("bios.rom", 0x0000, 0x10000,CRC(31e3a7aa) SHA1(1f5f7013f18c08ff50d7942e76c4fbd782412414))
+	ROM_SYSTEM_BIOS( 0, "default", "Default" )
+	ROMX_LOAD("bios.rom", 0x0000, 0x10000,CRC(31e3a7aa) SHA1(1f5f7013f18c08ff50d7942e76c4fbd782412414), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS( 1, "quiksilver", "Quicksilver" ) // Alternate bios to boot up faster (Synectics)
+	ROMX_LOAD("quiksilv.rom", 0x0000, 0x10000, CRC(86aaa1c4) SHA1(b3d7e8ce5de17441891e0b71e5261ed01a169dc1), ROM_BIOS(2))
 
 	ROM_REGION(0x08100,"gfx1", 0)
 	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd)) // from an unknown clone cga card
@@ -713,7 +717,7 @@ ROM_START( ibmpcjx )
 	ROM_LOAD("kanji.rom",     0x00000, 0x38000, BAD_DUMP CRC(eaa6e3c3) SHA1(35554587d02d947fae8446964b1886fff5c9d67f)) // hand-made rom
 ROM_END
 
-/*    YEAR  NAME        PARENT      COMPAT      MACHINE     INPUT       INIT        COMPANY            FULLNAME */
+//    YEAR  NAME        PARENT      COMPAT      MACHINE     INPUT    STATE          INIT        COMPANY                            FULLNAME     FLAGS
 // pcjr
 COMP( 1983, ibmpcjr,    ibm5150,    0,          ibmpcjr,    ibmpcjr, pcjr_state,    pcjr,       "International Business Machines", "IBM PC Jr", MACHINE_IMPERFECT_COLORS )
 COMP( 1985, ibmpcjx,    ibm5150,    0,          ibmpcjx,    ibmpcjr, pcjr_state,    pcjr,       "International Business Machines", "IBM PC JX", MACHINE_IMPERFECT_COLORS | MACHINE_NOT_WORKING)

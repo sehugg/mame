@@ -109,6 +109,8 @@ public:
 		, m_screen(*this, "screen")
 	{ }
 
+	static constexpr feature_type imperfect_features() { return feature::KEYBOARD; }
+
 	DECLARE_READ8_MEMBER(pia_r);
 	DECLARE_WRITE8_MEMBER(pia_w);
 	DECLARE_READ8_MEMBER(pia_pa_r);
@@ -424,9 +426,6 @@ WRITE8_MEMBER(bitgraph_state::ppu_write)
 #ifdef UNUSED_FUNCTION
 static ADDRESS_MAP_START(ppu_io, AS_IO, 8, bitgraph_state)
 //  AM_RANGE(0x00, 0x00) AM_READ(ppu_irq)
-//  AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1)
-//  AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(ppu_t0_r)
-	AM_RANGE(MCS48_PORT_PROG, MCS48_PORT_PROG) AM_DEVWRITE("i8243", i8243_device, i8243_prog_w)
 ADDRESS_MAP_END
 #endif
 
@@ -483,7 +482,7 @@ void bitgraph_state::machine_reset()
 }
 
 
-static MACHINE_CONFIG_FRAGMENT( bg_motherboard )
+static MACHINE_CONFIG_START( bg_motherboard )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(40)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -551,9 +550,11 @@ static MACHINE_CONFIG_FRAGMENT( bg_motherboard )
 MACHINE_CONFIG_END
 
 #ifdef UNUSED_FUNCTION
-static MACHINE_CONFIG_FRAGMENT( bg_ppu )
+static MACHINE_CONFIG_START( bg_ppu )
 	MCFG_CPU_ADD(PPU_TAG, I8035, XTAL_6_9MHz)
 	MCFG_CPU_IO_MAP(ppu_io)
+//  MCFG_MCS48_PORT_T0_IN_CB(READLINE(bitgraph_state, ppu_t0_r))
+	MCFG_MCS48_PORT_PROG_OUT_CB(DEVWRITELINE("i8243", i8243_device, prog_w))
 
 	MCFG_I8243_ADD("i8243", NOOP, WRITE8(bitgraph_state, ppu_i8243_w))
 
@@ -569,7 +570,7 @@ static MACHINE_CONFIG_FRAGMENT( bg_ppu )
 MACHINE_CONFIG_END
 #endif
 
-static MACHINE_CONFIG_START( bitgrpha, bitgraph_state )
+static MACHINE_CONFIG_START( bitgrpha )
 	MCFG_CPU_ADD(M68K_TAG, M68000, XTAL_6_9MHz)
 	MCFG_CPU_PROGRAM_MAP(bitgrapha_mem)
 
@@ -592,7 +593,7 @@ static MACHINE_CONFIG_START( bitgrpha, bitgraph_state )
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( bitgrphb, bitgraph_state )
+static MACHINE_CONFIG_START( bitgrphb )
 	MCFG_CPU_ADD(M68K_TAG, M68000, XTAL_6_9MHz)
 	MCFG_CPU_PROGRAM_MAP(bitgraphb_mem)
 
@@ -616,15 +617,15 @@ ROM_END
 
 ROM_START( bitgrphb )
 	ROM_REGION16_BE( 0x8000, M68K_TAG, 0 )
-	ROM_DEFAULT_BIOS("2.33A")
+	ROM_DEFAULT_BIOS("2.33a")
 
-	ROM_SYSTEM_BIOS(0, "2.33A", "rev 2.33 Alpha' ROM")
+	ROM_SYSTEM_BIOS(0, "2.33a", "rev 2.33 Alpha' ROM")
 	ROMX_LOAD( "bg2.32lo_u10.bin", 0x004001, 0x002000, CRC(6a702a96) SHA1(acdf1ba34038b4ccafb5b8069e70ae57a3b8a7e0), ROM_BIOS(1)|ROM_SKIP(1))
 	ROMX_LOAD( "bg2.32hi_u12.bin", 0x004000, 0x002000, CRC(a282a2c8) SHA1(ea7e4d4e197201c8944acef54479d5c2b26d409f), ROM_BIOS(1)|ROM_SKIP(1))
 	ROMX_LOAD( "bg2.32lo_u11.bin", 0x000001, 0x002000, CRC(46912afd) SHA1(c1f771adc1ef62b1fb1b904ed1d2a61009e24f55), ROM_BIOS(1)|ROM_SKIP(1))
 	ROMX_LOAD( "bg2.32hi_u13.bin", 0x000000, 0x002000, CRC(731df44f) SHA1(8c238b5943b8864e539f92891a0ffa6ddd4fc779), ROM_BIOS(1)|ROM_SKIP(1))
 
-	ROM_SYSTEM_BIOS(1, "3.0P", "rev 3.0P ROM")
+	ROM_SYSTEM_BIOS(1, "3.0p", "rev 3.0P ROM")
 	ROMX_LOAD( "bg5173_u10.bin", 0x004001, 0x002000, CRC(40014850) SHA1(ef0b7da58a5183391a3a03947882197f25694518), ROM_BIOS(2)|ROM_SKIP(1))
 	ROMX_LOAD( "bg5175_u12.bin", 0x004000, 0x002000, CRC(c2c4cc6c) SHA1(dbbce7cb58b4cef1557a834cbb07b3ace298cb8b), ROM_BIOS(2)|ROM_SKIP(1))
 	ROMX_LOAD( "bg5174_u11.bin", 0x000001, 0x002000, CRC(639768b9) SHA1(68f623bcf3bb75390ba2b17efc067cf25f915ec0), ROM_BIOS(2)|ROM_SKIP(1))
@@ -638,6 +639,6 @@ ROM_START( bitgrphb )
 ROM_END
 
 /* Driver */
-/*       YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT    CLASS          INIT     COMPANY          FULLNAME       FLAGS */
-COMP( 1981, bitgrpha, 0, 0, bitgrpha, bitgraph, driver_device, 0, "BBN", "BitGraph rev A", ROT90 | MACHINE_IMPERFECT_KEYBOARD)
-COMP( 1982, bitgrphb, 0, 0, bitgrphb, bitgraph, driver_device, 0, "BBN", "BitGraph rev B", ROT270 | MACHINE_NOT_WORKING|MACHINE_IMPERFECT_KEYBOARD)
+//    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT  COMPANY  FULLNAME          FLAGS
+COMP( 1981, bitgrpha, 0,      0,      bitgrpha, bitgraph, bitgraph_state, 0,    "BBN",   "BitGraph rev A", ROT90 )
+COMP( 1982, bitgrphb, 0,      0,      bitgrphb, bitgraph, bitgraph_state, 0,    "BBN",   "BitGraph rev B", ROT270 | MACHINE_NOT_WORKING )

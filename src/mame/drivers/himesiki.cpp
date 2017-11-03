@@ -422,7 +422,7 @@ void himesiki_state::machine_reset()
 	m_flipscreen = 0;
 }
 
-static MACHINE_CONFIG_START( himesiki, himesiki_state )
+static MACHINE_CONFIG_START( himesiki )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, CLK2) /* it's a 6.000 MHz rated part, but near the 8 Mhz XTAL?? - Android skips lots of frames at 6, crashes at 4 */
@@ -563,8 +563,8 @@ ROM_START( androidp )
 ROM_END
 
 
-GAME( 1989, himesiki, 0,         himesiki, himesiki,  driver_device, 0, ROT90, "Hi-Soft", "Himeshikibu (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, himesiki, 0,         himesiki, himesiki,  himesiki_state, 0, ROT90, "Hi-Soft", "Himeshikibu (Japan)", MACHINE_SUPPORTS_SAVE )
 
-// the game changed significantly between these 2 versions
-GAME( 198?, androidp,  0,          himesiki, androidp,  driver_device, 0, ROT90, "Nasco", "Android (prototype, later build)", MACHINE_SUPPORTS_SAVE )
-GAME( 198?, androidpo, androidp,   himesiki, androidpo, driver_device, 0, ROT90, "Nasco", "Android (prototype, early build)", MACHINE_SUPPORTS_SAVE )
+// the game changed significantly between these 2 versions, it is possible the later build was actually released
+GAME( 1987, androidp,  0,          himesiki, androidp,  himesiki_state, 0, ROT90, "Nasco", "Android (prototype, later build)", MACHINE_SUPPORTS_SAVE ) // shows 1987 copyright after staff list during ending
+GAME( 198?, androidpo, androidp,   himesiki, androidpo, himesiki_state, 0, ROT90, "Nasco", "Android (prototype, early build)", MACHINE_SUPPORTS_SAVE )

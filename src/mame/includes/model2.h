@@ -11,6 +11,7 @@
 #include "machine/315-5881_crypt.h"
 #include "machine/315-5838_317-0229_comp.h"
 #include "machine/m2comm.h"
+#include "machine/timer.h"
 #include "screen.h"
 
 class model2_renderer;
@@ -28,6 +29,8 @@ public:
 		m_textureram0(*this, "textureram0"),
 		m_textureram1(*this, "textureram1"),
 		m_lumaram(*this, "lumaram"),
+		m_fbvram1(*this, "fbvram1"),
+		m_fbvram2(*this, "fbvram2"),
 		m_soundram(*this, "soundram"),
 		m_tgp_program(*this, "tgp_program"),
 		m_tgpx4_program(*this, "tgpx4_program"),
@@ -51,7 +54,7 @@ public:
 		m_gears(*this, "GEARS"),
 		m_analog_ports(*this, {"ANA0", "ANA1", "ANA2", "ANA3"}),
 		m_lightgun_ports(*this, {"P1_Y", "P1_X", "P2_Y", "P2_X"})
-		{ }
+	{ }
 
 	required_shared_ptr<uint32_t> m_workram;
 	required_shared_ptr<uint32_t> m_bufferram;
@@ -60,6 +63,8 @@ public:
 	required_shared_ptr<uint32_t> m_textureram0;
 	required_shared_ptr<uint32_t> m_textureram1;
 	required_shared_ptr<uint32_t> m_lumaram;
+	required_shared_ptr<uint32_t> m_fbvram1;
+	required_shared_ptr<uint32_t> m_fbvram2;
 	optional_shared_ptr<uint16_t> m_soundram;
 	optional_shared_ptr<uint32_t> m_tgp_program;
 	optional_shared_ptr<uint64_t> m_tgpx4_program;

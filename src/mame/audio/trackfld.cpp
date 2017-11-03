@@ -11,13 +11,13 @@
 
 
 
-const device_type TRACKFLD_AUDIO = device_creator<trackfld_audio_device>;
+DEFINE_DEVICE_TYPE(TRACKFLD_AUDIO, trackfld_audio_device, "trackfld_audio", "Track And Field Audio")
 
 trackfld_audio_device::trackfld_audio_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, TRACKFLD_AUDIO, "Track And Field Audio", tag, owner, clock, "trackfld_audio", __FILE__),
-		device_sound_interface(mconfig, *this),
-		m_last_addr(0),
-		m_last_irq(0)
+	: device_t(mconfig, TRACKFLD_AUDIO, tag, owner, clock)
+	, device_sound_interface(mconfig, *this)
+	, m_last_addr(0)
+	, m_last_irq(0)
 {
 }
 
@@ -121,15 +121,15 @@ WRITE8_MEMBER( trackfld_audio_device::hyperspt_sound_w )
 
 
 
-WRITE8_MEMBER( trackfld_audio_device::konami_sh_irqtrigger_w )
+WRITE_LINE_MEMBER(trackfld_audio_device::sh_irqtrigger_w)
 {
-	if (m_last_irq == 0 && data)
+	if (m_last_irq == 0 && state)
 	{
 		/* setting bit 0 low then high triggers IRQ on the sound CPU */
 		m_audiocpu->set_input_line_and_vector(0, HOLD_LINE, 0xff);
 	}
 
-	m_last_irq = data;
+	m_last_irq = state;
 }
 
 //-------------------------------------------------

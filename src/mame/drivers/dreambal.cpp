@@ -304,7 +304,7 @@ void dreambal_state::machine_reset()
 }
 
 // xtals = 28.000, 9.8304
-static MACHINE_CONFIG_START( dreambal, dreambal_state )
+static MACHINE_CONFIG_START( dreambal )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 28000000/2)
@@ -327,6 +327,9 @@ static MACHINE_CONFIG_START( dreambal, dreambal_state )
 	MCFG_EEPROM_SERIAL_93C46_ADD("eeprom")  // 93lc46b
 
 	MCFG_DECO104_ADD("ioprot104")
+	MCFG_DECO146_IN_PORTA_CB(IOPORT("INPUTS"))
+	MCFG_DECO146_IN_PORTB_CB(IOPORT("SYSTEM"))
+	MCFG_DECO146_IN_PORTC_CB(IOPORT("DSW"))
 
 	MCFG_DEVICE_ADD("tilegen1", DECO16IC, 0)
 	MCFG_DECO16IC_SPLIT(0)
@@ -346,7 +349,7 @@ static MACHINE_CONFIG_START( dreambal, dreambal_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_OKIM6295_ADD("oki", 9830400/8, OKIM6295_PIN7_HIGH)
+	MCFG_OKIM6295_ADD("oki", 9830400/8, PIN7_HIGH)
 
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_CONFIG_END

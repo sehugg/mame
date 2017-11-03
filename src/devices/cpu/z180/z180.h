@@ -1,9 +1,9 @@
 // license:BSD-3-Clause
 // copyright-holders:Juergen Buchmueller
-#pragma once
+#ifndef MAME_CPU_Z180_Z180_H
+#define MAME_CPU_Z180_Z180_H
 
-#ifndef __Z180_H__
-#define __Z180_H__
+#pragma once
 
 #include "cpu/z80/z80daisy.h"
 
@@ -149,8 +149,8 @@ protected:
 	virtual void execute_set_input(int inputnum, int state) override;
 
 	// device_memory_interface overrides
-	virtual const address_space_config *memory_space_config(address_spacenum spacenum = AS_0) const override;
-	virtual bool memory_translate(address_spacenum spacenum, int intention, offs_t &address) override;
+	virtual space_config_vector memory_space_config() const override;
+	virtual bool memory_translate(int spacenum, int intention, offs_t &address) override;
 
 	// device_state_interface overrides
 	virtual void state_import(const device_state_entry &entry) override;
@@ -1773,11 +1773,9 @@ private:
 	void xycb_fd();
 	void xycb_fe();
 	void xycb_ff();
-
 };
 
 
-extern const device_type Z180;
+DECLARE_DEVICE_TYPE(Z180, z180_device)
 
-
-#endif /* __Z180_H__ */
+#endif // MAME_CPU_Z180_Z180_H

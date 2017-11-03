@@ -22,6 +22,7 @@
 #include "sound/ym2413.h"
 #include "sound/okim6376.h"
 #include "machine/nvram.h"
+#include "machine/timer.h"
 #include "sound/upd7759.h"
 #include "cpu/mcs51/mcs51.h"
 #include "sound/okim6295.h"
@@ -55,7 +56,7 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<i80c51_device> m_mcu;
-	optional_device<s16lf01_t> m_vfd;
+	optional_device<s16lf01_device> m_vfd;
 	required_device<ay8910_device> m_ay;
 	optional_device<okim6376_device> m_msm6376;
 	optional_device<upd7759_device> m_upd7759;

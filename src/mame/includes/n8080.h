@@ -1,6 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:Pierpaolo Prazzoli
+
 #include "cpu/mcs48/mcs48.h"
+#include "machine/timer.h"
 #include "sound/dac.h"
 #include "sound/sn76477.h"
 #include "screen.h"
@@ -67,10 +69,10 @@ public:
 	DECLARE_WRITE8_MEMBER(n8080_sound_1_w);
 	DECLARE_WRITE8_MEMBER(n8080_sound_2_w);
 	DECLARE_READ8_MEMBER(n8080_8035_p1_r);
-	DECLARE_READ8_MEMBER(n8080_8035_t0_r);
-	DECLARE_READ8_MEMBER(n8080_8035_t1_r);
-	DECLARE_READ8_MEMBER(helifire_8035_t0_r);
-	DECLARE_READ8_MEMBER(helifire_8035_t1_r);
+	DECLARE_READ_LINE_MEMBER(n8080_8035_t0_r);
+	DECLARE_READ_LINE_MEMBER(n8080_8035_t1_r);
+	DECLARE_READ_LINE_MEMBER(helifire_8035_t0_r);
+	DECLARE_READ_LINE_MEMBER(helifire_8035_t1_r);
 	DECLARE_READ8_MEMBER(helifire_8035_external_ram_r);
 	DECLARE_READ8_MEMBER(helifire_8035_p2_r);
 	DECLARE_WRITE8_MEMBER(n8080_dac_w);

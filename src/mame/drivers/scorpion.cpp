@@ -6,6 +6,7 @@
 #include "includes/spec128.h"
 
 #include "machine/beta.h"
+#include "machine/timer.h"
 #include "sound/ay8910.h"
 
 #include "formats/tzx_cas.h"
@@ -169,6 +170,13 @@ READ8_MEMBER(scorpion_state::beta_disable_r)
 	return m_program->read_byte(offset + 0x4000);
 }
 
+static ADDRESS_MAP_START( scorpion_mem, AS_PROGRAM, 8, scorpion_state )
+	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK("bank1") AM_WRITE(scorpion_0000_w)
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
+ADDRESS_MAP_END
+
 static ADDRESS_MAP_START (scorpion_io, AS_IO, 8, scorpion_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x001f, 0x001f) AM_DEVREADWRITE(BETA_DISK_TAG, beta_disk_device, status_r, command_w) AM_MIRROR(0xff00)
@@ -183,7 +191,7 @@ static ADDRESS_MAP_START (scorpion_io, AS_IO, 8, scorpion_state )
 	AM_RANGE(0x0021, 0x0021) AM_WRITE(scorpion_port_1ffd_w) AM_MIRROR(0x3fdc)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (scorpion_switch, AS_DECRYPTED_OPCODES, 8, scorpion_state)
+static ADDRESS_MAP_START (scorpion_switch, AS_OPCODES, 8, scorpion_state)
 	AM_RANGE(0x3d00, 0x3dff) AM_READ(beta_enable_r)
 	AM_RANGE(0x0000, 0x3fff) AM_READ(beta_neutral_r) // Overlap with previous because we want real addresses on the 3e00-3fff range
 	AM_RANGE(0x4000, 0xffff) AM_READ(beta_disable_r)
@@ -272,8 +280,9 @@ static GFXDECODE_START( quorum )
 	GFXDECODE_ENTRY( "maincpu", 0x1fb00, quorum_charlayout, 0, 8 )
 GFXDECODE_END
 
-static MACHINE_CONFIG_DERIVED_CLASS( scorpion, spectrum_128, scorpion_state )
+static MACHINE_CONFIG_DERIVED( scorpion, spectrum_128 )
 	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_PROGRAM_MAP(scorpion_mem)
 	MCFG_CPU_IO_MAP(scorpion_io)
 	MCFG_CPU_DECRYPTED_OPCODES_MAP(scorpion_switch)
 
@@ -288,6 +297,8 @@ static MACHINE_CONFIG_DERIVED_CLASS( scorpion, spectrum_128, scorpion_state )
 	MCFG_RAM_DEFAULT_SIZE("256K")
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("nmi_timer", scorpion_state, nmi_check_callback, attotime::from_hz(50))
+
+	MCFG_DEVICE_REMOVE("exp")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( profi, scorpion )
@@ -376,9 +387,9 @@ ROM_START( kay1024 )
 	ROMX_LOAD( "kay1024s.rom", 0x010000, 0x10000, CRC(67351caa) SHA1(1d9c0606b380c000ca1dfa33f90a122ecf9df1f1), ROM_BIOS(3))
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT   CLASS         INIT      COMPANY     FULLNAME */
-COMP( 1994, scorpio,  spec128,   0, scorpion,   spec_plus, driver_device,   0,      "Zonov and Co.",        "Scorpion ZS-256", 0 )
-COMP( 1991, profi,    spec128,   0, profi,      spec_plus, driver_device,   0,      "Kondor and Kramis",        "Profi", MACHINE_NOT_WORKING )
-COMP( 1998, kay1024,  spec128,   0, scorpion,   spec_plus, driver_device,   0,      "NEMO",     "Kay 1024", MACHINE_NOT_WORKING )
-COMP( 19??, quorum,   spec128,   0, quorum,     spec_plus, driver_device,   0,      "<unknown>",        "Quorum", MACHINE_NOT_WORKING )
-COMP( 19??, bestzx,   spec128,   0, scorpion,   spec_plus, driver_device,   0,      "<unknown>",        "BestZX", MACHINE_NOT_WORKING )
+//    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT      CLASS           INIT    COMPANY              FULLNAME           FLAGS
+COMP( 1994, scorpio,  spec128,  0,      scorpion,   spec_plus, scorpion_state, 0,      "Zonov and Co.",     "Scorpion ZS-256", 0 )
+COMP( 1991, profi,    spec128,  0,      profi,      spec_plus, scorpion_state, 0,      "Kondor and Kramis", "Profi",           MACHINE_NOT_WORKING )
+COMP( 1998, kay1024,  spec128,  0,      scorpion,   spec_plus, scorpion_state, 0,      "NEMO",              "Kay 1024",        MACHINE_NOT_WORKING )
+COMP( 19??, quorum,   spec128,  0,      quorum,     spec_plus, scorpion_state, 0,      "<unknown>",         "Quorum",          MACHINE_NOT_WORKING )
+COMP( 19??, bestzx,   spec128,  0,      scorpion,   spec_plus, scorpion_state, 0,      "<unknown>",         "BestZX",          MACHINE_NOT_WORKING )

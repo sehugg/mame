@@ -219,38 +219,18 @@ static const int ch_int_levels[8] =
 class cmi01a_device : public device_t, public device_sound_interface {
 public:
 	cmi01a_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-	cmi01a_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source);
 
 	static void set_channel_number(device_t &device, int channel) { dynamic_cast<cmi01a_device&>(device).m_channel = channel; }
 
-	DECLARE_WRITE_LINE_MEMBER( ptm_out0 );
-
 	DECLARE_WRITE8_MEMBER( write );
 	DECLARE_READ8_MEMBER( read );
-
-	DECLARE_WRITE8_MEMBER( rp_w );
-	DECLARE_WRITE8_MEMBER( ws_dir_w );
-	DECLARE_READ_LINE_MEMBER( tri_r );
-	DECLARE_WRITE_LINE_MEMBER( pia_0_ca2_w );
-	DECLARE_WRITE_LINE_MEMBER( pia_0_cb2_w );
-	DECLARE_WRITE_LINE_MEMBER( pia_0_irqa );
-	DECLARE_WRITE_LINE_MEMBER( pia_0_irqb );
-
-	DECLARE_READ_LINE_MEMBER( eosi_r );
-	DECLARE_READ_LINE_MEMBER( zx_r );
-	DECLARE_WRITE8_MEMBER( pia_1_a_w );
-	DECLARE_WRITE8_MEMBER( pia_1_b_w );
-	DECLARE_WRITE_LINE_MEMBER( pia_1_irqa );
-	DECLARE_WRITE_LINE_MEMBER( pia_1_irqb );
-
-	DECLARE_WRITE_LINE_MEMBER( ptm_irq );
 
 	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples) override;
 
 protected:
 	virtual void device_start() override;
 	virtual void device_reset() override;
-	machine_config_constructor device_mconfig_additions() const override;
+	virtual void device_add_mconfig(machine_config &config) override;
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 
 	static const device_timer_id TIMER_ZX = 0;
@@ -296,12 +276,30 @@ private:
 	int     m_pia_1_irqb;
 	int     m_ptm_irq;
 	int     m_irq_state;
+
+	DECLARE_WRITE8_MEMBER( rp_w );
+	DECLARE_WRITE8_MEMBER( ws_dir_w );
+	DECLARE_READ_LINE_MEMBER( tri_r );
+	DECLARE_WRITE_LINE_MEMBER( pia_0_ca2_w );
+	DECLARE_WRITE_LINE_MEMBER( pia_0_cb2_w );
+	DECLARE_WRITE_LINE_MEMBER( pia_0_irqa );
+	DECLARE_WRITE_LINE_MEMBER( pia_0_irqb );
+
+	DECLARE_READ_LINE_MEMBER( eosi_r );
+	DECLARE_READ_LINE_MEMBER( zx_r );
+	DECLARE_WRITE8_MEMBER( pia_1_a_w );
+	DECLARE_WRITE8_MEMBER( pia_1_b_w );
+	DECLARE_WRITE_LINE_MEMBER( pia_1_irqa );
+	DECLARE_WRITE_LINE_MEMBER( pia_1_irqb );
+
+	DECLARE_WRITE_LINE_MEMBER( ptm_irq );
+	DECLARE_WRITE_LINE_MEMBER( ptm_out0 );
 };
 
-const device_type CMI01A_CHANNEL_CARD = device_creator<cmi01a_device>;
+DEFINE_DEVICE_TYPE(CMI01A_CHANNEL_CARD, cmi01a_device, "cmi_01a", "Fairlight CMI-01A Channel Card")
 
 cmi01a_device::cmi01a_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, CMI01A_CHANNEL_CARD, "Fairlight CMI-01A Channel Card", tag, owner, clock, "cmi_01a", __FILE__)
+	: device_t(mconfig, CMI01A_CHANNEL_CARD, tag, owner, clock)
 	, device_sound_interface(mconfig, *this)
 	, m_pia_0(*this, "cmi01a_pia_0")
 	, m_pia_1(*this, "cmi01a_pia_1")
@@ -312,7 +310,7 @@ cmi01a_device::cmi01a_device(const machine_config &mconfig, const char *tag, dev
 {
 }
 
-MACHINE_CONFIG_FRAGMENT( cmi01a_device )
+MACHINE_CONFIG_MEMBER( cmi01a_device::device_add_mconfig )
 	MCFG_DEVICE_ADD("cmi01a_pia_0", PIA6821, 0) // pia_cmi01a_1_config
 	MCFG_PIA_READCB1_HANDLER(READLINE(cmi01a_device, tri_r))
 	MCFG_PIA_WRITEPA_HANDLER(WRITE8(cmi01a_device, ws_dir_w))
@@ -336,10 +334,6 @@ MACHINE_CONFIG_FRAGMENT( cmi01a_device )
 	MCFG_PTM6840_IRQ_CB(WRITELINE(cmi01a_device, ptm_irq))
 MACHINE_CONFIG_END
 
-machine_config_constructor cmi01a_device::device_mconfig_additions() const
-{
-	return MACHINE_CONFIG_NAME(cmi01a_device);
-}
 
 void cmi01a_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
 {
@@ -601,7 +595,7 @@ protected:
 	required_memory_region m_qfc9_region;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
-	required_device<fd1791_t> m_wd1791;
+	required_device<fd1791_device> m_wd1791;
 
 	required_device_array<cmi01a_device, 8> m_channels;
 
@@ -2745,7 +2739,7 @@ static SLOT_INTERFACE_START( cmi2x_floppies )
 	SLOT_INTERFACE( "8dssd", FLOPPY_8_DSSD )
 SLOT_INTERFACE_END
 
-static MACHINE_CONFIG_START( cmi2x, cmi_state )
+static MACHINE_CONFIG_START( cmi2x )
 	MCFG_CPU_ADD("maincpu1", M6809E, Q209_CPU_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(maincpu1_map)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", cmi_state, cmi_iix_vblank)
@@ -2787,11 +2781,11 @@ static MACHINE_CONFIG_START( cmi2x, cmi_state )
 	MCFG_MSM5832_ADD("msm5832", XTAL_32_768kHz)
 
 	MCFG_DEVICE_ADD("i8214_1", I8214, 1000000) // cmi_8214_intf_1
-	MCFG_I8214_IRQ_CALLBACK(WRITELINE(cmi_state, i8214_1_int_w))
+	MCFG_I8214_INT_CALLBACK(WRITELINE(cmi_state, i8214_1_int_w))
 	MCFG_DEVICE_ADD("i8214_2", I8214, 1000000) // cmi_8214_intf_2
-	MCFG_I8214_IRQ_CALLBACK(WRITELINE(cmi_state, i8214_2_int_w))
+	MCFG_I8214_INT_CALLBACK(WRITELINE(cmi_state, i8214_2_int_w))
 	MCFG_DEVICE_ADD("i8214_3", I8214, 1000000) // cmi_8214_intf_3
-	MCFG_I8214_IRQ_CALLBACK(WRITELINE(cmi_state, i8214_3_int_w))
+	MCFG_I8214_INT_CALLBACK(WRITELINE(cmi_state, i8214_3_int_w))
 	MCFG_I8214_ENLG_CALLBACK(WRITELINE(cmi_state, i8214_3_enlg))
 
 	MCFG_DEVICE_ADD("q133_pia_1", PIA6821, 0) // pia_q133_1_config
@@ -2860,7 +2854,7 @@ static MACHINE_CONFIG_START( cmi2x, cmi_state )
 	MCFG_ACIA6850_RTS_HANDLER(DEVWRITELINE("ank_pia", pia6821_device, ca2_w))
 	MCFG_ACIA6850_IRQ_HANDLER(WRITELINE(cmi_state, mkbd_kbd_acia_int))
 
-	MCFG_INPUT_MERGER_ACTIVE_HIGH("irqs")
+	MCFG_INPUT_MERGER_ANY_HIGH("irqs")
 	MCFG_INPUT_MERGER_OUTPUT_HANDLER(INPUTLINE("alphakeys", M6802_IRQ_LINE))
 
 	MCFG_DEVICE_MODIFY("ank_pia")

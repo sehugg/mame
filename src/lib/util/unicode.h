@@ -60,12 +60,14 @@
 #define o_UMLAUT                "\xc3\xb6"          /* small o with an umlaut */
 #define u_UMLAUT                "\xc3\xbc"          /* small u with an umlaut */
 #define e_ACUTE                 "\xc3\xa9"          /* small e with an acute */
+#define n_TILDE                 "\xc3\xb1"          /* small n with a tilde */
 
 #define A_RING                  "\xc3\x85"          /* capital A with a ring */
 #define A_UMLAUT                "\xc3\x84"          /* capital A with an umlaut */
 #define O_UMLAUT                "\xc3\x96"          /* capital O with an umlaut */
 #define U_UMLAUT                "\xc3\x9c"          /* capital U with an umlaut */
 #define E_ACUTE                 "\xc3\x89"          /* capital E with an acute */
+#define N_TILDE                 "\xc3\x91"          /* capital N with a tilde */
 
 #define UTF8_LEFT               "\xe2\x86\x90"      /* cursor left */
 #define UTF8_RIGHT              "\xe2\x86\x92"      /* cursor right */
@@ -108,6 +110,10 @@ std::string utf8_from_wstring(const std::wstring &string);
 std::string normalize_unicode(const std::string &s, unicode_normalization_form normalization_form);
 std::string normalize_unicode(const char *s, unicode_normalization_form normalization_form);
 std::string normalize_unicode(const char *s, size_t length, unicode_normalization_form normalization_form);
+
+// upper and lower case
+char32_t uchar_toupper(char32_t ch);
+char32_t uchar_tolower(char32_t ch);
 
 // misc UTF-8 helpers
 const char *utf8_previous_char(const char *utf8string);

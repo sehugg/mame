@@ -214,14 +214,42 @@
 *********************************************************************/
 
 #include "emu.h"
-#include "debugger.h"
 #include "e132xs.h"
+
+#include "debugger.h"
+
+#include "32xsdefs.h"
 
 #ifdef MAME_DEBUG
 #define DEBUG_PRINTF(x) do { osd_printf_debug x; } while (0)
 #else
 #define DEBUG_PRINTF(x) do { } while (0)
 #endif
+
+/* Memory access */
+/* read byte */
+#define READ_B(addr)            m_program->read_byte((addr))
+/* read half-word */
+#define READ_HW(addr)           m_program->read_word((addr) & ~1)
+/* read word */
+#define READ_W(addr)            m_program->read_dword((addr) & ~3)
+
+/* write byte */
+#define WRITE_B(addr, data)     m_program->write_byte(addr, data)
+/* write half-word */
+#define WRITE_HW(addr, data)    m_program->write_word((addr) & ~1, data)
+/* write word */
+#define WRITE_W(addr, data)     m_program->write_dword((addr) & ~3, data)
+
+
+/* I/O access */
+/* read word */
+#define IO_READ_W(addr)         m_io->read_dword(((addr) >> 11) & 0x7ffc)
+/* write word */
+#define IO_WRITE_W(addr, data)  m_io->write_dword(((addr) >> 11) & 0x7ffc, data)
+
+
+#define READ_OP(addr)          m_direct->read_word((addr), m_opcodexor)
 
 // set C in adds/addsi/subs/sums
 #define SETCARRYS 0
@@ -318,9 +346,9 @@ ADDRESS_MAP_END
 //  hyperstone_device - constructor
 //-------------------------------------------------
 
-hyperstone_device::hyperstone_device(const machine_config &mconfig, const char *name, const char *tag, device_t *owner, uint32_t clock,
-										const device_type type, uint32_t prg_data_width, uint32_t io_data_width, address_map_constructor internal_map, const char *shortname, const char *source)
-	: cpu_device(mconfig, type, name, tag, owner, clock, shortname, source),
+hyperstone_device::hyperstone_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock,
+										const device_type type, uint32_t prg_data_width, uint32_t io_data_width, address_map_constructor internal_map)
+	: cpu_device(mconfig, type, tag, owner, clock),
 		m_program_config("program", ENDIANNESS_BIG, prg_data_width, 32, 0, internal_map),
 		m_io_config("io", ENDIANNESS_BIG, io_data_width, 15),
 		m_icount(0)
@@ -336,7 +364,7 @@ hyperstone_device::hyperstone_device(const machine_config &mconfig, const char *
 //-------------------------------------------------
 
 e116t_device::e116t_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-16T", tag, owner, clock, E116T, 16, 16, ADDRESS_MAP_NAME(e116_4k_iram_map), "e116t", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E116T, 16, 16, ADDRESS_MAP_NAME(e116_4k_iram_map))
 {
 }
 
@@ -346,7 +374,7 @@ e116t_device::e116t_device(const machine_config &mconfig, const char *tag, devic
 //-------------------------------------------------
 
 e116xt_device::e116xt_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-16XT", tag, owner, clock, E116XT, 16, 16, ADDRESS_MAP_NAME(e116_8k_iram_map), "e116xt", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E116XT, 16, 16, ADDRESS_MAP_NAME(e116_8k_iram_map))
 {
 }
 
@@ -356,7 +384,7 @@ e116xt_device::e116xt_device(const machine_config &mconfig, const char *tag, dev
 //-------------------------------------------------
 
 e116xs_device::e116xs_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-16XS", tag, owner, clock, E116XS, 16, 16, ADDRESS_MAP_NAME(e116_16k_iram_map), "e116xs", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E116XS, 16, 16, ADDRESS_MAP_NAME(e116_16k_iram_map))
 {
 }
 
@@ -366,7 +394,7 @@ e116xs_device::e116xs_device(const machine_config &mconfig, const char *tag, dev
 //-------------------------------------------------
 
 e116xsr_device::e116xsr_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-16XSR", tag, owner, clock, E116XSR, 16, 16, ADDRESS_MAP_NAME(e116_16k_iram_map), "e116xsr", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E116XSR, 16, 16, ADDRESS_MAP_NAME(e116_16k_iram_map))
 {
 }
 
@@ -376,7 +404,7 @@ e116xsr_device::e116xsr_device(const machine_config &mconfig, const char *tag, d
 //-------------------------------------------------
 
 e132n_device::e132n_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-32N", tag, owner, clock, E132N, 32, 32, ADDRESS_MAP_NAME(e132_4k_iram_map), "e132n", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E132N, 32, 32, ADDRESS_MAP_NAME(e132_4k_iram_map))
 {
 }
 
@@ -386,7 +414,7 @@ e132n_device::e132n_device(const machine_config &mconfig, const char *tag, devic
 //-------------------------------------------------
 
 e132t_device::e132t_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-32T", tag, owner, clock, E132T, 32, 32, ADDRESS_MAP_NAME(e132_4k_iram_map), "e132t", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E132T, 32, 32, ADDRESS_MAP_NAME(e132_4k_iram_map))
 {
 }
 
@@ -396,7 +424,7 @@ e132t_device::e132t_device(const machine_config &mconfig, const char *tag, devic
 //-------------------------------------------------
 
 e132xn_device::e132xn_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-32XN", tag, owner, clock, E132XN, 32, 32, ADDRESS_MAP_NAME(e132_8k_iram_map), "e132xn", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E132XN, 32, 32, ADDRESS_MAP_NAME(e132_8k_iram_map))
 {
 }
 
@@ -406,7 +434,7 @@ e132xn_device::e132xn_device(const machine_config &mconfig, const char *tag, dev
 //-------------------------------------------------
 
 e132xt_device::e132xt_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-32XT", tag, owner, clock, E132XT, 32, 32, ADDRESS_MAP_NAME(e132_8k_iram_map), "e132xt", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E132XT, 32, 32, ADDRESS_MAP_NAME(e132_8k_iram_map))
 {
 }
 
@@ -416,7 +444,7 @@ e132xt_device::e132xt_device(const machine_config &mconfig, const char *tag, dev
 //-------------------------------------------------
 
 e132xs_device::e132xs_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-32XS", tag, owner, clock, E132XS, 32, 32, ADDRESS_MAP_NAME(e132_16k_iram_map), "e132xs", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E132XS, 32, 32, ADDRESS_MAP_NAME(e132_16k_iram_map))
 {
 }
 
@@ -426,7 +454,7 @@ e132xs_device::e132xs_device(const machine_config &mconfig, const char *tag, dev
 //-------------------------------------------------
 
 e132xsr_device::e132xsr_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "E1-32XSR", tag, owner, clock, E132XSR, 32, 32, ADDRESS_MAP_NAME(e132_16k_iram_map), "e132xsr", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, E132XSR, 32, 32, ADDRESS_MAP_NAME(e132_16k_iram_map))
 {
 }
 
@@ -436,7 +464,7 @@ e132xsr_device::e132xsr_device(const machine_config &mconfig, const char *tag, d
 //-------------------------------------------------
 
 gms30c2116_device::gms30c2116_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "GMS30C2116", tag, owner, clock, GMS30C2116, 16, 16, ADDRESS_MAP_NAME(e116_4k_iram_map), "gms30c2116", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, GMS30C2116, 16, 16, ADDRESS_MAP_NAME(e116_4k_iram_map))
 {
 }
 
@@ -446,7 +474,7 @@ gms30c2116_device::gms30c2116_device(const machine_config &mconfig, const char *
 //-------------------------------------------------
 
 gms30c2132_device::gms30c2132_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "GMS30C2132", tag, owner, clock, GMS30C2132, 32, 32, ADDRESS_MAP_NAME(e132_4k_iram_map), "gms30c2132", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, GMS30C2132, 32, 32, ADDRESS_MAP_NAME(e132_4k_iram_map))
 {
 }
 
@@ -456,7 +484,7 @@ gms30c2132_device::gms30c2132_device(const machine_config &mconfig, const char *
 //-------------------------------------------------
 
 gms30c2216_device::gms30c2216_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "GMS30C2216", tag, owner, clock, GMS30C2216, 16, 16, ADDRESS_MAP_NAME(e116_8k_iram_map), "gms30c2216", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, GMS30C2216, 16, 16, ADDRESS_MAP_NAME(e116_8k_iram_map))
 {
 }
 
@@ -466,7 +494,7 @@ gms30c2216_device::gms30c2216_device(const machine_config &mconfig, const char *
 //-------------------------------------------------
 
 gms30c2232_device::gms30c2232_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: hyperstone_device(mconfig, "GMS30C2232", tag, owner, clock, GMS30C2232, 32, 32, ADDRESS_MAP_NAME(e132_8k_iram_map), "gms30c2232", __FILE__)
+	: hyperstone_device(mconfig, tag, owner, clock, GMS30C2232, 32, 32, ADDRESS_MAP_NAME(e132_8k_iram_map))
 {
 }
 
@@ -584,7 +612,7 @@ void hyperstone_device::hyperstone_set_trap_entry(int which)
 #define SET_T(val)              (SR = (SR & ~0x00010000) | ((val) << 16))
 #define SET_P(val)              (SR = (SR & ~0x00020000) | ((val) << 17))
 #define SET_S(val)              (SR = (SR & ~0x00040000) | ((val) << 18))
-#define SET_ILC(val)            (SR = (SR & ~0x00180000) | ((val) << 19))
+#define SET_ILC(val)            (SR = (SR & 0xffe7ffff) | (val))
 #define SET_FL(val)             (SR = (SR & ~0x01e00000) | ((val) << 21))
 #define SET_FP(val)             (SR = (SR & ~0xfe000000) | ((val) << 25))
 
@@ -1027,19 +1055,19 @@ do                                                                              
 				break;                                                              \
 																					\
 			case 1:                                                                 \
-				m_instruction_length = 3;                                           \
+				m_instruction_length = (3<<19);                                     \
 				EXTRA_U = (READ_OP(PC) << 16) | READ_OP(PC + 2);                    \
 				PC += 4;                                                            \
 				break;                                                              \
 																					\
 			case 2:                                                                 \
-				m_instruction_length = 2;                                           \
+				m_instruction_length = (2<<19);                                     \
 				EXTRA_U = READ_OP(PC);                                              \
 				PC += 2;                                                            \
 				break;                                                              \
 																					\
 			case 3:                                                                 \
-				m_instruction_length = 2;                                           \
+				m_instruction_length = (2<<19);                                     \
 				EXTRA_U = 0xffff0000 | READ_OP(PC);                                 \
 				PC += 2;                                                            \
 				break;                                                              \
@@ -1049,17 +1077,17 @@ do                                                                              
 #define decode_const(decode)                                                        \
 do                                                                                  \
 {                                                                                   \
-	uint16_t imm_1 = READ_OP(PC);                                                     \
+	uint16_t imm_1 = READ_OP(PC);                                                   \
 																					\
 	PC += 2;                                                                        \
-	m_instruction_length = 2;                                                       \
+	m_instruction_length = (2<<19);                                                 \
 																					\
 	if( E_BIT(imm_1) )                                                              \
 	{                                                                               \
-		uint16_t imm_2 = READ_OP(PC);                                                 \
+		uint16_t imm_2 = READ_OP(PC);                                               \
 																					\
 		PC += 2;                                                                    \
-		m_instruction_length = 3;                                                   \
+		m_instruction_length = (3<<19);                                             \
 																					\
 		EXTRA_S = imm_2;                                                            \
 		EXTRA_S |= ((imm_1 & 0x3fff) << 16);                                        \
@@ -1085,10 +1113,10 @@ do                                                                              
 {                                                                                   \
 	if( OP & 0x80 )                                                                 \
 	{                                                                               \
-		uint16_t next = READ_OP(PC);                                                  \
+		uint16_t next = READ_OP(PC);                                                \
 																					\
 		PC += 2;                                                                    \
-		m_instruction_length = 2;                                                   \
+		m_instruction_length = (2<<19);                                             \
 																					\
 		EXTRA_S = (OP & 0x7f) << 16;                                                \
 		EXTRA_S |= (next & 0xfffe);                                                 \
@@ -1108,19 +1136,19 @@ do                                                                              
 #define decode_dis(decode)                                                          \
 do                                                                                  \
 {                                                                                   \
-	uint16_t next_1 = READ_OP(PC);                                                    \
+	uint16_t next_1 = READ_OP(PC);                                                  \
 																					\
 	PC += 2;                                                                        \
-	m_instruction_length = 2;                                                       \
+	m_instruction_length = (2<<19);                                                 \
 																					\
 	(decode)->sub_type = DD(next_1);                                                \
 																					\
 	if( E_BIT(next_1) )                                                             \
 	{                                                                               \
-		uint16_t next_2 = READ_OP(PC);                                                \
+		uint16_t next_2 = READ_OP(PC);                                              \
 																					\
 		PC += 2;                                                                    \
-		m_instruction_length = 3;                                                   \
+		m_instruction_length = (3<<19);                                             \
 																					\
 		EXTRA_S = next_2;                                                           \
 		EXTRA_S |= ((next_1 & 0xfff) << 16);                                        \
@@ -1144,9 +1172,9 @@ do                                                                              
 #define decode_lim(decode)                                                          \
 do                                                                                  \
 {                                                                                   \
-	uint32_t next = READ_OP(PC);                                                      \
+	uint32_t next = READ_OP(PC);                                                    \
 	PC += 2;                                                                        \
-	m_instruction_length = 2;                                                       \
+	m_instruction_length = (2<<19);                                                 \
 																					\
 	(decode)->sub_type = X_CODE(next);                                              \
 																					\
@@ -1154,7 +1182,7 @@ do                                                                              
 	{                                                                               \
 		EXTRA_U = ((next & 0xfff) << 16) | READ_OP(PC);                             \
 		PC += 2;                                                                    \
-		m_instruction_length = 3;                                                   \
+		m_instruction_length = (3<<19);                                             \
 	}                                                                               \
 	else                                                                            \
 	{                                                                               \
@@ -1251,7 +1279,7 @@ do                                                                              
 #define LLextdecode(decode)                                                         \
 do                                                                                  \
 {                                                                                   \
-	m_instruction_length = 2;                                                       \
+	m_instruction_length = (2<<19);                                                 \
 	EXTRA_U = READ_OP(PC);                                                          \
 	PC += 2;                                                                        \
 	check_delay_PC();                                                               \
@@ -1316,7 +1344,7 @@ void hyperstone_device::execute_trap(uint32_t addr)
 	uint32_t oldSR;
 	reg = GET_FP + GET_FL;
 
-	SET_ILC(m_instruction_length & 3);
+	SET_ILC(m_instruction_length);
 
 	oldSR = SR;
 
@@ -1344,7 +1372,7 @@ void hyperstone_device::execute_int(uint32_t addr)
 	uint32_t oldSR;
 	reg = GET_FP + GET_FL;
 
-	SET_ILC(m_instruction_length & 3);
+	SET_ILC(m_instruction_length);
 
 	oldSR = SR;
 
@@ -1373,7 +1401,7 @@ void hyperstone_device::execute_exception(uint32_t addr)
 	uint32_t oldSR;
 	reg = GET_FP + GET_FL;
 
-	SET_ILC(m_instruction_length & 3);
+	SET_ILC(m_instruction_length);
 
 	oldSR = SR;
 
@@ -1402,7 +1430,7 @@ void hyperstone_device::execute_software(struct hyperstone_device::regs_decode *
 	uint32_t addr;
 	uint32_t stack_of_dst;
 
-	SET_ILC(1);
+	SET_ILC(1<<19);
 
 	addr = get_emu_code_addr((OP & 0xff00) >> 8);
 	reg = GET_FP + GET_FL;
@@ -1852,21 +1880,15 @@ void hyperstone_device::device_stop()
 
 //-------------------------------------------------
 //  memory_space_config - return the configuration
-//  of the specified address space, or nullptr if
-//  the space doesn't exist
+//  of the address spaces
 //-------------------------------------------------
 
-const address_space_config *hyperstone_device::memory_space_config(address_spacenum spacenum) const
+device_memory_interface::space_config_vector hyperstone_device::memory_space_config() const
 {
-	if (spacenum == AS_PROGRAM)
-	{
-		return &m_program_config;
-	}
-	else if (spacenum == AS_IO)
-	{
-		return &m_io_config;
-	}
-	return nullptr;
+	return space_config_vector {
+		std::make_pair(AS_PROGRAM, &m_program_config),
+		std::make_pair(AS_IO,      &m_io_config)
+	};
 }
 
 
@@ -4688,7 +4710,7 @@ void hyperstone_device::hyperstone_call(struct hyperstone_device::regs_decode *d
 
 	EXTRA_S = (EXTRA_S & ~1) + SREG;
 
-	SET_ILC(m_instruction_length & 3);
+	SET_ILC(m_instruction_length);
 
 	SET_DREG((PC & 0xfffffffe) | GET_S);
 	SET_DREGF(SR);
@@ -4968,15 +4990,277 @@ void hyperstone_device::execute_run()
 		OP = READ_OP(PC);
 		PC += 2;
 
-		m_instruction_length = 1;
+		m_instruction_length = (1<<19);
 
+#if 1
 		/* execute opcode */
+		switch ((OP >> 8) & 0x00ff)
+		{
+			case 0x00: op00(); break;
+			case 0x01: op01(); break;
+			case 0x02: op02(); break;
+			case 0x03: op03(); break;
+			case 0x04: op04(); break;
+			case 0x05: op05(); break;
+			case 0x06: op06(); break;
+			case 0x07: op07(); break;
+			case 0x08: op08(); break;
+			case 0x09: op09(); break;
+			case 0x0a: op0a(); break;
+			case 0x0b: op0b(); break;
+			case 0x0c: op0c(); break;
+			case 0x0d: op0d(); break;
+			case 0x0e: op0e(); break;
+			case 0x0f: op0f(); break;
+			case 0x10: op10(); break;
+			case 0x11: op11(); break;
+			case 0x12: op12(); break;
+			case 0x13: op13(); break;
+			case 0x14: op14(); break;
+			case 0x15: op15(); break;
+			case 0x16: op16(); break;
+			case 0x17: op17(); break;
+			case 0x18: op18(); break;
+			case 0x19: op19(); break;
+			case 0x1a: op1a(); break;
+			case 0x1b: op1b(); break;
+			case 0x1c: op1c(); break;
+			case 0x1d: op1d(); break;
+			case 0x1e: op1e(); break;
+			case 0x1f: op1f(); break;
+			case 0x20: op20(); break;
+			case 0x21: op21(); break;
+			case 0x22: op22(); break;
+			case 0x23: op23(); break;
+			case 0x24: op24(); break;
+			case 0x25: op25(); break;
+			case 0x26: op26(); break;
+			case 0x27: op27(); break;
+			case 0x28: op28(); break;
+			case 0x29: op29(); break;
+			case 0x2a: op2a(); break;
+			case 0x2b: op2b(); break;
+			case 0x2c: op2c(); break;
+			case 0x2d: op2d(); break;
+			case 0x2e: op2e(); break;
+			case 0x2f: op2f(); break;
+			case 0x30: op30(); break;
+			case 0x31: op31(); break;
+			case 0x32: op32(); break;
+			case 0x33: op33(); break;
+			case 0x34: op34(); break;
+			case 0x35: op35(); break;
+			case 0x36: op36(); break;
+			case 0x37: op37(); break;
+			case 0x38: op38(); break;
+			case 0x39: op39(); break;
+			case 0x3a: op3a(); break;
+			case 0x3b: op3b(); break;
+			case 0x3c: op3c(); break;
+			case 0x3d: op3d(); break;
+			case 0x3e: op3e(); break;
+			case 0x3f: op3f(); break;
+			case 0x40: op40(); break;
+			case 0x41: op41(); break;
+			case 0x42: op42(); break;
+			case 0x43: op43(); break;
+			case 0x44: op44(); break;
+			case 0x45: op45(); break;
+			case 0x46: op46(); break;
+			case 0x47: op47(); break;
+			case 0x48: op48(); break;
+			case 0x49: op49(); break;
+			case 0x4a: op4a(); break;
+			case 0x4b: op4b(); break;
+			case 0x4c: op4c(); break;
+			case 0x4d: op4d(); break;
+			case 0x4e: op4e(); break;
+			case 0x4f: op4f(); break;
+			case 0x50: op50(); break;
+			case 0x51: op51(); break;
+			case 0x52: op52(); break;
+			case 0x53: op53(); break;
+			case 0x54: op54(); break;
+			case 0x55: op55(); break;
+			case 0x56: op56(); break;
+			case 0x57: op57(); break;
+			case 0x58: op58(); break;
+			case 0x59: op59(); break;
+			case 0x5a: op5a(); break;
+			case 0x5b: op5b(); break;
+			case 0x5c: op5c(); break;
+			case 0x5d: op5d(); break;
+			case 0x5e: op5e(); break;
+			case 0x5f: op5f(); break;
+			case 0x60: op60(); break;
+			case 0x61: op61(); break;
+			case 0x62: op62(); break;
+			case 0x63: op63(); break;
+			case 0x64: op64(); break;
+			case 0x65: op65(); break;
+			case 0x66: op66(); break;
+			case 0x67: op67(); break;
+			case 0x68: op68(); break;
+			case 0x69: op69(); break;
+			case 0x6a: op6a(); break;
+			case 0x6b: op6b(); break;
+			case 0x6c: op6c(); break;
+			case 0x6d: op6d(); break;
+			case 0x6e: op6e(); break;
+			case 0x6f: op6f(); break;
+			case 0x70: op70(); break;
+			case 0x71: op71(); break;
+			case 0x72: op72(); break;
+			case 0x73: op73(); break;
+			case 0x74: op74(); break;
+			case 0x75: op75(); break;
+			case 0x76: op76(); break;
+			case 0x77: op77(); break;
+			case 0x78: op78(); break;
+			case 0x79: op79(); break;
+			case 0x7a: op7a(); break;
+			case 0x7b: op7b(); break;
+			case 0x7c: op7c(); break;
+			case 0x7d: op7d(); break;
+			case 0x7e: op7e(); break;
+			case 0x7f: op7f(); break;
+			case 0x80: op80(); break;
+			case 0x81: op81(); break;
+			case 0x82: op82(); break;
+			case 0x83: op83(); break;
+			case 0x84: op84(); break;
+			case 0x85: op85(); break;
+			case 0x86: op86(); break;
+			case 0x87: op87(); break;
+			case 0x88: op88(); break;
+			case 0x89: op89(); break;
+			case 0x8a: op8a(); break;
+			case 0x8b: op8b(); break;
+			case 0x8c: op8c(); break;
+			case 0x8d: op8d(); break;
+			case 0x8e: op8e(); break;
+			case 0x8f: op8f(); break;
+			case 0x90: op90(); break;
+			case 0x91: op91(); break;
+			case 0x92: op92(); break;
+			case 0x93: op93(); break;
+			case 0x94: op94(); break;
+			case 0x95: op95(); break;
+			case 0x96: op96(); break;
+			case 0x97: op97(); break;
+			case 0x98: op98(); break;
+			case 0x99: op99(); break;
+			case 0x9a: op9a(); break;
+			case 0x9b: op9b(); break;
+			case 0x9c: op9c(); break;
+			case 0x9d: op9d(); break;
+			case 0x9e: op9e(); break;
+			case 0x9f: op9f(); break;
+			case 0xa0: opa0(); break;
+			case 0xa1: opa1(); break;
+			case 0xa2: opa2(); break;
+			case 0xa3: opa3(); break;
+			case 0xa4: opa4(); break;
+			case 0xa5: opa5(); break;
+			case 0xa6: opa6(); break;
+			case 0xa7: opa7(); break;
+			case 0xa8: opa8(); break;
+			case 0xa9: opa9(); break;
+			case 0xaa: opaa(); break;
+			case 0xab: opab(); break;
+			case 0xac: opac(); break;
+			case 0xad: opad(); break;
+			case 0xae: opae(); break;
+			case 0xaf: opaf(); break;
+			case 0xb0: opb0(); break;
+			case 0xb1: opb1(); break;
+			case 0xb2: opb2(); break;
+			case 0xb3: opb3(); break;
+			case 0xb4: opb4(); break;
+			case 0xb5: opb5(); break;
+			case 0xb6: opb6(); break;
+			case 0xb7: opb7(); break;
+			case 0xb8: opb8(); break;
+			case 0xb9: opb9(); break;
+			case 0xba: opba(); break;
+			case 0xbb: opbb(); break;
+			case 0xbc: opbc(); break;
+			case 0xbd: opbd(); break;
+			case 0xbe: opbe(); break;
+			case 0xbf: opbf(); break;
+			case 0xc0: opc0(); break;
+			case 0xc1: opc1(); break;
+			case 0xc2: opc2(); break;
+			case 0xc3: opc3(); break;
+			case 0xc4: opc4(); break;
+			case 0xc5: opc5(); break;
+			case 0xc6: opc6(); break;
+			case 0xc7: opc7(); break;
+			case 0xc8: opc8(); break;
+			case 0xc9: opc9(); break;
+			case 0xca: opca(); break;
+			case 0xcb: opcb(); break;
+			case 0xcc: opcc(); break;
+			case 0xcd: opcd(); break;
+			case 0xce: opce(); break;
+			case 0xcf: opcf(); break;
+			case 0xd0: opd0(); break;
+			case 0xd1: opd1(); break;
+			case 0xd2: opd2(); break;
+			case 0xd3: opd3(); break;
+			case 0xd4: opd4(); break;
+			case 0xd5: opd5(); break;
+			case 0xd6: opd6(); break;
+			case 0xd7: opd7(); break;
+			case 0xd8: opd8(); break;
+			case 0xd9: opd9(); break;
+			case 0xda: opda(); break;
+			case 0xdb: opdb(); break;
+			case 0xdc: opdc(); break;
+			case 0xdd: opdd(); break;
+			case 0xde: opde(); break;
+			case 0xdf: opdf(); break;
+			case 0xe0: ope0(); break;
+			case 0xe1: ope1(); break;
+			case 0xe2: ope2(); break;
+			case 0xe3: ope3(); break;
+			case 0xe4: ope4(); break;
+			case 0xe5: ope5(); break;
+			case 0xe6: ope6(); break;
+			case 0xe7: ope7(); break;
+			case 0xe8: ope8(); break;
+			case 0xe9: ope9(); break;
+			case 0xea: opea(); break;
+			case 0xeb: opeb(); break;
+			case 0xec: opec(); break;
+			case 0xed: oped(); break;
+			case 0xee: opee(); break;
+			case 0xef: opef(); break;
+			case 0xf0: opf0(); break;
+			case 0xf1: opf1(); break;
+			case 0xf2: opf2(); break;
+			case 0xf3: opf3(); break;
+			case 0xf4: opf4(); break;
+			case 0xf5: opf5(); break;
+			case 0xf6: opf6(); break;
+			case 0xf7: opf7(); break;
+			case 0xf8: opf8(); break;
+			case 0xf9: opf9(); break;
+			case 0xfa: opfa(); break;
+			case 0xfb: opfb(); break;
+			case 0xfc: opfc(); break;
+			case 0xfd: opfd(); break;
+			case 0xfe: opfe(); break;
+			case 0xff: opff(); break;
+		}
+#else
 		(this->*m_opcode[(OP & 0xff00) >> 8])();
+#endif
 
 		/* clear the H state if it was previously set */
 		SR ^= oldh;
 
-		SET_ILC(m_instruction_length & 3);
+		SET_ILC(m_instruction_length);
 
 		if( GET_T && GET_P && m_delay.delay_cmd == NO_DELAY ) /* Not in a Delayed Branch instructions */
 		{
@@ -4990,17 +5274,17 @@ void hyperstone_device::execute_run()
 	} while( m_icount > 0 );
 }
 
-const device_type E116T = device_creator<e116t_device>;
-const device_type E116XT = device_creator<e116xt_device>;
-const device_type E116XS = device_creator<e116xs_device>;
-const device_type E116XSR = device_creator<e116xsr_device>;
-const device_type E132N = device_creator<e132n_device>;
-const device_type E132T = device_creator<e132t_device>;
-const device_type E132XN = device_creator<e132xn_device>;
-const device_type E132XT = device_creator<e132xt_device>;
-const device_type E132XS = device_creator<e132xs_device>;
-const device_type E132XSR = device_creator<e132xsr_device>;
-const device_type GMS30C2116 = device_creator<gms30c2116_device>;
-const device_type GMS30C2132 = device_creator<gms30c2132_device>;
-const device_type GMS30C2216 = device_creator<gms30c2216_device>;
-const device_type GMS30C2232 = device_creator<gms30c2232_device>;
+DEFINE_DEVICE_TYPE(E116T,      e116t_device,      "e116t",      "E1-16T")
+DEFINE_DEVICE_TYPE(E116XT,     e116xt_device,     "e116xt",     "E1-16XT")
+DEFINE_DEVICE_TYPE(E116XS,     e116xs_device,     "e116xs",     "E1-16XS")
+DEFINE_DEVICE_TYPE(E116XSR,    e116xsr_device,    "e116xsr",    "E1-16XSR")
+DEFINE_DEVICE_TYPE(E132N,      e132n_device,      "e132n",      "E1-32N")
+DEFINE_DEVICE_TYPE(E132T,      e132t_device,      "e132t",      "E1-32T")
+DEFINE_DEVICE_TYPE(E132XN,     e132xn_device,     "e132xn",     "E1-32XN")
+DEFINE_DEVICE_TYPE(E132XT,     e132xt_device,     "e132xt",     "E1-32XT")
+DEFINE_DEVICE_TYPE(E132XS,     e132xs_device,     "e132xs",     "E1-32XS")
+DEFINE_DEVICE_TYPE(E132XSR,    e132xsr_device,    "e132xsr",    "E1-32XSR")
+DEFINE_DEVICE_TYPE(GMS30C2116, gms30c2116_device, "gms30c2116", "GMS30C2116")
+DEFINE_DEVICE_TYPE(GMS30C2132, gms30c2132_device, "gms30c2132", "GMS30C2132")
+DEFINE_DEVICE_TYPE(GMS30C2216, gms30c2216_device, "gms30c2216", "GMS30C2216")
+DEFINE_DEVICE_TYPE(GMS30C2232, gms30c2232_device, "gms30c2232", "GMS30C2232")

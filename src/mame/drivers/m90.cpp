@@ -58,15 +58,6 @@ WRITE16_MEMBER(m90_state::quizf1_bankswitch_w)
 		membank("bank1")->set_entry(data & 0xf);
 }
 
-WRITE16_MEMBER(m90_state::dynablsb_sound_command_w)
-{
-	if (ACCESSING_BITS_0_7)
-	{
-		m_soundlatch->write(space, offset, data);
-		m_soundcpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
-	}
-}
-
 #ifdef UNUSED_FUNCTION
 WRITE16_MEMBER(m90_state::unknown_w)
 {
@@ -104,7 +95,7 @@ static ADDRESS_MAP_START( bomblord_main_cpu_map, AS_PROGRAM, 16, m90_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m90_main_cpu_io_map, AS_IO, 16, m90_state )
-	AM_RANGE(0x00, 0x01) AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("m72", m72_audio_device, sound_command_w, 0x00ff)
 	AM_RANGE(0x00, 0x01) AM_READ_PORT("P1_P2")
 	AM_RANGE(0x02, 0x03) AM_WRITE(m90_coincounter_w)
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("SYSTEM")
@@ -114,7 +105,7 @@ static ADDRESS_MAP_START( m90_main_cpu_io_map, AS_IO, 16, m90_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dynablsb_main_cpu_io_map, AS_IO, 16, m90_state )
-	AM_RANGE(0x00, 0x01) AM_WRITE(dynablsb_sound_command_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("soundlatch", generic_latch_8_device, write, 0x00ff)
 	AM_RANGE(0x00, 0x01) AM_READ_PORT("P1_P2")
 	AM_RANGE(0x02, 0x03) AM_WRITE(m90_coincounter_w)
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("SYSTEM")
@@ -214,7 +205,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( dynablst )
 	PORT_START("P1_P2")
-	IREM_GENERIC_JOYSTICKS_2_BUTTONS(1, 2)
+	IREM_GENERIC_JOYSTICKS_2_BUTTONS_4WAY(1, 2)
 
 	PORT_START("SYSTEM")
 	IREM_COINS
@@ -258,13 +249,13 @@ static INPUT_PORTS_START( dynablst )
 	IREM_COIN_MODE_2_HIGH
 
 	PORT_START("P3_P4")
-	IREM_INPUT_PLAYER_3
-	IREM_INPUT_PLAYER_4
+	IREM_INPUT_PLAYER_3_4WAY
+	IREM_INPUT_PLAYER_4_4WAY
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( dynablsb )
 	PORT_START("P1_P2")
-	IREM_GENERIC_JOYSTICKS_2_BUTTONS(2, 1)
+	IREM_GENERIC_JOYSTICKS_2_BUTTONS_4WAY(2, 1)
 
 	PORT_START("SYSTEM")
 	IREM_COINS
@@ -308,8 +299,8 @@ static INPUT_PORTS_START( dynablsb )
 	IREM_COIN_MODE_2_HIGH
 
 	PORT_START("P3_P4")
-	IREM_INPUT_PLAYER_3
-	IREM_INPUT_PLAYER_4
+	IREM_INPUT_PLAYER_3_4WAY
+	IREM_INPUT_PLAYER_4_4WAY
 INPUT_PORTS_END
 
 
@@ -324,7 +315,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( bombrman ) /* Does not appear to support 4 players or cocktail mode */
 	PORT_START("P1_P2")
-	IREM_GENERIC_JOYSTICKS_2_BUTTONS(1, 2)
+	IREM_GENERIC_JOYSTICKS_2_BUTTONS_4WAY(1, 2)
 
 	PORT_START("SYSTEM")
 	IREM_COINS
@@ -368,7 +359,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( bbmanw )
 	PORT_START("P1_P2")
-	IREM_GENERIC_JOYSTICKS_2_BUTTONS(1, 2)
+	IREM_GENERIC_JOYSTICKS_2_BUTTONS_4WAY(1, 2)
 
 	PORT_START("SYSTEM")
 	IREM_COINS
@@ -412,14 +403,19 @@ static INPUT_PORTS_START( bbmanw )
 	IREM_COIN_MODE_2_HIGH
 
 	PORT_START("P3_P4")
-	IREM_INPUT_PLAYER_3
-	IREM_INPUT_PLAYER_4
+	IREM_INPUT_PLAYER_3_4WAY
+	IREM_INPUT_PLAYER_4_4WAY
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( bbmanwj )
 	PORT_INCLUDE(bbmanw)
 
 	PORT_MODIFY("DSW")
+	PORT_DIPNAME( 0x000c, 0x000c, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:3,4")
+	PORT_DIPSETTING(      0x0000, DEF_STR( Easiest ) ) // Errata corrige sheet for the Japanese version shows "Very Easy" instead of "Very Hard"
+	PORT_DIPSETTING(      0x0008, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x000c, DEF_STR( Medium ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( Hard ) )
 	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )  PORT_DIPLOCATION("SW1:5") /* Manual says "NOT USE" - No Game Title Change */
 	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -718,7 +714,7 @@ INTERRUPT_GEN_MEMBER(m90_state::bomblord_interrupt)
 
 
 /* Basic hardware -- no decryption table is setup for CPU */
-static MACHINE_CONFIG_START( m90, m90_state )
+static MACHINE_CONFIG_START( m90 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V35, XTAL_32MHz/2)
 	MCFG_CPU_PROGRAM_MAP(m90_main_cpu_map)
@@ -750,7 +746,7 @@ static MACHINE_CONFIG_START( m90, m90_state )
 
 	MCFG_GENERIC_LATCH_8_ADD("soundlatch")
 
-	MCFG_SOUND_ADD("m72", M72, 0)
+	MCFG_SOUND_ADD("m72", IREM_M72_AUDIO, 0)
 
 	MCFG_YM2151_ADD("ymsnd", XTAL_3_579545MHz) /* verified on pcb */
 	MCFG_YM2151_IRQ_HANDLER(DEVWRITELINE("m72", m72_audio_device, ym2151_irq_handler))
@@ -846,6 +842,9 @@ static MACHINE_CONFIG_DERIVED( dynablsb, m90 )
 	MCFG_VIDEO_START_OVERRIDE(m90_state,dynablsb)
 
 	MCFG_DEVICE_REMOVE("m72")
+
+	MCFG_DEVICE_MODIFY("soundlatch")
+	MCFG_GENERIC_LATCH_DATA_PENDING_CB(INPUTLINE("soundcpu", INPUT_LINE_NMI))
 
 	MCFG_SOUND_MODIFY("ymsnd")
 	MCFG_YM2151_IRQ_HANDLER(NOOP) /* this bootleg polls the YM2151 instead of taking interrupts from it */
@@ -1258,20 +1257,20 @@ DRIVER_INIT_MEMBER(m90_state,bomblord)
 
 
 
-GAME( 1991, hasamu,   0,        hasamu,   hasamu,   driver_device, 0,        ROT0, "Irem", "Hasamu (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1991, dynablst, 0,        bombrman, dynablst, driver_device, 0,        ROT0, "Irem (licensed from Hudson Soft)", "Dynablaster / Bomber Man", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1991, bombrman, dynablst, bombrman, bombrman, driver_device, 0,        ROT0, "Irem (licensed from Hudson Soft)", "Bomber Man (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1991, atompunk, dynablst, bombrman, atompunk, driver_device, 0,        ROT0, "Irem America (licensed from Hudson Soft)", "Atomic Punk (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, dynablstb,dynablst, dynablsb, dynablsb, driver_device, 0,        ROT0, "bootleg (Seitu)", "Dynablaster / Bomber Man (bootleg, set 1)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, dynablstb2,dynablst,dynablsb, dynablsb, driver_device, 0,        ROT0, "bootleg (Seitu)", "Dynablaster / Bomber Man (bootleg, set 2)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, dynablstb3,dynablst,dynablsb, dynablsb, driver_device, 0,        ROT0, "bootleg (Seitu)", "Dynablaster / Bomber Man (bootleg, set 3)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // PCB has Playmark labels
-GAME( 1992, bbmanw,   0,        bbmanw,   bbmanw,   driver_device, 0,        ROT0, "Irem", "Bomber Man World / New Dyna Blaster - Global Quest", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, bbmanwj,  bbmanw,   bbmanw,   bbmanwj,  driver_device, 0,        ROT0, "Irem", "Bomber Man World (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, bbmanwja, bbmanw,   bbmanwj,  bbmanwj,  driver_device, 0,        ROT0, "Irem", "Bomber Man World (Japan, revised sound hardware)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, newapunk, bbmanw,   bbmanw,   newapunk, driver_device, 0,        ROT0, "Irem America", "New Atomic Punk - Global Quest (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, bomblord, bbmanw,   bomblord, bbmanw,   m90_state,     bomblord, ROT0, "bootleg", "Bomber Lord (bootleg)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1992, quizf1,   0,        quizf1,   quizf1,   m90_state,     quizf1,   ROT0, "Irem", "Quiz F1 1-2 Finish (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1993, riskchal, 0,        riskchal, riskchal, driver_device, 0,        ROT0, "Irem", "Risky Challenge", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1993, gussun,   riskchal, riskchal, riskchal, driver_device, 0,        ROT0, "Irem", "Gussun Oyoyo (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1993, matchit2, 0,        matchit2, matchit2, driver_device, 0,        ROT0, "Tamtex", "Match It II", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1993, shisen2,  matchit2, matchit2, shisen2,  driver_device, 0,        ROT0, "Tamtex", "Shisensho II", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, hasamu,   0,        hasamu,   hasamu,   m90_state, 0,        ROT0, "Irem", "Hasamu (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, dynablst, 0,        bombrman, dynablst, m90_state, 0,        ROT0, "Irem (licensed from Hudson Soft)", "Dynablaster / Bomber Man", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, bombrman, dynablst, bombrman, bombrman, m90_state, 0,        ROT0, "Irem (licensed from Hudson Soft)", "Bomber Man (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, atompunk, dynablst, bombrman, atompunk, m90_state, 0,        ROT0, "Irem America (licensed from Hudson Soft)", "Atomic Punk (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, dynablstb,dynablst, dynablsb, dynablsb, m90_state, 0,        ROT0, "bootleg (Seitu)", "Dynablaster / Bomber Man (bootleg, set 1)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, dynablstb2,dynablst,dynablsb, dynablsb, m90_state, 0,        ROT0, "bootleg (Seitu)", "Dynablaster / Bomber Man (bootleg, set 2)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, dynablstb3,dynablst,dynablsb, dynablsb, m90_state, 0,        ROT0, "bootleg (Seitu)", "Dynablaster / Bomber Man (bootleg, set 3)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // PCB has Playmark labels
+GAME( 1992, bbmanw,   0,        bbmanw,   bbmanw,   m90_state, 0,        ROT0, "Irem", "Bomber Man World / New Dyna Blaster - Global Quest", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, bbmanwj,  bbmanw,   bbmanw,   bbmanwj,  m90_state, 0,        ROT0, "Irem", "Bomber Man World (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, bbmanwja, bbmanw,   bbmanwj,  bbmanwj,  m90_state, 0,        ROT0, "Irem", "Bomber Man World (Japan, revised sound hardware)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, newapunk, bbmanw,   bbmanw,   newapunk, m90_state, 0,        ROT0, "Irem America", "New Atomic Punk - Global Quest (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, bomblord, bbmanw,   bomblord, bbmanw,   m90_state, bomblord, ROT0, "bootleg", "Bomber Lord (bootleg)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1992, quizf1,   0,        quizf1,   quizf1,   m90_state, quizf1,   ROT0, "Irem", "Quiz F1 1-2 Finish (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1993, riskchal, 0,        riskchal, riskchal, m90_state, 0,        ROT0, "Irem", "Risky Challenge", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1993, gussun,   riskchal, riskchal, riskchal, m90_state, 0,        ROT0, "Irem", "Gussun Oyoyo (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1993, matchit2, 0,        matchit2, matchit2, m90_state, 0,        ROT0, "Tamtex", "Match It II", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1993, shisen2,  matchit2, matchit2, shisen2,  m90_state, 0,        ROT0, "Tamtex", "Shisensho II", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )

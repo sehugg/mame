@@ -114,6 +114,7 @@ Major Title                        1990  M82-A-A + M82-B-A   N
 Hammerin' Harry (World ver)        1990  M81-A-B + M81-B-B   N
 Hammerin' H..(US)/ Daiku no Gensan 1990  M84-A-A + M84-C-A   N
                    Daiku no Gensan 1990  M72                 Y
+                   Daiku no Gensan 1990  M82-A-A + M82-B-A   N
 Pound for Pound                    1990  M85-A-B + M85-B     N
 Air Duel (World)                   1990  M82-A-A + M82-B-A   N
 Air Duel (Japan)                   1990  M72                 Y
@@ -204,38 +205,6 @@ other supported games as well.
 
 /***************************************************************************/
 
-// bchopper doesn't like the proper IRQ controller hookup, title screen jumps around, as does ingame at times
-// like m92.c I think this is because we don't clear things at the right time.
-#define USE_HACKED_IRQS
-
-#ifdef USE_HACKED_IRQS
-
-#define M72_TRIGGER_IRQ0 m_maincpu->set_input_line_and_vector(0, HOLD_LINE, m_upd71059c->HACK_get_base_vector()+0 ); /* VBL interrupt */
-#define M72_TRIGGER_IRQ1 m_maincpu->set_input_line_and_vector(0, HOLD_LINE, m_upd71059c->HACK_get_base_vector()+1 ); /* Sprite buffer complete interrupt */
-#define M72_TRIGGER_IRQ2 m_maincpu->set_input_line_and_vector(0, HOLD_LINE, m_upd71059c->HACK_get_base_vector()+2 ); /* Raster interrupt */
-#define M72_TRIGGER_IRQ3 m_maincpu->set_input_line_and_vector(0, HOLD_LINE, m_upd71059c->HACK_get_base_vector()+3 ); /* Sound cpu->Main cpu interrupt */
-// not used due to HOLD LINE logic
-#define M72_CLEAR_IRQ0 ;
-#define M72_CLEAR_IRQ1 ;
-#define M72_CLEAR_IRQ2 ;
-#define M72_CLEAR_IRQ3 ;
-
-#else
-
-#define M72_TRIGGER_IRQ0 m_upd71059c->ir0_w(1);
-#define M72_TRIGGER_IRQ1 m_upd71059c->ir1_w(1);
-#define M72_TRIGGER_IRQ2 m_upd71059c->ir2_w(1);
-#define M72_TRIGGER_IRQ3 m_upd71059c->ir3_w(1);
-// not sure when these should happen, probably the source of our issues
-#define M72_CLEAR_IRQ0 m_upd71059c->ir0_w(0);
-#define M72_CLEAR_IRQ1 m_upd71059c->ir1_w(0);
-#define M72_CLEAR_IRQ2 m_upd71059c->ir2_w(0);
-#define M72_CLEAR_IRQ3 m_upd71059c->ir3_w(0);
-
-#endif
-
-
-
 void m72_state::machine_start()
 {
 	m_scanline_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(m72_state::scanline_interrupt),this));
@@ -273,21 +242,18 @@ TIMER_CALLBACK_MEMBER(m72_state::scanline_interrupt)
 	/* raster interrupt - visible area only? */
 	if (scanline < 256 && scanline == m_raster_irq_position - 128)
 	{
-		M72_TRIGGER_IRQ2
-	}
-	else
-	{
-		M72_CLEAR_IRQ2
+		m_upd71059c->ir2_w(1);
 	}
 
 	/* VBLANK interrupt */
 	if (scanline == 256)
 	{
-		M72_TRIGGER_IRQ0
+		m_upd71059c->ir0_w(1);
+		m_upd71059c->ir2_w(0);
 	}
 	else
 	{
-		M72_CLEAR_IRQ0
+		m_upd71059c->ir0_w(0);
 	}
 
 	/* adjust for next scanline */
@@ -898,37 +864,6 @@ WRITE16_MEMBER(m72_state::soundram_w)
 }
 
 
-READ16_MEMBER(m72_state::poundfor_trackball_r)
-{
-	static const char *const axisnames[] = { "TRACK0_X", "TRACK0_Y", "TRACK1_X", "TRACK1_Y" };
-
-	if (offset == 0)
-	{
-		int i,curr;
-
-		for (i = 0;i < 4;i++)
-		{
-			curr = ioport(axisnames[i])->read();
-			m_diff[i] = (curr - m_prev[i]);
-			m_prev[i] = curr;
-		}
-	}
-
-	switch (offset)
-	{
-		default:
-		case 0:
-			return (m_diff[0] & 0xff) | ((m_diff[2] & 0xff) << 8);
-		case 1:
-			return ((m_diff[0] >> 8) & 0x1f) | (m_diff[2] & 0x1f00) | (ioport("IN0")->read() & 0xe0e0);
-		case 2:
-			return (m_diff[1] & 0xff) | ((m_diff[3] & 0xff) << 8);
-		case 3:
-			return ((m_diff[1] >> 8) & 0x1f) | (m_diff[3] & 0x1f00);
-	}
-}
-
-
 #define M72_CPU1_MEMORY(NAME,ROMSIZE,WORKRAM)                               \
 static ADDRESS_MAP_START( NAME##_map, AS_PROGRAM, 16 , m72_state )      \
 	AM_RANGE(0x00000, ROMSIZE-1) AM_ROM                                 \
@@ -1012,8 +947,8 @@ static ADDRESS_MAP_START( m72_portmap, AS_IO, 16, m72_state )
 	AM_RANGE(0x00, 0x01) AM_READ_PORT("IN0")
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("IN1")
 	AM_RANGE(0x04, 0x05) AM_READ_PORT("DSW")
-	AM_RANGE(0x00, 0x01) AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
-	AM_RANGE(0x02, 0x03) AM_WRITE(port02_w) /* coin counters, reset sound cpu, other stuff? */
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("m72", m72_audio_device, sound_command_w, 0x00ff)
+	AM_RANGE(0x02, 0x03) AM_WRITE8(port02_w, 0x00ff) /* coin counters, reset sound cpu, other stuff? */
 	AM_RANGE(0x04, 0x05) AM_WRITE(dmaon_w)
 	AM_RANGE(0x06, 0x07) AM_WRITE(irq_line_w)
 	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE8("upd71059c", pic8259_device, read, write, 0x00ff)
@@ -1028,8 +963,8 @@ static ADDRESS_MAP_START( m84_portmap, AS_IO, 16, m72_state )
 	AM_RANGE(0x00, 0x01) AM_READ_PORT("IN0")
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("IN1")
 	AM_RANGE(0x04, 0x05) AM_READ_PORT("DSW")
-	AM_RANGE(0x00, 0x01) AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
-	AM_RANGE(0x02, 0x03) AM_WRITE(rtype2_port02_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("m72", m72_audio_device, sound_command_w, 0x00ff)
+	AM_RANGE(0x02, 0x03) AM_WRITE8(rtype2_port02_w, 0x00ff)
 	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE8("upd71059c", pic8259_device, read, write, 0x00ff)
 	AM_RANGE(0x80, 0x81) AM_WRITE(scrolly1_w)
 	AM_RANGE(0x82, 0x83) AM_WRITE(scrollx1_w)
@@ -1041,8 +976,8 @@ static ADDRESS_MAP_START( m84_v33_portmap, AS_IO, 16, m72_state )
 	AM_RANGE(0x00, 0x01) AM_READ_PORT("IN0")
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("IN1")
 	AM_RANGE(0x04, 0x05) AM_READ_PORT("DSW")
-	AM_RANGE(0x00, 0x01) AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
-	AM_RANGE(0x02, 0x03) AM_WRITE(rtype2_port02_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("m72", m72_audio_device, sound_command_w, 0x00ff)
+	AM_RANGE(0x02, 0x03) AM_WRITE8(rtype2_port02_w, 0x00ff)
 	AM_RANGE(0x80, 0x81) AM_WRITE(scrolly1_w)
 	AM_RANGE(0x82, 0x83) AM_WRITE(scrollx1_w)
 	AM_RANGE(0x84, 0x85) AM_WRITE(scrolly2_w)
@@ -1054,9 +989,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( poundfor_portmap, AS_IO, 16, m72_state )
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("IN1")
 	AM_RANGE(0x04, 0x05) AM_READ_PORT("DSW")
-	AM_RANGE(0x08, 0x0f) AM_READ(poundfor_trackball_r)
-	AM_RANGE(0x00, 0x01) AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
-	AM_RANGE(0x02, 0x03) AM_WRITE(rtype2_port02_w)
+	AM_RANGE(0x08, 0x0f) AM_DEVREAD8("upd4701l", upd4701_device, read_xy, 0x00ff)
+	AM_RANGE(0x08, 0x0f) AM_DEVREAD8("upd4701h", upd4701_device, read_xy, 0xff00)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("m72", m72_audio_device, sound_command_w, 0x00ff)
+	AM_RANGE(0x02, 0x03) AM_WRITE8(poundfor_port02_w, 0x00ff)
 	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE8("upd71059c", pic8259_device, read, write, 0x00ff)
 	AM_RANGE(0x80, 0x81) AM_WRITE(scrolly1_w)
 	AM_RANGE(0x82, 0x83) AM_WRITE(scrollx1_w)
@@ -1068,8 +1004,8 @@ static ADDRESS_MAP_START( m82_portmap, AS_IO, 16, m72_state )
 	AM_RANGE(0x00, 0x01) AM_READ_PORT("IN0")
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("IN1")
 	AM_RANGE(0x04, 0x05) AM_READ_PORT("DSW")
-	AM_RANGE(0x00, 0x01) AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
-	AM_RANGE(0x02, 0x03) AM_WRITE(rtype2_port02_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("m72", m72_audio_device, sound_command_w, 0x00ff)
+	AM_RANGE(0x02, 0x03) AM_WRITE8(rtype2_port02_w, 0x00ff)
 	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE8("upd71059c", pic8259_device, read, write, 0x00ff)
 	AM_RANGE(0x80, 0x81) AM_WRITE(scrolly1_w)
 	AM_RANGE(0x82, 0x83) AM_WRITE(scrollx1_w)
@@ -1085,8 +1021,8 @@ static ADDRESS_MAP_START( m81_portmap, AS_IO, 16, m72_state )
 	AM_RANGE(0x00, 0x01) AM_READ_PORT("IN0")
 	AM_RANGE(0x02, 0x03) AM_READ_PORT("IN1")
 	AM_RANGE(0x04, 0x05) AM_READ_PORT("DSW")
-	AM_RANGE(0x00, 0x01) AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
-	AM_RANGE(0x02, 0x03) AM_WRITE(rtype2_port02_w)  /* coin counters, reset sound cpu, other stuff? */
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE8("m72", m72_audio_device, sound_command_w, 0x00ff)
+	AM_RANGE(0x02, 0x03) AM_WRITE8(rtype2_port02_w, 0x00ff)  /* coin counters, reset sound cpu, other stuff? */
 	AM_RANGE(0x04, 0x05) AM_WRITE(dmaon_w)
 	AM_RANGE(0x06, 0x07) AM_WRITE(irq_line_w)
 	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE8("upd71059c", pic8259_device, read, write, 0x00ff)
@@ -1616,15 +1552,12 @@ static INPUT_PORTS_START( m81_hharry )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( poundfor )
-	PORT_START("IN0")
-	PORT_BIT( 0x001f, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* high bits of trackball X */
-	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x1f00, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* high bits of trackball X */
-	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_START("IN0") // not read directly
+	PORT_BIT( 0x9f9f, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) PORT_WRITE_LINE_DEVICE_MEMBER("upd4701l", upd4701_device, right_w)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_WRITE_LINE_DEVICE_MEMBER("upd4701l", upd4701_device, left_w)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) PORT_WRITE_LINE_DEVICE_MEMBER("upd4701h", upd4701_device, right_w)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_WRITE_LINE_DEVICE_MEMBER("upd4701h", upd4701_device, left_w)
 
 	PORT_START("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
@@ -1691,16 +1624,16 @@ static INPUT_PORTS_START( poundfor )
 	IREM_COIN_MODE_2_HIGH
 
 	PORT_START("TRACK0_X")
-	PORT_BIT( 0xffff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_PLAYER(1)
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_RESET PORT_PLAYER(1)
 
 	PORT_START("TRACK0_Y")
-	PORT_BIT( 0xffff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_REVERSE PORT_PLAYER(1)
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_REVERSE PORT_RESET PORT_PLAYER(1)
 
 	PORT_START("TRACK1_X")
-	PORT_BIT( 0xffff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_REVERSE PORT_PLAYER(2)
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_REVERSE PORT_RESET PORT_PLAYER(2)
 
 	PORT_START("TRACK1_Y")
-	PORT_BIT( 0xffff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_PLAYER(2)
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_RESET PORT_PLAYER(2)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( airduel )
@@ -1871,13 +1804,13 @@ static GFXDECODE_START( majtitle )
 GFXDECODE_END
 
 
-static MACHINE_CONFIG_FRAGMENT( m72_audio_chips )
+static MACHINE_CONFIG_START( m72_audio_chips )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("speaker")
 
 	MCFG_GENERIC_LATCH_8_ADD("soundlatch")
 
-	MCFG_SOUND_ADD("m72", M72, 0)
+	MCFG_SOUND_ADD("m72", IREM_M72_AUDIO, 0)
 
 	MCFG_YM2151_ADD("ymsnd", SOUND_CLOCK)
 	MCFG_YM2151_IRQ_HANDLER(DEVWRITELINE("m72", m72_audio_device, ym2151_irq_handler))
@@ -1888,20 +1821,19 @@ static MACHINE_CONFIG_FRAGMENT( m72_audio_chips )
 	MCFG_SOUND_ROUTE_EX(0, "dac", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE_EX(0, "dac", -1.0, DAC_VREF_NEG_INPUT)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( m72_base, m72_state )
+static MACHINE_CONFIG_START( m72_base )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",V30,MASTER_CLOCK/2/2)    /* 16 MHz external freq (8MHz internal) */
 	MCFG_CPU_PROGRAM_MAP(m72_map)
 	MCFG_CPU_IO_MAP(m72_portmap)
-#ifndef USE_HACKED_IRQS
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("upd71059c", pic8259_device, inta_cb)
-#endif
 	MCFG_CPU_ADD("soundcpu",Z80, SOUND_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(sound_ram_map)
 	MCFG_CPU_IO_MAP(sound_portmap)
 
-	MCFG_PIC8259_ADD( "upd71059c", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("upd71059c", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	/* video hardware */
 	MCFG_GFXDECODE_ADD("gfxdecode", "palette", m72)
@@ -2000,15 +1932,13 @@ MACHINE_CONFIG_END
 /****************************************** M84 ***********************************************/
 
 // M84
-static MACHINE_CONFIG_START( rtype2, m72_state )
+static MACHINE_CONFIG_START( rtype2 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)   /* 16 MHz external freq (8MHz internal) */
 	MCFG_CPU_PROGRAM_MAP(rtype2_map)
 	MCFG_CPU_IO_MAP(m84_portmap)
-#ifndef USE_HACKED_IRQS
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("upd71059c", pic8259_device, inta_cb)
-#endif
 
 	MCFG_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(sound_rom_map)
@@ -2016,7 +1946,8 @@ static MACHINE_CONFIG_START( rtype2, m72_state )
 	MCFG_CPU_PERIODIC_INT_DRIVER(m72_state, nmi_line_pulse, 128*55) /* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
-	MCFG_PIC8259_ADD( "upd71059c", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("upd71059c", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	/* video hardware */
 	MCFG_GFXDECODE_ADD("gfxdecode", "palette", rtype2)
@@ -2044,16 +1975,12 @@ MACHINE_CONFIG_END
 
 // M84
 
-// is the upd71059c present and unused, or has it been removed from the PCB? it isn't needed beacuse the V35 has it's own IRQ controller.
-static MACHINE_CONFIG_START( cosmccop, m72_state )
+static MACHINE_CONFIG_START( cosmccop )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V35,MASTER_CLOCK/2)
 	MCFG_CPU_PROGRAM_MAP(kengo_map)
 	MCFG_CPU_IO_MAP(m84_v33_portmap)
-//#ifndef USE_HACKED_IRQS
-//  MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("upd71059c", pic8259_device, inta_cb)
-//#endif
 
 	MCFG_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(sound_rom_map)
@@ -2061,10 +1988,10 @@ static MACHINE_CONFIG_START( cosmccop, m72_state )
 	MCFG_CPU_PERIODIC_INT_DRIVER(m72_state, nmi_line_pulse, 128*55) /* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
-//  MCFG_PIC8259_ADD( "upd71059c", INPUTLINE("maincpu", 0), VCC, NOOP)
-
 	MCFG_MACHINE_START_OVERRIDE(m72_state,kengo)
 	MCFG_MACHINE_RESET_OVERRIDE(m72_state,kengo)
+
+	// upd71059c isn't needed beacuse the V35 has its own IRQ controller
 
 	/* video hardware */
 	MCFG_GFXDECODE_ADD("gfxdecode", "palette", rtype2)
@@ -2094,22 +2021,21 @@ M82-A-A as the top board
 M82-B-A and as the bottom board
 
 */
-static MACHINE_CONFIG_START( m82, m72_state )
+static MACHINE_CONFIG_START( m82 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)   /* 16 MHz external freq (8MHz internal) */
 	MCFG_CPU_PROGRAM_MAP(m82_map)
 	MCFG_CPU_IO_MAP(m82_portmap)
-#ifndef USE_HACKED_IRQS
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("upd71059c", pic8259_device, inta_cb)
-#endif
 	MCFG_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(sound_rom_map)
 	MCFG_CPU_IO_MAP(rtype2_sound_portmap)
 	MCFG_CPU_PERIODIC_INT_DRIVER(m72_state, nmi_line_pulse, 128*55) /* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
-	MCFG_PIC8259_ADD( "upd71059c", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("upd71059c", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	/* video hardware */
 	MCFG_GFXDECODE_ADD("gfxdecode", "palette", majtitle)
@@ -2130,22 +2056,29 @@ MACHINE_CONFIG_END
   M85-A-B / M85-B
 */
 
-static MACHINE_CONFIG_START( poundfor, m72_state )
+static MACHINE_CONFIG_START( poundfor )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)   /* 16 MHz external freq (8MHz internal) */
 	MCFG_CPU_PROGRAM_MAP(rtype2_map)
 	MCFG_CPU_IO_MAP(poundfor_portmap)
-#ifndef USE_HACKED_IRQS
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("upd71059c", pic8259_device, inta_cb)
-#endif
 	MCFG_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(sound_rom_map)
 	MCFG_CPU_IO_MAP(poundfor_sound_portmap)
 	MCFG_CPU_PERIODIC_INT_DRIVER(m72_state, fake_nmi, 128*55)   /* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
-	MCFG_PIC8259_ADD( "upd71059c", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("upd71059c", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
+
+	MCFG_DEVICE_ADD("upd4701l", UPD4701A, 0)
+	MCFG_UPD4701_PORTX("TRACK0_X")
+	MCFG_UPD4701_PORTY("TRACK0_Y")
+
+	MCFG_DEVICE_ADD("upd4701h", UPD4701A, 0)
+	MCFG_UPD4701_PORTX("TRACK1_X")
+	MCFG_UPD4701_PORTY("TRACK1_Y")
 
 	/* video hardware */
 	MCFG_GFXDECODE_ADD("gfxdecode", "palette", rtype2)
@@ -3407,6 +3340,40 @@ ROM_START( rtype2m82b )
 	ROM_LOAD( "rt2_vo.bin",    0x00000, 0x20000, CRC(637172d5) SHA1(9dd0dc409306287238826bf301e2a7a12d6cd9ce) )
 ROM_END
 
+ROM_START( dkgensanm82 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "gen_(m84)_a-h0-d.ic52",   0x00001, 0x20000, CRC(a1ca8855) SHA1(19b0ec1a03af114aa4f02630ace67c277ebce60f) )
+	ROM_LOAD16_BYTE( "gen_(m84)_a-l0-d.ic60",   0x00000, 0x20000, CRC(247117b0) SHA1(e7674b9d0ae80afb52b47094f95ed5c250c7e303) )
+	ROM_LOAD16_BYTE( "gen_(m84)_a-h1-d.ic51",   0x60001, 0x10000, CRC(54e5b73c) SHA1(5664f6e0a931b1c139e82dc98fcc9e38acd14616) )
+	ROM_RELOAD(                                 0xe0001, 0x10000 )
+	ROM_LOAD16_BYTE( "gen_(m84)_a-l1-d.ic59",   0x60000, 0x10000, CRC(894f8a9f) SHA1(57a0885c52a094def03b129a450cc891e6c075c6) )
+	ROM_RELOAD(                                 0xe0000, 0x10000 )
+
+	ROM_REGION( 0x10000, "soundcpu", 0 )
+	ROM_LOAD( "gen_(m84)_a-sp-d.ic15",    0x00000, 0x10000, CRC(e83cfc2c) SHA1(3193bdd06a9712fc499e6fc90a33140463ef59fe) )
+
+	ROM_REGION( 0x080000, "sprites", 0 )
+	ROM_LOAD( "gen_(m72)_c-l0-b.ic44",    0x00000, 0x20000, CRC(ec5127ef) SHA1(014ac8ad7b19cd9b475b72a0f42a4991119501c4) )  /* sprites */
+	ROM_LOAD( "gen_(m72)_c-l3-b.ic45",    0x20000, 0x20000, CRC(def65294) SHA1(23f5d99fa9f604fde37cb52113bff233d9be1d25) )
+	ROM_LOAD( "gen_(m72)_c-h0-b.ic46",    0x40000, 0x20000, CRC(bb0d6ad4) SHA1(4ab617fadfc32efad90ed7f0555513f167b0c43a) )
+	ROM_LOAD( "gen_(m72)_c-h3-b.ic36",    0x60000, 0x20000, CRC(4351044e) SHA1(0d3ce3f4f1473fd997e70de91e7b5b5a5ec60ad4) )
+
+	ROM_REGION( 0x080000, "gfx2", 0 )
+	ROM_LOAD( "gen_(m81)_a-l0-a.ic49",    0x00000, 0x20000, CRC(c577ba5f) SHA1(c882e58cf64deca8eee6f14f3df43ecc932488fc) )  /* tiles */
+	ROM_LOAD( "gen_(m81)_a-l1-a.ic48",    0x20000, 0x20000, CRC(429d12ab) SHA1(ccba25eab981fc4e664f76e06a2964066f2ae2e8) )
+	ROM_LOAD( "gen_(m81)_a-h0-a.ic57",    0x40000, 0x20000, CRC(b5b163b0) SHA1(82a708fea4953a7c4dcd1d4a1b07f302221ba30b) )
+	ROM_LOAD( "gen_(m81)_a-h1-a.ic56",    0x60000, 0x20000, CRC(8ef566a1) SHA1(3afb020a7317efe89c18b2a7773894ce28499d49) )
+
+	ROM_REGION( 0x080000, "sprites2", 0 ) // leftover from Major Title
+	ROM_LOAD( "mt_f0.ic38",    0x00000, 0x20000, CRC(2d5e05d5) SHA1(18bdc9c561dbf0f91642161ca985d2154bd58b5d) )  /* sprites #2 */
+	ROM_LOAD( "mt_f1.ic39",    0x20000, 0x20000, CRC(c68cd65f) SHA1(8999b558b4af0f453ada9e4ef705163df96844e6) )
+	ROM_LOAD( "mt_f2.ic40",    0x40000, 0x20000, CRC(a71feb2d) SHA1(47e366b422772bed08ee4d1c338970687d6c3b4c) )
+	ROM_LOAD( "mt_f3.ic41",    0x60000, 0x20000, CRC(179f7562) SHA1(6d28b199daffc62e8fa9009878ac0bb976ccbb2a) )
+
+	ROM_REGION( 0x20000, "samples", 0 ) /* samples */
+	ROM_LOAD( "gen_(m84)_a-v0-d.ic12",   0x00000, 0x20000, CRC(d8595c66) SHA1(97920c9947fbac609fb901415e5471c6e4ca066c) )
+ROM_END
+
 
 /*****************************
   M84 sets
@@ -3779,11 +3746,11 @@ ROM_END
 
 /* M72 */
 
-GAME( 1987, rtype,       0,        rtype,       rtype,    driver_device, 0,           ROT0,   "Irem", "R-Type (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1987, rtypej,      rtype,    rtype,       rtype,    driver_device, 0,           ROT0,   "Irem", "R-Type (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1987, rtypejp,     rtype,    rtype,       rtypep,   driver_device, 0,           ROT0,   "Irem", "R-Type (Japan prototype)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1987, rtypeu,      rtype,    rtype,       rtype,    driver_device, 0,           ROT0,   "Irem (Nintendo of America license)", "R-Type (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1987, rtypeb,      rtype,    rtype,       rtype,    driver_device, 0,           ROT0,   "bootleg", "R-Type (World bootleg)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1987, rtype,       0,        rtype,       rtype,    m72_state,     0,           ROT0,   "Irem", "R-Type (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1987, rtypej,      rtype,    rtype,       rtype,    m72_state,     0,           ROT0,   "Irem", "R-Type (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1987, rtypejp,     rtype,    rtype,       rtypep,   m72_state,     0,           ROT0,   "Irem", "R-Type (Japan prototype)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1987, rtypeu,      rtype,    rtype,       rtype,    m72_state,     0,           ROT0,   "Irem (Nintendo of America license)", "R-Type (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1987, rtypeb,      rtype,    rtype,       rtype,    m72_state,     0,           ROT0,   "bootleg", "R-Type (World bootleg)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
 GAME( 1987, bchopper,    0,        m72,         bchopper, m72_state,     bchopper,    ROT0,   "Irem", "Battle Chopper", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 GAME( 1987, mrheli,      bchopper, m72_8751,    bchopper, m72_state,     m72_8751,    ROT0,   "Irem", "Mr. HELI no Daibouken (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
@@ -3800,7 +3767,7 @@ GAME( 1989, lohtb2,      loht,     m72_8751,    loht,     m72_state,     m72_875
 
 GAME( 1989, xmultiplm72, xmultipl, m72_xmultipl,xmultipl, m72_state,     m72_8751,    ROT0,   "Irem", "X Multiply (Japan, M72)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
-GAME( 1989, dbreedm72,   dbreed,   m72_dbreed,   dbreed,   m72_state,     dbreedm72,   ROT0,   "Irem", "Dragon Breed (M72 PCB version)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // probably Japan version
+GAME( 1989, dbreedm72,   dbreed,   m72_dbreed,  dbreed,   m72_state,     dbreedm72,   ROT0,   "Irem", "Dragon Breed (M72 PCB version)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // probably Japan version
 
 GAME( 1991, gallop,      cosmccop, m72,         gallop,   m72_state,     gallop,      ROT0,   "Irem", "Gallop - Armed Police Unit (Japan, M72)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
@@ -3809,40 +3776,42 @@ GAME( 1990, airduelm72,  airduel,  m72,         airduel,  m72_state,     airduel
 GAME( 1990, dkgensanm72, hharry,   m72,         hharry,   m72_state,     dkgenm72,    ROT0,   "Irem", "Daiku no Gensan (Japan, M72)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
 /* M81 */
-GAME( 1989, xmultipl,    0,        m81_xmultipl,m81_xmultipl,driver_device,0,         ROT0,   "Irem", "X Multiply (World, M81)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1989, dbreed,      0,        m81_dbreed,   m81_dbreed,driver_device,0,           ROT0,   "Irem", "Dragon Breed (M81 PCB version)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1990, hharry,      0,        m81_hharry,  m81_hharry,driver_device,0,           ROT0,   "Irem", "Hammerin' Harry (World, M81)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1989, xmultipl,    0,        m81_xmultipl,m81_xmultipl,m72_state,0,         ROT0,   "Irem", "X Multiply (World, M81)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1989, dbreed,      0,        m81_dbreed,  m81_dbreed,m72_state,0,           ROT0,   "Irem", "Dragon Breed (M81 PCB version)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1990, hharry,      0,        m81_hharry,  m81_hharry,m72_state,0,           ROT0,   "Irem", "Hammerin' Harry (World, M81)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
 /* M82 */
-GAME( 1990, majtitle,    0,        m82,         rtype2,   driver_device, 0,           ROT0,   "Irem", "Major Title (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // M82-A-A + M82-B-A
-GAME( 1990, majtitlej,   majtitle, m82,         rtype2,   driver_device, 0,           ROT0,   "Irem", "Major Title (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // ^
+GAME( 1990, majtitle,    0,        m82,         rtype2,   m72_state,     0,           ROT0,   "Irem", "Major Title (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // M82-A-A + M82-B-A
+GAME( 1990, majtitlej,   majtitle, m82,         rtype2,   m72_state,     0,           ROT0,   "Irem", "Major Title (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // ^
 
-GAME( 1990, airduel,     0,        m82,         airduel,  driver_device, 0,           ROT270, "Irem", "Air Duel (World, M82-A-A + M82-B-A)", MACHINE_SUPPORTS_SAVE ) // Major Title conversion
+GAME( 1990, airduel,     0,        m82,         airduel,  m72_state,     0,           ROT270, "Irem", "Air Duel (World, M82-A-A + M82-B-A)", MACHINE_SUPPORTS_SAVE ) // Major Title conversion
 
-GAME( 2009, rtypem82b,   rtype,    m82,         rtype,    driver_device, 0,           ROT0,   "bootleg", "R-Type (Japan, bootleg Major Title conversion, M82)", MACHINE_NOT_WORKING | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // unofficial conversion of Major Title, extensive wiremods, made in 2009 by Paul Swan
+GAME( 1990, dkgensanm82, hharry,   hharryu,     hharry,   m72_state,     0,           ROT0,   "Irem", "Daiku no Gensan (Japan, M82)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
-GAME( 1997, rtype2m82b,  rtype2,   m82,         rtype2,   driver_device, 0,           ROT0,   "bootleg", "R-Type II (Japan, bootleg Major Title conversion, M82)", MACHINE_NOT_WORKING | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // made in 1997 by Chris Hardy
+GAME( 2009, rtypem82b,   rtype,    m82,         rtype,    m72_state,     0,           ROT0,   "bootleg", "R-Type (Japan, bootleg Major Title conversion, M82)", MACHINE_NOT_WORKING | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // unofficial conversion of Major Title, extensive wiremods, made in 2009 by Paul Swan
+
+GAME( 1997, rtype2m82b,  rtype2,   m82,         rtype2,   m72_state,     0,           ROT0,   "bootleg", "R-Type II (Japan, bootleg Major Title conversion, M82)", MACHINE_NOT_WORKING | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // made in 1997 by Chris Hardy
 
 /* M84 */
 
-GAME( 1990, hharryu,     hharry,   hharryu,     hharry,   driver_device, 0,           ROT0,   "Irem America", "Hammerin' Harry (US, M84)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1990, dkgensan,    hharry,   hharryu,     hharry,   driver_device, 0,           ROT0,   "Irem", "Daiku no Gensan (Japan, M84)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1990, hharryu,     hharry,   hharryu,     hharry,   m72_state,     0,           ROT0,   "Irem America", "Hammerin' Harry (US, M84)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1990, dkgensan,    hharry,   hharryu,     hharry,   m72_state,     0,           ROT0,   "Irem", "Daiku no Gensan (Japan, M84)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
-GAME( 1989, rtype2,      0,        rtype2,      rtype2,   driver_device, 0,           ROT0,   "Irem", "R-Type II", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1989, rtype2j,     rtype2,   rtype2,      rtype2,   driver_device, 0,           ROT0,   "Irem", "R-Type II (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1989, rtype2jc,    rtype2,   rtype2,      rtype2,   driver_device, 0,           ROT0,   "Irem", "R-Type II (Japan, revision C)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1989, rtype2,      0,        rtype2,      rtype2,   m72_state,     0,           ROT0,   "Irem", "R-Type II", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1989, rtype2j,     rtype2,   rtype2,      rtype2,   m72_state,     0,           ROT0,   "Irem", "R-Type II (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1989, rtype2jc,    rtype2,   rtype2,      rtype2,   m72_state,     0,           ROT0,   "Irem", "R-Type II (Japan, revision C)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
-GAME( 1991, cosmccop,    0,        cosmccop,    gallop,   driver_device, 0,           ROT0,   "Irem", "Cosmic Cop (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, cosmccop,    0,        cosmccop,    gallop,   m72_state,     0,           ROT0,   "Irem", "Cosmic Cop (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
 
-GAME( 1991, ltswords,    0,        kengo,       kengo,    driver_device, 0,           ROT0,   "Irem", "Lightning Swords", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1991, kengo,       ltswords, kengo,       kengo,    driver_device, 0,           ROT0,   "Irem", "Ken-Go (set 1)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1991, kengoa,      ltswords, kengo,       kengo,    driver_device, 0,           ROT0,   "Irem", "Ken-Go (set 2)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // has 'for use in Japan' message, above set doesn't
+GAME( 1991, ltswords,    0,        kengo,       kengo,    m72_state,     0,           ROT0,   "Irem", "Lightning Swords", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, kengo,       ltswords, kengo,       kengo,    m72_state,     0,           ROT0,   "Irem", "Ken-Go (set 1)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, kengoa,      ltswords, kengo,       kengo,    m72_state,     0,           ROT0,   "Irem", "Ken-Go (set 2)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // has 'for use in Japan' message, above set doesn't
 
 /* M85 */
 
-GAME( 1990, poundfor,    0,        poundfor,    poundfor, driver_device, 0,           ROT270, "Irem", "Pound for Pound (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )      // M85-A-B / M85-B
-GAME( 1990, poundforj,   poundfor, poundfor,    poundfor, driver_device, 0,           ROT270, "Irem", "Pound for Pound (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )      // ^
-GAME( 1990, poundforu,   poundfor, poundfor,    poundfor, driver_device, 0,           ROT270, "Irem America", "Pound for Pound (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // ^
+GAME( 1990, poundfor,    0,        poundfor,    poundfor, m72_state,     0,           ROT270, "Irem", "Pound for Pound (World)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )      // M85-A-B / M85-B
+GAME( 1990, poundforj,   poundfor, poundfor,    poundfor, m72_state,     0,           ROT270, "Irem", "Pound for Pound (Japan)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )      // ^
+GAME( 1990, poundforu,   poundfor, poundfor,    poundfor, m72_state,     0,           ROT270, "Irem America", "Pound for Pound (US)", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE ) // ^
 
 /* bootlegs, unique hw */
-GAME( 1989, lohtb,       loht,     m72,         loht,     driver_device, 0,           ROT0,   "bootleg", "Legend of Hero Tonma (unprotected bootleg)", MACHINE_NOT_WORKING| MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1989, lohtb,       loht,     m72,         loht,     m72_state,     0,           ROT0,   "bootleg", "Legend of Hero Tonma (unprotected bootleg)", MACHINE_NOT_WORKING| MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )

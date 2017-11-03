@@ -282,10 +282,10 @@ WRITE_LINE_MEMBER(mtx_state::mtx_tms9929a_interrupt)
 ***************************************************************************/
 
 /*-------------------------------------------------
-    MACHINE_CONFIG_START( mtx512, mtx_state )
+    MACHINE_CONFIG_START( mtx512 )
 -------------------------------------------------*/
 
-static MACHINE_CONFIG_START( mtx512, mtx_state )
+static MACHINE_CONFIG_START( mtx512 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_4MHz)
@@ -363,7 +363,7 @@ static MACHINE_CONFIG_DERIVED( rs128, mtx512 )
 	MCFG_Z80_DAISY_CHAIN(rs128_daisy_chain)
 
 	/* devices */
-	MCFG_Z80DART_ADD(Z80DART_TAG,  XTAL_4MHz, 0, 0, 0, 0 )
+	MCFG_DEVICE_ADD(Z80DART_TAG, Z80DART, XTAL_4MHz)
 	MCFG_Z80DART_OUT_INT_CB(INPUTLINE(Z80_TAG, INPUT_LINE_IRQ0))
 
 	/* internal ram */
@@ -409,10 +409,10 @@ ROM_END
     SYSTEM DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    COMPANY          FULLNAME   FLAGS */
-COMP( 1983, mtx512,   0,        0,      mtx512,   mtx512, driver_device,   0,       "Memotech Ltd", "MTX 512", 0 )
-COMP( 1983, mtx500,   mtx512,   0,      mtx500,   mtx512, driver_device,   0,       "Memotech Ltd", "MTX 500", 0 )
-COMP( 1984, rs128,    mtx512,   0,      rs128,    mtx512, driver_device,   0,       "Memotech Ltd", "RS 128",  0 )
+//    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT   STATE        INIT    COMPANY         FULLNAME   FLAGS
+COMP( 1983, mtx512,   0,        0,      mtx512,   mtx512, mtx_state,   0,      "Memotech Ltd", "MTX 512", 0 )
+COMP( 1983, mtx500,   mtx512,   0,      mtx500,   mtx512, mtx_state,   0,      "Memotech Ltd", "MTX 500", 0 )
+COMP( 1984, rs128,    mtx512,   0,      rs128,    mtx512, mtx_state,   0,      "Memotech Ltd", "RS 128",  0 )
 
 
 /*

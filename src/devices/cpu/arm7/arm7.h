@@ -18,10 +18,10 @@
 
  ******************************************************************************/
 
-#pragma once
+#ifndef MAME_CPU_ARM7_ARM7_H
+#define MAME_CPU_ARM7_ARM7_H
 
-#ifndef __ARM7_H__
-#define __ARM7_H__
+#pragma once
 
 #include "cpu/drcfe.h"
 #include "cpu/drcuml.h"
@@ -51,9 +51,56 @@ class arm7_cpu_device : public cpu_device
 public:
 	// construction/destruction
 	arm7_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-	arm7_cpu_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source, uint8_t archRev, uint8_t archFlags, endianness_t endianness = ENDIANNESS_LITTLE);
 
 protected:
+	enum
+	{
+		ARCHFLAG_T    = 1,        // Thumb present
+		ARCHFLAG_E    = 2,        // extended DSP operations present (only for v5+)
+		ARCHFLAG_J    = 4,        // "Jazelle" (direct execution of Java bytecode)
+		ARCHFLAG_MMU  = 8,        // has on-board MMU (traditional ARM style like the SA1110)
+		ARCHFLAG_SA   = 16,       // StrongARM extensions (enhanced TLB)
+		ARCHFLAG_XSCALE   = 32,   // XScale extensions (CP14, enhanced TLB)
+		ARCHFLAG_MODE26   = 64    // supports 26-bit backwards compatibility mode
+	};
+
+	enum
+	{
+		ARM9_COPRO_ID_STEP_SA1110_A0 = 0,
+		ARM9_COPRO_ID_STEP_SA1110_B0 = 4,
+		ARM9_COPRO_ID_STEP_SA1110_B1 = 5,
+		ARM9_COPRO_ID_STEP_SA1110_B2 = 6,
+		ARM9_COPRO_ID_STEP_SA1110_B4 = 8,
+
+		ARM9_COPRO_ID_STEP_PXA255_A0 = 6,
+
+		ARM9_COPRO_ID_STEP_ARM946_A0 = 1,
+
+		ARM9_COPRO_ID_PART_SA1110 = 0xB11 << 4,
+		ARM9_COPRO_ID_PART_ARM946 = 0x946 << 4,
+		ARM9_COPRO_ID_PART_ARM920 = 0x920 << 4,
+		ARM9_COPRO_ID_PART_ARM710 = 0x710 << 4,
+		ARM9_COPRO_ID_PART_GENERICARM7 = 0x700 << 4,
+
+		ARM9_COPRO_ID_PXA255_CORE_REV_SHIFT = 10,
+		ARM9_COPRO_ID_PXA255_CORE_GEN_XSCALE = 0x01 << 13,
+
+		ARM9_COPRO_ID_ARCH_V4     = 0x01 << 16,
+		ARM9_COPRO_ID_ARCH_V4T    = 0x02 << 16,
+		ARM9_COPRO_ID_ARCH_V5     = 0x03 << 16,
+		ARM9_COPRO_ID_ARCH_V5T    = 0x04 << 16,
+		ARM9_COPRO_ID_ARCH_V5TE   = 0x05 << 16,
+
+		ARM9_COPRO_ID_SPEC_REV0   = 0x00 << 20,
+		ARM9_COPRO_ID_SPEC_REV1   = 0x01 << 20,
+
+		ARM9_COPRO_ID_MFR_ARM = 0x41 << 24,
+		ARM9_COPRO_ID_MFR_DEC = 0x44 << 24,
+		ARM9_COPRO_ID_MFR_INTEL = 0x69 << 24
+	};
+
+	arm7_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint8_t archRev, uint8_t archFlags, endianness_t endianness);
+
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
@@ -66,8 +113,8 @@ protected:
 	virtual void execute_set_input(int inputnum, int state) override;
 
 	// device_memory_interface overrides
-	virtual const address_space_config *memory_space_config(address_spacenum spacenum = AS_0) const override { return (spacenum == AS_PROGRAM) ? &m_program_config : nullptr; }
-	virtual bool memory_translate(address_spacenum spacenum, int intention, offs_t &address) override;
+	virtual space_config_vector memory_space_config() const override;
+	virtual bool memory_translate(int spacenum, int intention, offs_t &address) override;
 
 	// device_state_interface overrides
 	virtual void state_export(const device_state_entry &entry) override;
@@ -81,6 +128,20 @@ protected:
 	address_space_config m_program_config;
 
 	uint32_t m_r[/*NUM_REGS*/37];
+
+	void update_insn_prefetch(uint32_t curr_pc);
+	virtual uint16_t insn_fetch_thumb(uint32_t pc);
+	uint32_t insn_fetch_arm(uint32_t pc);
+	int get_insn_prefetch_index(uint32_t address);
+
+	uint32_t m_insn_prefetch_depth;
+	uint32_t m_insn_prefetch_count;
+	uint32_t m_insn_prefetch_index;
+	uint32_t m_insn_prefetch_buffer[3];
+	uint32_t m_insn_prefetch_address[3];
+	const uint32_t m_prefetch_word0_shift;
+	const uint32_t m_prefetch_word1_shift;
+
 	bool m_pendingIrq;
 	bool m_pendingFiq;
 	bool m_pendingAbtD;
@@ -154,7 +215,7 @@ protected:
 	void arm9ops_e(uint32_t insn);
 
 	void set_cpsr(uint32_t val);
-	bool arm7_tlb_translate(offs_t &addr, int flags);
+	bool arm7_tlb_translate(offs_t &addr, int flags, bool no_exception = false);
 	uint32_t arm7_tlb_get_second_level_descriptor( uint32_t granularity, uint32_t first_desc, uint32_t vaddr );
 	int detect_fault(int desc_lvl1, int ap, int flags);
 	void arm7_check_irq_state();
@@ -506,7 +567,6 @@ class arm7_be_cpu_device : public arm7_cpu_device
 public:
 	// construction/destruction
 	arm7_be_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
 };
 
 
@@ -515,7 +575,6 @@ class arm7500_cpu_device : public arm7_cpu_device
 public:
 	// construction/destruction
 	arm7500_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
 };
 
 
@@ -525,15 +584,24 @@ public:
 	// construction/destruction
 	arm9_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
+protected:
+	arm9_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint8_t archRev, uint8_t archFlags, endianness_t endianness);
 };
 
 
-class arm920t_cpu_device : public arm7_cpu_device
+class arm920t_cpu_device : public arm9_cpu_device
 {
 public:
 	// construction/destruction
 	arm920t_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+};
 
+
+class arm946es_cpu_device : public arm9_cpu_device
+{
+public:
+	// construction/destruction
+	arm946es_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 };
 
 
@@ -542,7 +610,6 @@ class pxa255_cpu_device : public arm7_cpu_device
 public:
 	// construction/destruction
 	pxa255_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
 };
 
 
@@ -551,16 +618,16 @@ class sa1110_cpu_device : public arm7_cpu_device
 public:
 	// construction/destruction
 	sa1110_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
 };
 
 
-extern const device_type ARM7;
-extern const device_type ARM7_BE;
-extern const device_type ARM7500;
-extern const device_type ARM9;
-extern const device_type ARM920T;
-extern const device_type PXA255;
-extern const device_type SA1110;
+DECLARE_DEVICE_TYPE(ARM7,     arm7_cpu_device)
+DECLARE_DEVICE_TYPE(ARM7_BE,  arm7_be_cpu_device)
+DECLARE_DEVICE_TYPE(ARM7500,  arm7500_cpu_device)
+DECLARE_DEVICE_TYPE(ARM9,     arm9_cpu_device)
+DECLARE_DEVICE_TYPE(ARM920T,  arm920t_cpu_device)
+DECLARE_DEVICE_TYPE(ARM946ES, arm946es_cpu_device)
+DECLARE_DEVICE_TYPE(PXA255,   pxa255_cpu_device)
+DECLARE_DEVICE_TYPE(SA1110,   sa1110_cpu_device)
 
-#endif /* __ARM7_H__ */
+#endif // MAME_CPU_ARM7_ARM7_H

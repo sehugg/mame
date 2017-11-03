@@ -87,7 +87,7 @@ static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16, raiden_state )
 	AM_RANGE(0x00000, 0x06fff) AM_RAM
 	AM_RANGE(0x07000, 0x07fff) AM_RAM AM_SHARE("spriteram")
 	AM_RANGE(0x08000, 0x08fff) AM_RAM AM_SHARE("shared_ram")
-	AM_RANGE(0x0a000, 0x0a00d) AM_DEVREADWRITE("seibu_sound", seibu_sound_device, main_word_r, main_word_w)
+	AM_RANGE(0x0a000, 0x0a00d) AM_DEVREADWRITE8("seibu_sound", seibu_sound_device, main_r, main_w, 0x00ff)
 	AM_RANGE(0x0c000, 0x0c7ff) AM_WRITE(raiden_text_w) AM_SHARE("videoram")
 	AM_RANGE(0x0e000, 0x0e001) AM_READ_PORT("P1_P2")
 	AM_RANGE(0x0e002, 0x0e003) AM_READ_PORT("DSW")
@@ -122,7 +122,7 @@ static ADDRESS_MAP_START( raidenu_main_map, AS_PROGRAM, 16, raiden_state )
 	AM_RANGE(0x0b004, 0x0b005) AM_WRITENOP // watchdog?
 	AM_RANGE(0x0b006, 0x0b007) AM_WRITE8(raiden_control_w, 0x00ff)
 	AM_RANGE(0x0c000, 0x0c7ff) AM_WRITE(raiden_text_w) AM_SHARE("videoram")
-	AM_RANGE(0x0d000, 0x0d00d) AM_DEVREADWRITE("seibu_sound", seibu_sound_device, main_word_r, main_word_w)
+	AM_RANGE(0x0d000, 0x0d00d) AM_DEVREADWRITE8("seibu_sound", seibu_sound_device, main_r, main_w, 0x00ff)
 	AM_RANGE(0xa0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -149,7 +149,7 @@ static ADDRESS_MAP_START( raidenb_main_map, AS_PROGRAM, 16, raiden_state )
 	AM_RANGE(0x0b004, 0x0b005) AM_WRITENOP // watchdog?
 	AM_RANGE(0x0b006, 0x0b007) AM_WRITE8(raidenb_control_w, 0x00ff)
 	AM_RANGE(0x0c000, 0x0c7ff) AM_WRITE(raiden_text_w) AM_SHARE("videoram")
-	AM_RANGE(0x0d000, 0x0d00d) AM_DEVREADWRITE("seibu_sound", seibu_sound_device, main_word_r, main_word_w)
+	AM_RANGE(0x0d000, 0x0d00d) AM_DEVREADWRITE8("seibu_sound", seibu_sound_device, main_r, main_w, 0x00ff)
 	AM_RANGE(0x0d040, 0x0d08f) AM_DEVREADWRITE("crtc", seibu_crtc_device, read, write)
 	AM_RANGE(0xa0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
@@ -174,7 +174,7 @@ static ADDRESS_MAP_START( raiden_sound_map, AS_PROGRAM, 8, raiden_state )
 	AM_RANGE(0x0000, 0xffff) AM_DEVREAD("sei80bu", sei80bu_device, data_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( raiden_sound_decrypted_opcodes_map, AS_DECRYPTED_OPCODES, 8, raiden_state )
+static ADDRESS_MAP_START( raiden_sound_decrypted_opcodes_map, AS_OPCODES, 8, raiden_state )
 	AM_RANGE(0x0000, 0xffff) AM_DEVREAD("sei80bu", sei80bu_device, opcode_r)
 ADDRESS_MAP_END
 
@@ -318,7 +318,7 @@ INTERRUPT_GEN_MEMBER(raiden_state::raiden_interrupt)
 	device.execute().set_input_line_and_vector(0, HOLD_LINE, 0xc8/4); /* VBL */
 }
 
-static MACHINE_CONFIG_START( raiden, raiden_state )
+static MACHINE_CONFIG_START( raiden )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V30,XTAL_20MHz/2) /* NEC V30 CPU, 20MHz verified on pcb */
@@ -357,7 +357,7 @@ static MACHINE_CONFIG_START( raiden, raiden_state )
 	MCFG_YM3812_IRQ_HANDLER(DEVWRITELINE("seibu_sound", seibu_sound_device, fm_irqhandler))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MCFG_OKIM6295_ADD("oki", XTAL_12MHz/12, OKIM6295_PIN7_HIGH) // frequency and pin 7 verified
+	MCFG_OKIM6295_ADD("oki", XTAL_12MHz/12, PIN7_HIGH) // frequency and pin 7 verified
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MCFG_DEVICE_ADD("seibu_sound", SEIBU_SOUND, 0)
@@ -779,7 +779,7 @@ GAME( 1990, raidenk,  raiden, raiden,  raiden, raiden_state,  raiden,  ROT270, "
 GAME( 1990, raidenkb, raiden, raiden,  raiden, raiden_state,  raiden,  ROT270, "bootleg", "Raiden (Korea, bootleg)", MACHINE_SUPPORTS_SAVE )
 
 /* Alternate hardware; SEI8904 + SEI9008 PCBs. Main & Sub CPU code not encrypted */
-GAME( 1990, raidenua, raiden, raidenu, raiden, driver_device, 0,       ROT270, "Seibu Kaihatsu (Fabtek license)", "Raiden (US set 2)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, raidenua, raiden, raidenu, raiden, raiden_state,  0,       ROT270, "Seibu Kaihatsu (Fabtek license)", "Raiden (US set 2)", MACHINE_SUPPORTS_SAVE )
 
 /* Alternate hardware. Main, Sub & Sound CPU code not encrypted. It also sports Seibu custom CRTC. */
-GAME( 1990, raidenb,  raiden, raidenb, raiden, driver_device, 0,       ROT270, "Seibu Kaihatsu", "Raiden (set 3)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, raidenb,  raiden, raidenb, raiden, raiden_state,  0,       ROT270, "Seibu Kaihatsu", "Raiden (set 3)", MACHINE_SUPPORTS_SAVE )

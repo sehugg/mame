@@ -2,53 +2,54 @@
 // copyright-holders: Jean-Francois DEL NERO
 /***************************************************************************
 
-	Minitel 2
+    Minitel 2
 
-	The Minitel is a small, on-line computer/Videotex terminal with multi-services that
-	can be connected to any French telephone line. This terminal was widely used in France
-	during the 80's and 90's.
+    The Minitel is a small, on-line computer/Videotex terminal with multi-services that
+    can be connected to any French telephone line. This terminal was widely used in France
+    during the 80's and 90's.
 
-	There are several modeles and version. Most of them are based on a mcu from the 8051 family
-	and a EF9345 like semi graphic video chip.
+    There are several modeles and version. Most of them are based on a mcu from the 8051 family
+    and a EF9345 like semi graphic video chip.
 
-	The current implementation is an Minitel 2 from "La RADIOTECHNIQUE PORTENSEIGNE" / RPIC (Philips)
-	You can found more informations about this hardware there :
-	http://hxc2001.free.fr/minitel
+    The current implementation is an Minitel 2 from "La RADIOTECHNIQUE PORTENSEIGNE" / RPIC (Philips)
+    You can found more informations about this hardware there :
+    http://hxc2001.free.fr/minitel
 
-	What is implemented and working :
+    What is implemented and working :
 
-	- Main MCU
-	- Video output
-	- Keyboard
+    - Main MCU
+    - Video output
+    - Keyboard
 
-	What is not yet implemented :
+    What is not yet implemented :
 
-	- Modem and sound output.
-	- The rear serial port.
-	- Parameters I2C 24C02 EEPROM.
+    - Modem and sound output.
+    - The rear serial port.
+    - Parameters I2C 24C02 EEPROM.
 
-	The original firmware and the experimental demo rom are currently both working.
+    The original firmware and the experimental demo rom are currently both working.
 
-	Please note the current special function keys assignation :
+    Please note the current special function keys assignation :
 
-	F1 -> Suite
-	F2 -> Retour
-	F3 -> Envoi
-	F4 -> Repetition
-	F5 -> TEL
-	F6 -> Guide
-	F7 -> Sommaire
-	F8 -> Connexion/Fin
-	F9 -> Fonction
-	F10-> ON / OFF
+    F1 -> Suite
+    F2 -> Retour
+    F3 -> Envoi
+    F4 -> Repetition
+    F5 -> TEL
+    F6 -> Guide
+    F7 -> Sommaire
+    F8 -> Connexion/Fin
+    F9 -> Fonction
+    F10-> ON / OFF
 
-	With the official ROM you need to press F10 to switch on the CRT.
+    With the official ROM you need to press F10 to switch on the CRT.
 
 ****************************************************************************/
 
 #include "emu.h"
 
 #include "cpu/mcs51/mcs51.h"
+#include "machine/timer.h"
 #include "video/ef9345.h"
 
 #include "screen.h"
@@ -411,7 +412,7 @@ static INPUT_PORTS_START( minitel2 )
 
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( minitel2, minitel_state )
+static MACHINE_CONFIG_START( minitel2 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I80C32, XTAL_14_31818MHz) //verified on pcb
 	MCFG_CPU_PROGRAM_MAP(mem_prg)
@@ -434,16 +435,16 @@ MACHINE_CONFIG_END
 ROM_START( minitel2 )
 
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_DEFAULT_BIOS("FT_BV4")
+	ROM_DEFAULT_BIOS("ft_bv4")
 
-	ROM_SYSTEM_BIOS(0, "FT_BV4", "Minitel 2 ROM BV4")
+	ROM_SYSTEM_BIOS(0, "ft_bv4", "Minitel 2 ROM BV4")
 	ROMX_LOAD( "MINITEL2_BV4.BIN",   0x0000, 0x8000, CRC(8844A0A7) SHA1(D3E9079B080DBCEE27AD870EC6C39AC42E7DEACF), ROM_BIOS(1) )
 
-	ROM_SYSTEM_BIOS(1, "DEMOV1", "Minitel 2 Demo")
+	ROM_SYSTEM_BIOS(1, "demov1", "Minitel 2 Demo")
 	ROMX_LOAD( "demo_minitel.bin",   0x0000, 0x8000, CRC(607F2482) SHA1(7965EDBEF68E45D09DC67A4684DA56003EFF6328), ROM_BIOS(2) )
 
 	ROM_REGION( 0x4000, "ts9347", 0 )
 	ROM_LOAD( "charset.rom", 0x0000, 0x2000, BAD_DUMP CRC(b2f49eb3) SHA1(d0ef530be33bfc296314e7152302d95fdf9520fc) )            // from dcvg5k
 ROM_END
 
-COMP( 1989, minitel2,      0,     0, minitel2,    minitel2,driver_device,   0, "Philips", "Minitel 2", MACHINE_TYPE_COMPUTER | MACHINE_NO_SOUND)
+COMP( 1989, minitel2,      0,     0, minitel2,    minitel2, minitel_state,   0, "Philips", "Minitel 2", MACHINE_NO_SOUND )

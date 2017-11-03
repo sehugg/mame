@@ -288,7 +288,7 @@ READ8_MEMBER(pwrview_state::pitclock_r)
 	return 0;
 }
 
-static ADDRESS_MAP_START(bios_bank, AS_0, 16, pwrview_state)
+static ADDRESS_MAP_START(bios_bank, 0, 16, pwrview_state)
 	AM_RANGE(0x00000, 0x07fff) AM_ROM AM_REGION("bios", 0)
 	AM_RANGE(0x00000, 0x07fff) AM_WRITE(nmimem_w)
 
@@ -315,11 +315,11 @@ static ADDRESS_MAP_START(pwrview_map, AS_PROGRAM, 16, pwrview_state)
 	AM_RANGE(0xf8000, 0xfffff) AM_DEVICE("bios_bank", address_map_bank_device, amap16)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(pwrview_fetch_map, AS_DECRYPTED_OPCODES, 16, pwrview_state)
+static ADDRESS_MAP_START(pwrview_fetch_map, AS_OPCODES, 16, pwrview_state)
 	AM_RANGE(0x00000, 0x003ff) AM_READ(bank0_r)
 	AM_RANGE(0x00000, 0xf7fff) AM_RAM AM_SHARE("ram")
 	AM_RANGE(0xf8000, 0xfffff) AM_READ(fbios_r)
-ADDRESS_MAP_END	
+ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pwrview_io, AS_IO, 16, pwrview_state)
 	ADDRESS_MAP_UNMAP_HIGH
@@ -347,7 +347,7 @@ static SLOT_INTERFACE_START(pwrview_floppies)
 	SLOT_INTERFACE("525dd", FLOPPY_525_DD)
 SLOT_INTERFACE_END
 
-static MACHINE_CONFIG_START( pwrview, pwrview_state )
+static MACHINE_CONFIG_START( pwrview )
 	MCFG_CPU_ADD("maincpu", I80186, XTAL_16MHz)
 	MCFG_CPU_PROGRAM_MAP(pwrview_map)
 	MCFG_CPU_DECRYPTED_OPCODES_MAP(pwrview_fetch_map)
@@ -370,7 +370,9 @@ static MACHINE_CONFIG_START( pwrview, pwrview_state )
 	MCFG_FLOPPY_DRIVE_ADD("fdc:1", pwrview_floppies, "525dd", floppy_image_device::default_floppy_formats)
 
 	MCFG_DEVICE_ADD("uart", I8251, 0)
-	MCFG_Z80SIO2_ADD("sio", 4000000, 0, 0, 0, 0)
+
+	MCFG_DEVICE_ADD("sio", Z80SIO2, 4000000)
+
 	MCFG_DEVICE_ADD("crtc", HD6845, XTAL_64MHz/64) // clock unknown
 	MCFG_MC6845_CHAR_WIDTH(32) // ??
 	MCFG_MC6845_UPDATE_ROW_CB(pwrview_state, update_row)
@@ -390,4 +392,4 @@ ROM_START(pwrview)
 	ROMX_LOAD("215856-004.bin", 0x0001, 0x4000, CRC(4fd01e0a) SHA1(c4d1d40d4e8e529c03857f4a3c8428ccf6b8ff99), ROM_SKIP(1) | ROM_BIOS(1))
 ROM_END
 
-COMP(1984, pwrview, 0, 0, pwrview, 0, driver_device, 0, "Compugraphic", "MCS PowerView 10", MACHINE_NOT_WORKING)
+COMP(1984, pwrview, 0, 0, pwrview, 0, pwrview_state, 0, "Compugraphic", "MCS PowerView 10", MACHINE_NOT_WORKING)

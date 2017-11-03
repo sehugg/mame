@@ -54,6 +54,7 @@
 #include "imagedev/cassette.h"
 #include "imagedev/printer.h"
 #include "machine/ram.h"
+#include "machine/timer.h"
 #include "sound/dac.h"
 #include "sound/volt_reg.h"
 #include "sound/wave.h"
@@ -358,7 +359,7 @@ DRIVER_INIT_MEMBER(vg5k_state,vg5k)
 }
 
 
-static MACHINE_CONFIG_START( vg5k, vg5k_state )
+static MACHINE_CONFIG_START( vg5k )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
@@ -425,5 +426,5 @@ ROM_START( vg5k )
 ROM_END
 
 /* Driver */
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  INIT   COMPANY     FULLNAME   FLAGS */
-COMP( 1984, vg5k,   0,      0,      vg5k,    vg5k, vg5k_state,  vg5k, "Philips",  "VG-5000", MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )
+//    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  STATE        INIT  COMPANY     FULLNAME   FLAGS
+COMP( 1984, vg5k,   0,      0,      vg5k,    vg5k,  vg5k_state,  vg5k, "Philips",  "VG-5000", MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )

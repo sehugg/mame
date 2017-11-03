@@ -208,7 +208,7 @@ ADDRESS_MAP_END
 
 
 // XXX verify everything
-static MACHINE_CONFIG_START( ec1840, ec184x_state )
+static MACHINE_CONFIG_START( ec1840 )
 	MCFG_CPU_ADD("maincpu", I8088, 4096000)
 	MCFG_CPU_PROGRAM_MAP(ec1840_map)
 	MCFG_CPU_IO_MAP(ec1840_io)
@@ -231,7 +231,7 @@ static MACHINE_CONFIG_START( ec1840, ec184x_state )
 	MCFG_RAM_DEFAULT_SIZE("512K")
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( ec1841, ec184x_state )
+static MACHINE_CONFIG_START( ec1841 )
 	MCFG_CPU_ADD("maincpu", I8086, 4096000)
 	MCFG_CPU_PROGRAM_MAP(ec1841_map)
 	MCFG_CPU_IO_MAP(ec1841_io)
@@ -258,7 +258,7 @@ static MACHINE_CONFIG_START( ec1841, ec184x_state )
 MACHINE_CONFIG_END
 
 // XXX verify everything
-static MACHINE_CONFIG_START( ec1847, ec184x_state )
+static MACHINE_CONFIG_START( ec1847 )
 	MCFG_CPU_ADD("maincpu", I8088, 4772720)
 	MCFG_CPU_PROGRAM_MAP(ec1847_map)
 	MCFG_CPU_IO_MAP(ec1847_io)
@@ -346,7 +346,7 @@ ROM_END
 
 ROM_START( ec1847 )
 	ROM_REGION16_LE(0x20000,"bios", 0)
-	ROM_SYSTEM_BIOS(0, "vXXX", "EC-1847.0x")
+	ROM_SYSTEM_BIOS(0, "vxxx", "EC-1847.0x")
 	ROMX_LOAD( "308_d47_2764.bin", 0x08000, 0x2000, CRC(f06924f2) SHA1(83a5dedf1c06f875c598f087bbc087524bc9bfa3), ROM_BIOS(1))
 	ROMX_LOAD( "188m_d47_2764.bin", 0x14000, 0x2000, CRC(bc8742c7) SHA1(3af09d14e891e976b7a9a2a6e1af63f0eabe5426), ROM_BIOS(1))
 	ROMX_LOAD( "188m_d48_2764.bin", 0x1e000, 0x2000, CRC(7d290e95) SHA1(e73e6c8e19477fce5de3f95b89693dc6ad6781ab), ROM_BIOS(1))
@@ -355,8 +355,8 @@ ROM_START( ec1847 )
 	ROM_LOAD( "317_d28_2732.bin", 0x00000, 0x1000, CRC(8939599b) SHA1(53d02460cf93596882a96758ef4bac5fa1ce55b2)) // monochrome font
 ROM_END
 
-/*     YEAR     ROM NAME    PARENT      COMPAT  MACHINE     INPUT                       INIT        COMPANY     FULLNAME */
-COMP ( 1987,    ec1840,     ibm5150,    0,      ec1840,     0,        driver_device,    0,          "<unknown>",  "EC-1840", MACHINE_NOT_WORKING)
-COMP ( 1987,    ec1841,     ibm5150,    0,      ec1841,     0,        ec184x_state,     ec1841,     "<unknown>",  "EC-1841", 0)
-COMP ( 1989,    ec1845,     ibm5150,    0,      ec1841,     0,        ec184x_state,     ec1841,     "<unknown>",  "EC-1845", MACHINE_NOT_WORKING)
-COMP ( 1990,    ec1847,     ibm5150,    0,      ec1847,     0,        driver_device,    0,          "<unknown>",  "EC-1847", MACHINE_NOT_WORKING)
+//     YEAR  ROM NAME  PARENT   COMPAT  MACHINE  INPUT  STATE         INIT    COMPANY       FULLNAME   FLAGS
+COMP ( 1987, ec1840,   ibm5150, 0,      ec1840,  0,     ec184x_state, 0,      "<unknown>",  "EC-1840", MACHINE_NOT_WORKING )
+COMP ( 1987, ec1841,   ibm5150, 0,      ec1841,  0,     ec184x_state, ec1841, "<unknown>",  "EC-1841", 0 )
+COMP ( 1989, ec1845,   ibm5150, 0,      ec1841,  0,     ec184x_state, ec1841, "<unknown>",  "EC-1845", MACHINE_NOT_WORKING )
+COMP ( 1990, ec1847,   ibm5150, 0,      ec1847,  0,     ec184x_state, 0,      "<unknown>",  "EC-1847", MACHINE_NOT_WORKING )

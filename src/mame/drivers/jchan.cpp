@@ -157,6 +157,7 @@ JC-301-00  W11 9510K7059    23C16000        U85
 #include "cpu/m68000/m68000.h"
 #include "machine/eepromser.h"
 #include "machine/nvram.h"
+#include "machine/timer.h"
 #include "machine/watchdog.h"
 #include "sound/ymz280b.h"
 #include "video/sknsspr.h"
@@ -576,7 +577,7 @@ INPUT_PORTS_END
 
 /* machine driver */
 
-static MACHINE_CONFIG_START( jchan, jchan_state )
+static MACHINE_CONFIG_START( jchan )
 
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(jchan_main)
@@ -713,5 +714,5 @@ DRIVER_INIT_MEMBER( jchan_state, jchan )
 
 
 /* game drivers */
-GAME( 1995, jchan,     0,        jchan,    jchan, jchan_state,    jchan,    ROT0, "Kaneko", "Jackie Chan - The Kung-Fu Master", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1995, jchan2,    0,        jchan,    jchan2, jchan_state,   jchan,    ROT0, "Kaneko", "Jackie Chan in Fists of Fire", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1995, jchan,     0,        jchan,    jchan,  jchan_state,   jchan,    ROT0, "Kaneko", "Jackie Chan - The Kung-Fu Master", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1995, jchan2,    0,        jchan,    jchan2, jchan_state,   jchan,    ROT0, "Kaneko", "Jackie Chan in Fists of Fire",     MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )

@@ -27,7 +27,7 @@ Other stuff: NEC D4992 (RTC?) and xtal possibly 32.768kHz, 3V coin battery, 93L4
 
 
 #include "emu.h"
-#include "cpu/sh2/sh2.h"
+#include "cpu/sh/sh2.h"
 #include "screen.h"
 #include "speaker.h"
 
@@ -96,7 +96,7 @@ PALETTE_INIT_MEMBER(hideseek_state, hideseek)
 
 
 
-static MACHINE_CONFIG_START( hideseek, hideseek_state )
+static MACHINE_CONFIG_START( hideseek )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", SH2, 7372800 * 4 )

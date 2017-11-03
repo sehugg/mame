@@ -71,7 +71,7 @@ static INPUT_PORTS_START( ut88 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('"')
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('\xA4')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR(0xA4)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED)
@@ -183,7 +183,7 @@ static INPUT_PORTS_START( ut88mini )
 INPUT_PORTS_END
 
 /* Machine driver */
-static MACHINE_CONFIG_START( ut88, ut88_state )
+static MACHINE_CONFIG_START( ut88 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8080, 2000000)
 	MCFG_CPU_PROGRAM_MAP(ut88_mem)
@@ -226,7 +226,7 @@ static MACHINE_CONFIG_START( ut88, ut88_state )
 	MCFG_SOFTWARE_LIST_ADD("cass_list","ut88")
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( ut88mini, ut88_state )
+static MACHINE_CONFIG_START( ut88mini )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8080, 2000000)
 	MCFG_CPU_PROGRAM_MAP(ut88mini_mem)
@@ -268,6 +268,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME       PARENT    COMPAT  MACHINE     INPUT       INIT        COMPANY     FULLNAME       FLAGS */
+/*    YEAR  NAME       PARENT    COMPAT  MACHINE     INPUT     STATE         INIT      COMPANY      FULLNAME      FLAGS */
 COMP( 1989, ut88mini,  0,        0,      ut88mini,   ut88mini, ut88_state,   ut88mini, "<unknown>", "UT-88 mini", 0)
-COMP( 1989, ut88,      ut88mini, 0,      ut88,       ut88, ut88_state,       ut88,     "<unknown>", "UT-88", 0)
+COMP( 1989, ut88,      ut88mini, 0,      ut88,       ut88,     ut88_state,   ut88,     "<unknown>", "UT-88",      0)

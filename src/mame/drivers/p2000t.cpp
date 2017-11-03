@@ -111,7 +111,7 @@ static INPUT_PORTS_START (p2000t)
 	PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_6)           PORT_CHAR('6') PORT_CHAR('&')
 	PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_UP)          PORT_CHAR(UCHAR_MAMEKEY(UP))
 	PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q)           PORT_CHAR('q') PORT_CHAR('Q')
-	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)           PORT_CHAR('3') PORT_CHAR('\xA3')
+	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)           PORT_CHAR('3') PORT_CHAR(0xA3)
 	PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_5)           PORT_CHAR('5') PORT_CHAR('%')
 	PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)           PORT_CHAR('7') PORT_CHAR('\'')
 	PORT_BIT (0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_4)           PORT_CHAR('4') PORT_CHAR('$')
@@ -219,7 +219,7 @@ READ8_MEMBER( p2000t_state::videoram_r )
 }
 
 /* Machine definition */
-static MACHINE_CONFIG_START( p2000t, p2000t_state )
+static MACHINE_CONFIG_START( p2000t )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 2500000)
 	MCFG_CPU_PROGRAM_MAP(p2000t_mem)
@@ -246,7 +246,7 @@ MACHINE_CONFIG_END
 
 
 /* Machine definition */
-static MACHINE_CONFIG_START( p2000m, p2000t_state )
+static MACHINE_CONFIG_START( p2000m )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 2500000)
 	MCFG_CPU_PROGRAM_MAP(p2000m_mem)
@@ -290,6 +290,6 @@ ROM_START(p2000m)
 	ROM_LOAD("p2000.chr", 0x0140, 0x08c0, BAD_DUMP CRC(78c17e3e) SHA1(4e1c59dc484505de1dc0b1ba7e5f70a54b0d4ccc))
 ROM_END
 
-/*      YEAR    NAME    PARENT  COMPAT  MACHINE     INPUT       INIT      COMPANY     FULLNAME */
-COMP ( 1980,    p2000t, 0,      0,      p2000t,     p2000t, driver_device,     0,       "Philips", "Philips P2000T", 0)
-COMP ( 1980,    p2000m, p2000t, 0,      p2000m,     p2000t, driver_device,     0,       "Philips", "Philips P2000M", 0)
+//      YEAR    NAME    PARENT  COMPAT  MACHINE     INPUT   STATE         INIT  COMPANY    FULLNAME          FLAGS
+COMP ( 1980,    p2000t, 0,      0,      p2000t,     p2000t, p2000t_state, 0,    "Philips", "Philips P2000T", 0 )
+COMP ( 1980,    p2000m, p2000t, 0,      p2000m,     p2000t, p2000t_state, 0,    "Philips", "Philips P2000M", 0 )

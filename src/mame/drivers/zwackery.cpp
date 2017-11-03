@@ -23,6 +23,7 @@
 #include "cpu/m68000/m68000.h"
 #include "machine/6821pia.h"
 #include "machine/6840ptm.h"
+#include "machine/timer.h"
 #include "machine/watchdog.h"
 #include "screen.h"
 #include "speaker.h"
@@ -488,7 +489,7 @@ void zwackery_state::machine_start()
 //  MACHINE DEFINTIONS
 //**************************************************************************
 
-static MACHINE_CONFIG_START( zwackery, zwackery_state )
+static MACHINE_CONFIG_START( zwackery )
 	// basic machine hardware
 	MCFG_CPU_ADD("maincpu", M68000, 7652400)    // based on counter usage, should be XTAL_16MHz/2
 	MCFG_CPU_PROGRAM_MAP(zwackery_map)
@@ -606,5 +607,5 @@ ROM_END
 //  SYSTEM DRIVERS
 //**************************************************************************
 
-//    YEAR  NAME      PARENT  MACHINE   INPUT     CLASS          INIT  ROTATION  COMPANY         FULLNAME    FLAGS
-GAME( 1984, zwackery, 0,      zwackery, zwackery, driver_device, 0,    ROT0,     "Bally Midway", "Zwackery", MACHINE_SUPPORTS_SAVE )
+//    YEAR  NAME      PARENT  MACHINE   INPUT     CLASS           INIT  ROTATION  COMPANY         FULLNAME    FLAGS
+GAME( 1984, zwackery, 0,      zwackery, zwackery, zwackery_state, 0,    ROT0,     "Bally Midway", "Zwackery", MACHINE_SUPPORTS_SAVE )

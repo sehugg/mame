@@ -20,6 +20,7 @@ able to deal with 256byte sectors so fails to load the irmx 512byte sector image
 #include "bus/rs232/rs232.h"
 #include "cpu/i86/i86.h"
 #include "cpu/i86/i286.h"
+#include "machine/74259.h"
 #include "machine/terminal.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
@@ -44,6 +45,7 @@ public:
 		m_pic_1(*this, "pic_1"),
 		m_centronics(*this, "centronics"),
 		m_cent_status_in(*this, "cent_status_in"),
+		m_statuslatch(*this, "statuslatch"),
 		m_bios(*this, "user1"),
 		m_biosram(*this, "biosram")
 	{
@@ -52,11 +54,12 @@ public:
 	required_device<cpu_device> m_maincpu;
 	optional_device<i8251_device> m_uart8251;
 //  optional_device<i8274_device> m_uart8274;
-	optional_device<i8274N_device> m_uart8274;
+	optional_device<i8274_new_device> m_uart8274;
 	required_device<pic8259_device> m_pic_0;
 	optional_device<pic8259_device> m_pic_1;
 	optional_device<centronics_device> m_centronics;
 	optional_device<input_buffer_device> m_cent_status_in;
+	optional_device<ls259_device> m_statuslatch;
 	optional_memory_region m_bios;
 	optional_shared_ptr<u16> m_biosram;
 
@@ -70,10 +73,24 @@ public:
 	DECLARE_WRITE8_MEMBER(upperen_w);
 	DECLARE_READ16_MEMBER(bioslo_r);
 	DECLARE_WRITE16_MEMBER(bioslo_w);
+
+	DECLARE_WRITE8_MEMBER(edge_intr_clear_w);
+	DECLARE_WRITE8_MEMBER(status_register_w);
+	DECLARE_WRITE_LINE_MEMBER(nmi_mask_w);
+	DECLARE_WRITE_LINE_MEMBER(override_w);
+	DECLARE_WRITE_LINE_MEMBER(bus_intr_out1_w);
+	DECLARE_WRITE_LINE_MEMBER(bus_intr_out2_w);
+	DECLARE_WRITE_LINE_MEMBER(led_ds1_w);
+	DECLARE_WRITE_LINE_MEMBER(led_ds3_w);
+	DECLARE_WRITE_LINE_MEMBER(megabyte_select_w);
 protected:
 	void machine_reset() override;
 private:
 	bool m_upperen;
+	offs_t m_megabyte_page;
+	bool m_nmi_enable;
+	bool m_override;
+	bool m_megabyte_enable;
 };
 
 void isbc_state::machine_reset()
@@ -86,6 +103,7 @@ void isbc_state::machine_reset()
 	if(m_uart8251)
 		m_uart8251->write_cts(0);
 	m_upperen = false;
+	m_megabyte_page = 0;
 }
 
 static ADDRESS_MAP_START(rpc86_mem, AS_PROGRAM, 16, isbc_state)
@@ -116,6 +134,8 @@ static ADDRESS_MAP_START(isbc8605_io, AS_IO, 16, isbc_state)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(isbc8630_io, AS_IO, 16, isbc_state)
+	AM_RANGE(0x00c0, 0x00c7) AM_WRITE8(edge_intr_clear_w, 0xff00)
+	AM_RANGE(0x00c8, 0x00df) AM_WRITE8(status_register_w, 0xff00)
 	AM_RANGE(0x0100, 0x0101) AM_DEVWRITE8("isbc_215g", isbc_215g_device, write, 0x00ff)
 	AM_IMPORT_FROM(rpc86_io)
 ADDRESS_MAP_END
@@ -153,7 +173,7 @@ static ADDRESS_MAP_START(isbc286_io, AS_IO, 16, isbc_state)
 	AM_RANGE(0x00c8, 0x00cf) AM_DEVREADWRITE8("ppi", i8255_device, read, write, 0x00ff)
 	AM_RANGE(0x00c8, 0x00cf) AM_WRITE8(upperen_w, 0xff00)
 	AM_RANGE(0x00d0, 0x00d7) AM_DEVREADWRITE8("pit", pit8254_device, read, write, 0x00ff)
-	AM_RANGE(0x00d8, 0x00df) AM_DEVREADWRITE8("uart8274", i8274N_device, cd_ba_r, cd_ba_w, 0x00ff)
+	AM_RANGE(0x00d8, 0x00df) AM_DEVREADWRITE8("uart8274", i8274_new_device, cd_ba_r, cd_ba_w, 0x00ff)
 	AM_RANGE(0x0100, 0x0101) AM_DEVWRITE8("isbc_215g", isbc_215g_device, write, 0x00ff)
 ADDRESS_MAP_END
 
@@ -258,14 +278,63 @@ WRITE_LINE_MEMBER(isbc_state::isbc_uart8274_irq)
 }
 #endif
 
-static MACHINE_CONFIG_START( isbc86, isbc_state )
+WRITE8_MEMBER(isbc_state::edge_intr_clear_w)
+{
+	// reset U32 flipflop
+}
+
+WRITE8_MEMBER(isbc_state::status_register_w)
+{
+	m_megabyte_page = (data & 0xf0) << 16;
+	m_statuslatch->write_bit(data & 0x07, BIT(data, 3));
+}
+
+WRITE_LINE_MEMBER(isbc_state::nmi_mask_w)
+{
+	// combined with NMI input by 74LS08 AND gate at U12
+	m_nmi_enable = state;
+}
+
+WRITE_LINE_MEMBER(isbc_state::override_w)
+{
+	// 1 = access onboard dual-port RAM
+	m_override = state;
+}
+
+WRITE_LINE_MEMBER(isbc_state::bus_intr_out1_w)
+{
+	// Multibus interrupt request (active high)
+}
+
+WRITE_LINE_MEMBER(isbc_state::bus_intr_out2_w)
+{
+	// Multibus interrupt request (active high)
+}
+
+WRITE_LINE_MEMBER(isbc_state::led_ds1_w)
+{
+	machine().output().set_led_value(0, !state);
+}
+
+WRITE_LINE_MEMBER(isbc_state::led_ds3_w)
+{
+	machine().output().set_led_value(1, !state);
+}
+
+WRITE_LINE_MEMBER(isbc_state::megabyte_select_w)
+{
+	m_megabyte_enable = !state;
+}
+
+static MACHINE_CONFIG_START( isbc86 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8086, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(isbc86_mem)
 	MCFG_CPU_IO_MAP(isbc_io)
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("pic_0", pic8259_device, inta_cb)
 
-	MCFG_PIC8259_ADD("pic_0", INPUTLINE(":maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic_0", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	MCFG_DEVICE_ADD("pit", PIT8253, 0)
 	MCFG_PIT8253_CLK0(XTAL_22_1184MHz/18)
@@ -290,14 +359,15 @@ static MACHINE_CONFIG_START( isbc86, isbc_state )
 	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("terminal", isbc86_terminal)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( rpc86, isbc_state )
+static MACHINE_CONFIG_START( rpc86 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8086, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(rpc86_mem)
 	MCFG_CPU_IO_MAP(rpc86_io)
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("pic_0", pic8259_device, inta_cb)
 
-	MCFG_PIC8259_ADD("pic_0", INPUTLINE(":maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic_0", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	MCFG_DEVICE_ADD("pit", PIT8253, 0)
 	MCFG_PIT8253_CLK0(XTAL_22_1184MHz/18)
@@ -345,24 +415,41 @@ static MACHINE_CONFIG_DERIVED( isbc8630, rpc86 )
 
 	MCFG_ISBC_215_ADD("isbc_215g", 0x100, "maincpu")
 	MCFG_ISBC_215_IRQ(DEVWRITELINE("pic_0", pic8259_device, ir5_w))
+
+	MCFG_DEVICE_ADD("statuslatch", LS259, 0) // U14
+//  MCFG_ADDRESSABLE_LATCH_Q0_OUT_CB(DEVWRITELINE("pit", pit8253_device, write_gate0))
+//  MCFG_ADDRESSABLE_LATCH_Q1_OUT_CB(DEVWRITELINE("pit", pit8253_device, write_gate1))
+	MCFG_ADDRESSABLE_LATCH_Q2_OUT_CB(WRITELINE(isbc_state, nmi_mask_w))
+	MCFG_ADDRESSABLE_LATCH_Q3_OUT_CB(WRITELINE(isbc_state, override_w))
+	MCFG_ADDRESSABLE_LATCH_Q4_OUT_CB(WRITELINE(isbc_state, bus_intr_out1_w))
+	MCFG_ADDRESSABLE_LATCH_Q5_OUT_CB(WRITELINE(isbc_state, bus_intr_out2_w))
+	MCFG_DEVCB_CHAIN_OUTPUT(WRITELINE(isbc_state, led_ds1_w))
+	MCFG_ADDRESSABLE_LATCH_Q6_OUT_CB(WRITELINE(isbc_state, led_ds3_w))
+	MCFG_ADDRESSABLE_LATCH_Q7_OUT_CB(WRITELINE(isbc_state, megabyte_select_w))
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( isbc286, isbc_state )
+static MACHINE_CONFIG_START( isbc286 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I80286, XTAL_16MHz/2)
 	MCFG_CPU_PROGRAM_MAP(isbc286_mem)
 	MCFG_CPU_IO_MAP(isbc286_io)
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("pic_0", pic8259_device, inta_cb)
 
-	MCFG_PIC8259_ADD("pic_0", INPUTLINE(":maincpu", 0), VCC, READ8(isbc_state, get_slave_ack))
-	MCFG_PIC8259_ADD("pic_1", DEVWRITELINE("pic_0", pic8259_device, ir7_w), GND, NOOP)
+	MCFG_DEVICE_ADD("pic_0", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
+	MCFG_PIC8259_IN_SP_CB(VCC)
+	MCFG_PIC8259_CASCADE_ACK_CB(READ8(isbc_state, get_slave_ack))
+
+	MCFG_DEVICE_ADD("pic_1", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(DEVWRITELINE("pic_0", pic8259_device, ir7_w))
+	MCFG_PIC8259_IN_SP_CB(GND)
 
 	MCFG_DEVICE_ADD("pit", PIT8254, 0)
 	MCFG_PIT8253_CLK0(XTAL_22_1184MHz/18)
 	MCFG_PIT8253_OUT0_HANDLER(DEVWRITELINE("pic_0", pic8259_device, ir0_w))
 	MCFG_PIT8253_CLK1(XTAL_22_1184MHz/18)
 //  MCFG_PIT8253_OUT1_HANDLER(DEVWRITELINE("uart8274", z80dart_device, rxtxcb_w))
-	MCFG_PIT8253_OUT1_HANDLER(DEVWRITELINE("uart8274", i8274N_device, rxtxcb_w))
+	MCFG_PIT8253_OUT1_HANDLER(DEVWRITELINE("uart8274", i8274_new_device, rxtxcb_w))
 	MCFG_PIT8253_CLK2(XTAL_22_1184MHz/18)
 	MCFG_PIT8253_OUT2_HANDLER(WRITELINE(isbc_state, isbc286_tmr2_w))
 
@@ -380,8 +467,8 @@ static MACHINE_CONFIG_START( isbc286, isbc_state )
 
 	MCFG_CENTRONICS_OUTPUT_LATCH_ADD("cent_data_out", "centronics")
 
-	MCFG_I8274_ADD("uart8274", XTAL_16MHz/4, 0, 0, 0, 0)
 #if 0
+	MCFG_DEVICE_ADD("uart8274", I8274, XTAL_16MHz/4)
 	MCFG_Z80DART_OUT_TXDA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_txd))
 	MCFG_Z80DART_OUT_DTRA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_dtr))
 	MCFG_Z80DART_OUT_RTSA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_rts))
@@ -390,6 +477,7 @@ static MACHINE_CONFIG_START( isbc286, isbc_state )
 	MCFG_Z80DART_OUT_RTSB_CB(DEVWRITELINE("rs232b", rs232_port_device, write_rts))
 	MCFG_Z80DART_OUT_INT_CB(WRITELINE(isbc_state, isbc_uart8274_irq))
 #else
+	MCFG_DEVICE_ADD("uart8274", I8274_NEW, XTAL_16MHz/4)
 	MCFG_Z80SIO_OUT_TXDA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_txd))
 	MCFG_Z80SIO_OUT_DTRA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_dtr))
 	MCFG_Z80SIO_OUT_RTSA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_rts))
@@ -406,9 +494,9 @@ static MACHINE_CONFIG_START( isbc286, isbc_state )
 	MCFG_RS232_DCD_HANDLER(DEVWRITELINE("uart8274", z80dart_device, dcda_w))
 	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("uart8274", z80dart_device, ctsa_w))
 #else
-	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("uart8274", i8274N_device, rxa_w))
-	MCFG_RS232_DCD_HANDLER(DEVWRITELINE("uart8274", i8274N_device, dcda_w))
-	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("uart8274", i8274N_device, ctsa_w))
+	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("uart8274", i8274_new_device, rxa_w))
+	MCFG_RS232_DCD_HANDLER(DEVWRITELINE("uart8274", i8274_new_device, dcda_w))
+	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("uart8274", i8274_new_device, ctsa_w))
 #endif
 
 	MCFG_RS232_PORT_ADD("rs232b", default_rs232_devices, "terminal")
@@ -417,9 +505,9 @@ static MACHINE_CONFIG_START( isbc286, isbc_state )
 	MCFG_RS232_DCD_HANDLER(DEVWRITELINE("uart8274", z80dart_device, dcdb_w))
 	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("uart8274", z80dart_device, ctsb_w))
 #else
-	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("uart8274", i8274N_device, rxb_w))
-	MCFG_RS232_DCD_HANDLER(DEVWRITELINE("uart8274", i8274N_device, dcdb_w))
-	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("uart8274", i8274N_device, ctsb_w))
+	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("uart8274", i8274_new_device, rxb_w))
+	MCFG_RS232_DCD_HANDLER(DEVWRITELINE("uart8274", i8274_new_device, dcdb_w))
+	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("uart8274", i8274_new_device, ctsb_w))
 #endif
 	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("terminal", isbc286_terminal)
 
@@ -574,11 +662,11 @@ ROM_START( rpc86 )
 ROM_END
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( 19??, rpc86,    0,       0,    rpc86,      isbc, driver_device,    0,   "Intel",   "RPC 86",MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
-COMP( 1978, isbc86,   0,       0,    isbc86,     isbc, driver_device,    0,   "Intel",   "iSBC 86/12A",MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
-COMP( 1981, isbc8605, 0,       0,    isbc8605,   isbc, driver_device,    0,   "Intel",   "iSBC 86/05",MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
-COMP( 1981, isbc8630, 0,       0,    isbc8630,   isbc, driver_device,    0,   "Intel",   "iSBC 86/30",MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
-COMP( 19??, isbc286,  0,       0,    isbc286,    isbc, driver_device,    0,   "Intel",   "iSBC 286",MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
-COMP( 1983, isbc2861, 0,       0,    isbc2861,   isbc, driver_device,    0,   "Intel",   "iSBC 286/10", MACHINE_NO_SOUND_HW)
-COMP( 1983, isbc28612,0,       0,    isbc2861,   isbc, driver_device,    0,   "Intel",   "iSBC 286/12", MACHINE_NO_SOUND_HW)
+/*    YEAR  NAME       PARENT  COMPAT  MACHINE    INPUT  STATE        INIT  COMPANY   FULLNAME        FLAGS */
+COMP( 19??, rpc86,     0,      0,      rpc86,     isbc,  isbc_state,  0,    "Intel",  "RPC 86",       MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
+COMP( 1978, isbc86,    0,      0,      isbc86,    isbc,  isbc_state,  0,    "Intel",  "iSBC 86/12A",  MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
+COMP( 1981, isbc8605,  0,      0,      isbc8605,  isbc,  isbc_state,  0,    "Intel",  "iSBC 86/05",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
+COMP( 1981, isbc8630,  0,      0,      isbc8630,  isbc,  isbc_state,  0,    "Intel",  "iSBC 86/30",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
+COMP( 19??, isbc286,   0,      0,      isbc286,   isbc,  isbc_state,  0,    "Intel",  "iSBC 286",     MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW)
+COMP( 1983, isbc2861,  0,      0,      isbc2861,  isbc,  isbc_state,  0,    "Intel",  "iSBC 286/10",  MACHINE_NO_SOUND_HW)
+COMP( 1983, isbc28612, 0,      0,      isbc2861,  isbc,  isbc_state,  0,    "Intel",  "iSBC 286/12",  MACHINE_NO_SOUND_HW)

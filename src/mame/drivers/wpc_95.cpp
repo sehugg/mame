@@ -7,6 +7,7 @@
 #include "cpu/m6809/m6809.h"
 #include "audio/dcs.h"
 #include "machine/nvram.h"
+#include "machine/timer.h"
 #include "video/wpc_dmd.h"
 #include "machine/wpc_pic.h"
 #include "machine/wpc_shift.h"
@@ -2243,7 +2244,7 @@ static INPUT_PORTS_START( ttt )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("UL Flipper Button")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( wpc_95, wpc_95_state )
+static MACHINE_CONFIG_START( wpc_95 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6809, XTAL_8MHz/4)
 	MCFG_CPU_PROGRAM_MAP(wpc_95_map)

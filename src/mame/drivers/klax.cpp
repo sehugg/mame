@@ -24,6 +24,7 @@
 
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
+#include "machine/eeprompar.h"
 #include "machine/watchdog.h"
 #include "sound/okim6295.h"
 #include "sound/msm5205.h"
@@ -80,8 +81,8 @@ MACHINE_RESET_MEMBER(klax_state,klax)
 
 static ADDRESS_MAP_START( klax_map, AS_PROGRAM, 16, klax_state )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
-	AM_RANGE(0x0e0000, 0x0e0fff) AM_DEVREADWRITE8("eeprom", atari_eeprom_device, read, write, 0x00ff)
-	AM_RANGE(0x1f0000, 0x1fffff) AM_DEVWRITE("eeprom", atari_eeprom_device, unlock_write)
+	AM_RANGE(0x0e0000, 0x0e0fff) AM_DEVREADWRITE8("eeprom", eeprom_parallel_28xx_device, read, write, 0x00ff)
+	AM_RANGE(0x1f0000, 0x1fffff) AM_DEVWRITE("eeprom", eeprom_parallel_28xx_device, unlock_write)
 	AM_RANGE(0x260000, 0x260001) AM_READ_PORT("P1") AM_WRITE(klax_latch_w)
 	AM_RANGE(0x260002, 0x260003) AM_READ_PORT("P2")
 	AM_RANGE(0x270000, 0x270001) AM_DEVREADWRITE8("oki", okim6295_device, read, write, 0x00ff)
@@ -97,8 +98,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( klax2bl_map, AS_PROGRAM, 16, klax_state )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
-	AM_RANGE(0x0e0000, 0x0e0fff) AM_DEVREADWRITE8("eeprom", atari_eeprom_device, read, write, 0x00ff)
-	AM_RANGE(0x1f0000, 0x1fffff) AM_DEVWRITE("eeprom", atari_eeprom_device, unlock_write)
+	AM_RANGE(0x0e0000, 0x0e0fff) AM_DEVREADWRITE8("eeprom", eeprom_parallel_28xx_device, read, write, 0x00ff)
+	AM_RANGE(0x1f0000, 0x1fffff) AM_DEVWRITE("eeprom", eeprom_parallel_28xx_device, unlock_write)
 	AM_RANGE(0x260000, 0x260001) AM_READ_PORT("P1") AM_WRITE(klax_latch_w)
 	AM_RANGE(0x260002, 0x260003) AM_READ_PORT("P2")
 //  AM_RANGE(0x270000, 0x270001) AM_DEVREADWRITE8("oki", okim6295_device, read, write, 0x00ff) // no OKI here
@@ -190,7 +191,7 @@ GFXDECODE_END
  *
  *************************************/
 
-static MACHINE_CONFIG_START( klax, klax_state )
+static MACHINE_CONFIG_START( klax )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, ATARI_CLOCK_14MHz/2)
@@ -199,7 +200,8 @@ static MACHINE_CONFIG_START( klax, klax_state )
 
 	MCFG_MACHINE_RESET_OVERRIDE(klax_state,klax)
 
-	MCFG_ATARI_EEPROM_2816_ADD("eeprom")
+	MCFG_EEPROM_2816_ADD("eeprom")
+	MCFG_EEPROM_28XX_LOCK_AFTER_WRITE(true)
 
 	MCFG_WATCHDOG_ADD("watchdog")
 
@@ -226,7 +228,7 @@ static MACHINE_CONFIG_START( klax, klax_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_OKIM6295_ADD("oki", ATARI_CLOCK_14MHz/4/4, OKIM6295_PIN7_HIGH)
+	MCFG_OKIM6295_ADD("oki", ATARI_CLOCK_14MHz/4/4, PIN7_HIGH)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
@@ -438,10 +440,10 @@ ROM_END
  *
  *************************************/
 
-GAME( 1989, klax,  0,    klax, klax, driver_device, 0, ROT0, "Atari Games", "Klax (set 1)", 0 )
-GAME( 1989, klax2, klax, klax, klax, driver_device, 0, ROT0, "Atari Games", "Klax (set 2)", 0 )
-GAME( 1989, klax3, klax, klax, klax, driver_device, 0, ROT0, "Atari Games", "Klax (set 3)", 0 )
-GAME( 1989, klaxj, klax, klax, klax, driver_device, 0, ROT0, "Atari Games", "Klax (Japan)", 0 )
-GAME( 1989, klaxd, klax, klax, klax, driver_device, 0, ROT0, "Atari Games", "Klax (Germany)", 0 )
+GAME( 1989, klax,  0,    klax, klax, klax_state, 0, ROT0, "Atari Games", "Klax (set 1)", 0 )
+GAME( 1989, klax2, klax, klax, klax, klax_state, 0, ROT0, "Atari Games", "Klax (set 2)", 0 )
+GAME( 1989, klax3, klax, klax, klax, klax_state, 0, ROT0, "Atari Games", "Klax (set 3)", 0 )
+GAME( 1989, klaxj, klax, klax, klax, klax_state, 0, ROT0, "Atari Games", "Klax (Japan)", 0 )
+GAME( 1989, klaxd, klax, klax, klax, klax_state, 0, ROT0, "Atari Games", "Klax (Germany)", 0 )
 
-GAME( 1989, klax2bl, klax, klax2bl, klax, driver_device, 0, ROT0, "bootleg", "Klax (set 2, bootleg)", MACHINE_NOT_WORKING )
+GAME( 1989, klax2bl, klax, klax2bl, klax, klax_state, 0, ROT0, "bootleg", "Klax (set 2, bootleg)", MACHINE_NOT_WORKING )

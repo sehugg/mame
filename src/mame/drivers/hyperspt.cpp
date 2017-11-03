@@ -17,6 +17,7 @@ Based on drivers from Juno First emulator by Chris Hardy (chrish@kcbbs.gen.nz)
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/z80/z80.h"
+#include "machine/74259.h"
 #include "machine/gen_latch.h"
 #include "machine/konami1.h"
 #include "machine/nvram.h"
@@ -34,24 +35,28 @@ void hyperspt_state::machine_start()
 	save_item(NAME(m_SN76496_latch));
 }
 
-WRITE8_MEMBER(hyperspt_state::coin_counter_w)
+WRITE_LINE_MEMBER(hyperspt_state::coin_counter_1_w)
 {
-	machine().bookkeeping().coin_counter_w(offset, data);
+	machine().bookkeeping().coin_counter_w(0, state);
 }
 
-WRITE8_MEMBER(hyperspt_state::irq_mask_w)
+WRITE_LINE_MEMBER(hyperspt_state::coin_counter_2_w)
 {
-	m_irq_mask = data & 1;
+	machine().bookkeeping().coin_counter_w(1, state);
+}
+
+WRITE_LINE_MEMBER(hyperspt_state::irq_mask_w)
+{
+	m_irq_mask = state;
+	if (!m_irq_mask)
+		m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
 static ADDRESS_MAP_START( common_map, AS_PROGRAM, 8, hyperspt_state )
 	AM_RANGE(0x1000, 0x10bf) AM_RAM AM_SHARE("spriteram")
 	AM_RANGE(0x10c0, 0x10ff) AM_RAM AM_SHARE("scroll")  /* Scroll amount */
 	AM_RANGE(0x1400, 0x1400) AM_DEVWRITE("watchdog", watchdog_timer_device, reset_w)
-	AM_RANGE(0x1480, 0x1480) AM_WRITE(flipscreen_w)
-	AM_RANGE(0x1481, 0x1481) AM_DEVWRITE("trackfld_audio", trackfld_audio_device, konami_sh_irqtrigger_w)  /* cause interrupt on audio CPU */
-	AM_RANGE(0x1483, 0x1484) AM_WRITE(coin_counter_w)
-	AM_RANGE(0x1487, 0x1487) AM_WRITE(irq_mask_w)  /* Interrupt enable */
+	AM_RANGE(0x1480, 0x1487) AM_DEVWRITE("mainlatch", ls259_device, write_d0)
 	AM_RANGE(0x1500, 0x1500) AM_DEVWRITE("soundlatch", generic_latch_8_device, write)
 	AM_RANGE(0x1600, 0x1600) AM_READ_PORT("DSW2")
 	AM_RANGE(0x1680, 0x1680) AM_READ_PORT("SYSTEM")
@@ -280,10 +285,10 @@ GFXDECODE_END
 INTERRUPT_GEN_MEMBER(hyperspt_state::vblank_irq)
 {
 	if(m_irq_mask)
-		device.execute().set_input_line(0, HOLD_LINE);
+		device.execute().set_input_line(0, ASSERT_LINE);
 }
 
-static MACHINE_CONFIG_START( hyperspt, hyperspt_state )
+static MACHINE_CONFIG_START( hyperspt )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", KONAMI1, XTAL_18_432MHz/12)   /* verified on pcb */
@@ -292,6 +297,15 @@ static MACHINE_CONFIG_START( hyperspt, hyperspt_state )
 
 	MCFG_CPU_ADD("audiocpu", Z80,XTAL_14_31818MHz/4) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(hyperspt_sound_map)
+
+	MCFG_DEVICE_ADD("mainlatch", LS259, 0) // F2
+	MCFG_ADDRESSABLE_LATCH_Q0_OUT_CB(WRITELINE(hyperspt_state, flipscreen_w))
+	MCFG_ADDRESSABLE_LATCH_Q1_OUT_CB(DEVWRITELINE("trackfld_audio", trackfld_audio_device, sh_irqtrigger_w)) // SOUND ON
+	MCFG_ADDRESSABLE_LATCH_Q2_OUT_CB(NOOP) // END
+	MCFG_ADDRESSABLE_LATCH_Q3_OUT_CB(WRITELINE(hyperspt_state, coin_counter_1_w)) // COIN 1
+	MCFG_ADDRESSABLE_LATCH_Q4_OUT_CB(WRITELINE(hyperspt_state, coin_counter_2_w)) // COIN 2
+	MCFG_ADDRESSABLE_LATCH_Q5_OUT_CB(NOOP) // SA
+	MCFG_ADDRESSABLE_LATCH_Q7_OUT_CB(WRITELINE(hyperspt_state, irq_mask_w)) // INT
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
 
@@ -569,9 +583,9 @@ ROM_START( roadf3 ) // This hack was found on an original GX330 (Hyper Sports) P
 	ROM_LOAD( "82s129.a9",  0x0120, 0x0100, CRC(5b3b5f2a) SHA1(e83556fba6d50ad20dff6e19bd300ba0c30cc6e2) ) // identical to a09_c29.bin
 ROM_END
 
-GAME( 1984, hyperspt,  0,        hyperspt,  hyperspt, driver_device, 0, ROT0,  "Konami (Centuri license)", "Hyper Sports", MACHINE_SUPPORTS_SAVE )
-GAME( 1984, hypersptb, hyperspt, hypersptb, hyperspt, driver_device, 0, ROT0,  "bootleg", "Hyper Sports (bootleg)", MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE ) // has ADPCM vis MSM5205 instead of VLM
-GAME( 1984, hpolym84,  hyperspt, hyperspt,  hyperspt, driver_device, 0, ROT0,  "Konami",  "Hyper Olympic '84", MACHINE_SUPPORTS_SAVE )
-GAME( 1984, roadf,     0,        roadf,     roadf, driver_device, 0, ROT90, "Konami",  "Road Fighter (set 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1984, roadf2,    roadf,    roadf,     roadf, driver_device, 0, ROT90, "Konami",  "Road Fighter (set 2)", MACHINE_SUPPORTS_SAVE )
-GAME( 1984, roadf3,    roadf,    roadf,     roadf, driver_device, 0, ROT90, "hack",  "Road Fighter (set 3, conversion hack on Hyper Sports PCB)", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, hyperspt,  0,        hyperspt,  hyperspt, hyperspt_state, 0, ROT0,  "Konami (Centuri license)", "Hyper Sports", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, hypersptb, hyperspt, hypersptb, hyperspt, hyperspt_state, 0, ROT0,  "bootleg", "Hyper Sports (bootleg)", MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE ) // has ADPCM vis MSM5205 instead of VLM
+GAME( 1984, hpolym84,  hyperspt, hyperspt,  hyperspt, hyperspt_state, 0, ROT0,  "Konami",  "Hyper Olympic '84", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, roadf,     0,        roadf,     roadf,    hyperspt_state, 0, ROT90, "Konami",  "Road Fighter (set 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, roadf2,    roadf,    roadf,     roadf,    hyperspt_state, 0, ROT90, "Konami",  "Road Fighter (set 2)", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, roadf3,    roadf,    roadf,     roadf,    hyperspt_state, 0, ROT90, "hack",    "Road Fighter (set 3, conversion hack on Hyper Sports PCB)", MACHINE_SUPPORTS_SAVE )

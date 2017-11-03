@@ -58,7 +58,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( shisen_io_map, AS_IO, 8, shisen_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(dsw1_r, coin_w)
-	AM_RANGE(0x01, 0x01) AM_READ_PORT("DSW2") AM_DEVWRITE("m72", m72_audio_device, sound_command_byte_w)
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("DSW2") AM_DEVWRITE("m72", m72_audio_device, sound_command_w)
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("P1") AM_WRITE(bankswitch_w)
 	AM_RANGE(0x03, 0x03) AM_READ_PORT("P2")
 	AM_RANGE(0x04, 0x04) AM_READ_PORT("COIN")
@@ -207,7 +207,7 @@ GFXDECODE_END
 
 
 
-static MACHINE_CONFIG_START( shisen, shisen_state )
+static MACHINE_CONFIG_START( shisen )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 6000000)   /* 6 MHz ? */
@@ -238,7 +238,7 @@ static MACHINE_CONFIG_START( shisen, shisen_state )
 
 	MCFG_GENERIC_LATCH_8_ADD("soundlatch")
 
-	MCFG_SOUND_ADD("m72", M72, 0)
+	MCFG_SOUND_ADD("m72", IREM_M72_AUDIO, 0)
 
 	MCFG_YM2151_ADD("ymsnd", 3579545)
 	MCFG_YM2151_IRQ_HANDLER(DEVWRITELINE("m72", m72_audio_device, ym2151_irq_handler))
@@ -429,7 +429,7 @@ ROM_START( matchit )
 	/* no samples on this board */
 ROM_END
 
-GAME( 1989, matchit,  0,         shisen,   matchit, driver_device,  0, ROT0, "Tamtex",  "Match It", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, shisen,   matchit,   shisen,   shisen, driver_device,   0, ROT0, "Tamtex",  "Shisensho - Joshiryo-Hen (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, sichuan2, matchit,   shisen,   shisen, driver_device,   0, ROT0, "hack", "Sichuan II (hack, set 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, sichuan2a,matchit,   shisen,   shisen, driver_device,   0, ROT0, "hack", "Sichuan II (hack, set 2)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, matchit,  0,         shisen,   matchit, shisen_state,  0, ROT0, "Tamtex",  "Match It",                         MACHINE_SUPPORTS_SAVE )
+GAME( 1989, shisen,   matchit,   shisen,   shisen,  shisen_state,  0, ROT0, "Tamtex",  "Shisensho - Joshiryo-Hen (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, sichuan2, matchit,   shisen,   shisen,  shisen_state,  0, ROT0, "hack",    "Sichuan II (hack, set 1)",         MACHINE_SUPPORTS_SAVE )
+GAME( 1989, sichuan2a,matchit,   shisen,   shisen,  shisen_state,  0, ROT0, "hack",    "Sichuan II (hack, set 2)",         MACHINE_SUPPORTS_SAVE )

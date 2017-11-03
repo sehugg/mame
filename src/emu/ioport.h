@@ -54,7 +54,7 @@ enum input_seq_type
 	SEQ_TYPE_DECREMENT,
 	SEQ_TYPE_TOTAL
 };
-DECLARE_ENUM_OPERATORS(input_seq_type)
+DECLARE_ENUM_INCDEC_OPERATORS(input_seq_type)
 
 
 // crosshair types
@@ -361,12 +361,6 @@ enum ioport_type
 		IPT_UI_TAPE_STOP,
 		IPT_UI_DATS,
 		IPT_UI_FAVORITES,
-		IPT_UI_UP_FILTER,
-		IPT_UI_DOWN_FILTER,
-		IPT_UI_LEFT_PANEL,
-		IPT_UI_RIGHT_PANEL,
-		IPT_UI_UP_PANEL,
-		IPT_UI_DOWN_PANEL,
 		IPT_UI_EXPORT,
 		IPT_UI_AUDIT_FAST,
 		IPT_UI_AUDIT_ALL,
@@ -402,7 +396,7 @@ enum ioport_type
 
 	IPT_COUNT
 };
-DECLARE_ENUM_OPERATORS(ioport_type)
+DECLARE_ENUM_INCDEC_OPERATORS(ioport_type)
 // aliases for some types
 #define IPT_PADDLE_H        IPT_PADDLE
 #define IPT_PEDAL1          IPT_PEDAL
@@ -653,17 +647,6 @@ enum
 //  TYPE DEFINITIONS
 //**************************************************************************
 
-// forward declarations
-namespace util { namespace xml { class data_node; } }
-class ioport_list;
-class ioport_port;
-struct ioport_port_live;
-class ioport_field;
-struct ioport_field_live;
-class ioport_manager;
-class natural_keyboard;
-class analog_field;
-
 // constructor function pointer
 typedef void(*ioport_constructor)(device_t &owner, ioport_list &portlist, std::string &errorbuf);
 
@@ -885,7 +868,7 @@ private:
 	u8                          m_current4way;                                  // current 4-way value
 	u8                          m_previous;                                     // previous value
 };
-DECLARE_ENUM_OPERATORS(digital_joystick::direction_t)
+DECLARE_ENUM_INCDEC_OPERATORS(digital_joystick::direction_t)
 
 
 // ======================> ioport_condition
@@ -911,7 +894,10 @@ public:
 	ioport_condition(condition_t condition, const char *tag, ioport_value mask, ioport_value value) { set(condition, tag, mask, value); }
 
 	// getters
+	condition_t condition() const { return m_condition; }
 	const char *tag() const { return m_tag; }
+	ioport_value mask() const { return m_mask; }
+	ioport_value value() const { return m_value; }
 
 	// operators
 	bool operator==(const ioport_condition &rhs) const { return (m_mask == rhs.m_mask && m_value == rhs.m_value && m_condition == rhs.m_condition && strcmp(m_tag, rhs.m_tag) == 0); }
@@ -959,6 +945,7 @@ public:
 	running_machine &machine() const;
 	ioport_value value() const { return m_value; }
 	ioport_condition &condition() { return m_condition; }
+	ioport_condition const &condition() const { return m_condition; }
 	const char *name() const { return m_name; }
 
 	// helpers
@@ -1038,6 +1025,7 @@ public:
 	ioport_value mask() const { return m_mask; }
 	ioport_value defvalue() const { return m_defvalue; }
 	ioport_condition &condition() { return m_condition; }
+	ioport_condition const &condition() const { return m_condition; }
 	ioport_type type() const { return m_type; }
 	u8 player() const { return m_player; }
 	bool digital_value() const { return m_digital_value; }
@@ -1075,7 +1063,7 @@ public:
 	const ioport_value *remap_table() const { return m_remap_table; }
 
 	u8 way() const { return m_way; }
-	char32_t keyboard_code(int which) const;
+	std::vector<char32_t> keyboard_codes(int which) const;
 	std::string key_name(int which) const;
 	ioport_field_live &live() const { assert(m_live != nullptr); return *m_live; }
 
@@ -1161,7 +1149,7 @@ private:
 
 	// data relevant to other specific types
 	u8                          m_way;              // digital joystick 2/4/8-way descriptions
-	char32_t                    m_chars[4];         // unicode key data
+	char32_t                    m_chars[1 << (UCHAR_SHIFT_END - UCHAR_SHIFT_BEGIN + 1)][2];      // unicode key data
 };
 
 
@@ -1378,8 +1366,6 @@ struct ioport_port_live
 };
 
 
-enum class config_type;
-
 // ======================> ioport_manager
 
 // private input port state
@@ -1515,7 +1501,7 @@ public:
 
 	// field helpers
 	ioport_configurer& field_alloc(ioport_type type, ioport_value defval, ioport_value mask, const char *name = nullptr);
-	ioport_configurer& field_add_char(char32_t ch);
+	ioport_configurer& field_add_char(std::initializer_list<char32_t> charlist);
 	ioport_configurer& field_add_code(input_seq_type which, input_code code);
 	ioport_configurer& field_set_way(int way) { m_curfield->m_way = way; return *this; }
 	ioport_configurer& field_set_rotated() { m_curfield->m_flags |= ioport_field::FIELD_FLAG_ROTATED; return *this; }
@@ -1760,8 +1746,8 @@ ATTR_COLD void INPUT_PORTS_NAME(_name)(device_t &owner, ioport_list &portlist, s
 	configurer.setting_alloc((_default), (_name));
 
 // keyboard chars
-#define PORT_CHAR(_ch) \
-	configurer.field_add_char(_ch);
+#define PORT_CHAR(...) \
+	configurer.field_add_char({ __VA_ARGS__ });
 
 
 // name of table
@@ -1824,4 +1810,4 @@ inline device_t &ioport_setting::device() const { return m_field.device(); }
 inline running_machine &ioport_setting::machine() const { return m_field.machine(); }
 
 
-#endif  // MAME_EMU_IOPORT_H */
+#endif // MAME_EMU_IOPORT_H

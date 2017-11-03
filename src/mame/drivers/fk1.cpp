@@ -14,6 +14,7 @@
 #include "machine/pit8253.h"
 #include "machine/i8251.h"
 #include "machine/ram.h"
+#include "machine/timer.h"
 #include "screen.h"
 
 
@@ -333,7 +334,7 @@ static INPUT_PORTS_START( fk1 )
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('\"')
 		PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
-		PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('\xA4')
+		PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR(0xA4)
 		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
@@ -404,7 +405,7 @@ uint32_t fk1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 	return 0;
 }
 
-static MACHINE_CONFIG_START( fk1, fk1_state )
+static MACHINE_CONFIG_START( fk1 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_8MHz / 2)
 	MCFG_CPU_PROGRAM_MAP(fk1_mem)
@@ -474,5 +475,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( 1989, fk1,    0,      0,       fk1,       fk1, driver_device,      0,  "Statni statek Klicany", "FK-1", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT  STATE      INIT  COMPANY                  FULLNAME  FLAGS
+COMP( 1989, fk1,    0,      0,       fk1,       fk1,   fk1_state, 0,    "Statni statek Klicany", "FK-1",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND )

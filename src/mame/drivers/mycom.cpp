@@ -53,6 +53,7 @@
 #include "imagedev/cassette.h"
 #include "machine/i8255.h"
 #include "machine/msm5832.h"
+#include "machine/timer.h"
 #include "machine/wd_fdc.h"
 #include "sound/sn76496.h"
 #include "sound/wave.h"
@@ -114,7 +115,7 @@ private:
 	required_device<i8255_device> m_ppi2;
 	required_device<cassette_image_device> m_cass;
 	required_device<mc6845_device> m_crtc;
-	required_device<fd1771_t> m_fdc;
+	required_device<fd1771_device> m_fdc;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
 	required_device<sn76489_device> m_audio;
@@ -228,7 +229,7 @@ static ADDRESS_MAP_START(mycom_io, AS_IO, 8, mycom_state)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("ppi8255_0", i8255_device, read, write)
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ppi8255_1", i8255_device, read, write)
 	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("ppi8255_2", i8255_device, read, write)
-	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("fdc", fd1771_t, read, write)
+	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("fdc", fd1771_device, read, write)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -496,7 +497,7 @@ DRIVER_INIT_MEMBER(mycom_state,mycom)
 	membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0x10000);
 }
 
-static MACHINE_CONFIG_START( mycom, mycom_state )
+static MACHINE_CONFIG_START( mycom )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_10MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(mycom_map)
@@ -561,7 +562,7 @@ ROM_START( mycom )
 	ROM_SYSTEM_BIOS(0, "mycom", "40 column")
 	ROMX_LOAD( "bios0.rom", 0x10000, 0x3000, CRC(e6f50355) SHA1(5d3acea360c0a8ab547db03a43e1bae5125f9c2a), ROM_BIOS(1))
 	ROMX_LOAD( "basic0.rom",0x13000, 0x1000, CRC(3b077465) SHA1(777427182627f371542c5e0521ed3ca1466a90e1), ROM_BIOS(1))
-	ROM_SYSTEM_BIOS(1, "Takeda", "80 column")
+	ROM_SYSTEM_BIOS(1, "takeda", "80 column")
 	ROMX_LOAD( "bios1.rom", 0x10000, 0x3000, CRC(c51d7fcb) SHA1(31d39db43b77cca4d49ff9814d531e056924e716), ROM_BIOS(2))
 	ROMX_LOAD( "basic1.rom",0x13000, 0x1000, CRC(30a573f1) SHA1(e3fe2e73644e831b52e2789dc7c181989cc30b82), ROM_BIOS(2))
 	/* Takeda bios has no cursor. Use the next lines to turn on cursor, but you must comment out when done. */
@@ -576,5 +577,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT        COMPANY                   FULLNAME       FLAGS */
-COMP( 1981, mycom,  0,      0,       mycom,     mycom, mycom_state,   mycom, "Japan Electronics College", "MYCOMZ-80A", MACHINE_NOT_WORKING | MACHINE_NO_SOUND )
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT  STATE        INIT   COMPANY                      FULLNAME      FLAGS
+COMP( 1981, mycom,  0,      0,       mycom,     mycom, mycom_state, mycom, "Japan Electronics College", "MYCOMZ-80A", MACHINE_NOT_WORKING | MACHINE_NO_SOUND )

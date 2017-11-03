@@ -7,11 +7,13 @@
 #include "emu.h"
 #include "powervr2.h"
 #include "includes/dc.h"
-#include "cpu/sh4/sh4.h"
-#include "rendutil.h"
-#include "video/rgbutil.h"
 
-const device_type POWERVR2 = device_creator<powervr2_device>;
+#include "cpu/sh/sh4.h"
+#include "video/rgbutil.h"
+#include "rendutil.h"
+
+
+DEFINE_DEVICE_TYPE(POWERVR2, powervr2_device, "powervr2", "PowerVR 2")
 
 DEVICE_ADDRESS_MAP_START(ta_map, 32, powervr2_device)
 	AM_RANGE(0x0000, 0x0003) AM_READ(     id_r)
@@ -938,9 +940,10 @@ WRITE32_MEMBER( powervr2_device::softreset_w )
 		logerror("%s: Core Pipeline soft reset\n", tag());
 #endif
 		if (start_render_received == 1) {
-			for (auto & elem : grab)
-				if (elem.busy == 1)
-					elem.busy = 0;
+			for (int a=0;a < NUM_BUFFERS;a++)
+				if (grab[a].busy == 1)
+					grab[a].busy = 0;
+
 			start_render_received = 0;
 		}
 	}
@@ -2027,13 +2030,13 @@ WRITE64_MEMBER( powervr2_device::ta_fifo_poly_w )
 		tafifo_buff[tafifo_pos]=(uint32_t)data;
 		tafifo_buff[tafifo_pos+1]=(uint32_t)(data >> 32);
 		#if DEBUG_FIFO_POLY
-		osd_printf_debug("%s",string_format("ta_fifo_poly_w:  Unmapped write64 %08x = %I64x -> %08x %08x\n", 0x10000000+offset*8, data, tafifo_buff[tafifo_pos], tafifo_buff[tafifo_pos+1]).c_str());
+		osd_printf_debug("%s",string_format("ta_fifo_poly_w:  Unmapped write64 %08x = %x -> %08x %08x\n", 0x10000000+offset*8, data, tafifo_buff[tafifo_pos], tafifo_buff[tafifo_pos+1]).c_str());
 		#endif
 		tafifo_pos += 2;
 	}
 	else
 	{
-		osd_printf_debug("%s",string_format("ta_fifo_poly_w:  Unmapped write64 %08x = %I64x mask %I64x\n", 0x10000000+offset*8, data, mem_mask).c_str());
+		osd_printf_debug("%s",string_format("ta_fifo_poly_w:  Unmapped write64 %08x = %x mask %x\n", 0x10000000+offset*8, data, mem_mask).c_str());
 	}
 
 	tafifo_pos &= tafifo_mask;
@@ -3607,7 +3610,7 @@ void powervr2_device::pvr_dma_execute(address_space &space)
 }
 
 powervr2_device::powervr2_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, POWERVR2, "PowerVR 2", tag, owner, clock, "powervr2", __FILE__),
+	: device_t(mconfig, POWERVR2, tag, owner, clock),
 		device_video_interface(mconfig, *this),
 		irq_cb(*this),
 		m_mamedebug(*this, ":MAMEDEBUG")
@@ -3618,7 +3621,8 @@ void powervr2_device::device_start()
 {
 	irq_cb.resolve_safe();
 
-	memset(grab, 0, sizeof(grab));
+	grab = make_unique_clear<receiveddata[]>(NUM_BUFFERS);
+
 	pvr_build_parameterconfig();
 
 	computedilated();

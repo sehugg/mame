@@ -128,7 +128,7 @@ public:
 	DECLARE_READ8_MEMBER(port0a_r);
 	DECLARE_WRITE8_MEMBER(port0a_w);
 	DECLARE_WRITE8_MEMBER(port0d_w);
-	DECLARE_WRITE8_MEMBER(kbd_put);
+	void kbd_put(u8 data);
 	INTERRUPT_GEN_MEMBER(irq_vs);
 	MC6845_UPDATE_ROW(crtc_update_row);
 
@@ -197,8 +197,7 @@ static ADDRESS_MAP_START(amust_io, AS_IO, 8, amust_state)
 ADDRESS_MAP_END
 
 static SLOT_INTERFACE_START( amust_floppies )
-	SLOT_INTERFACE( "drive0", FLOPPY_525_QD )
-	SLOT_INTERFACE( "drive1", FLOPPY_525_QD )
+	SLOT_INTERFACE( "525qd", FLOPPY_525_QD )
 SLOT_INTERFACE_END
 
 /* Input ports */
@@ -283,7 +282,7 @@ d7 -
 */
 READ8_MEMBER( amust_state::port09_r )
 {
-	printf("%s\n",machine().describe_context());
+	logerror("%s\n",machine().describe_context());
 	return ioport("P9")->read();
 }
 
@@ -316,7 +315,7 @@ WRITE8_MEMBER( amust_state::port0d_w )
 	m_p_videoram[video_address] = data;
 }
 
-WRITE8_MEMBER( amust_state::kbd_put )
+void amust_state::kbd_put(u8 data)
 {
 	m_term_data = data;
 }
@@ -391,7 +390,7 @@ DRIVER_INIT_MEMBER( amust_state, amust )
 	membank("bankw0")->configure_entry(0, &main[0xf800]);
 }
 
-static MACHINE_CONFIG_START( amust, amust_state )
+static MACHINE_CONFIG_START( amust )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_16MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(amust_mem)
@@ -421,11 +420,11 @@ static MACHINE_CONFIG_START( amust, amust_state )
 	MCFG_MC6845_UPDATE_ROW_CB(amust_state, crtc_update_row)
 
 	MCFG_DEVICE_ADD("keybd", GENERIC_KEYBOARD, 0)
-	MCFG_GENERIC_KEYBOARD_CB(WRITE8(amust_state, kbd_put))
+	MCFG_GENERIC_KEYBOARD_CB(PUT(amust_state, kbd_put))
 	MCFG_UPD765A_ADD("fdc", false, true)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amust_floppies, "drive0", floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amust_floppies, "525qd", floppy_image_device::default_floppy_formats)
 	MCFG_FLOPPY_DRIVE_SOUND(true)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amust_floppies, "drive1", floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amust_floppies, "525qd", floppy_image_device::default_floppy_formats)
 	MCFG_FLOPPY_DRIVE_SOUND(true)
 
 	//MCFG_DEVICE_ADD("uart1", I8251, 0)
@@ -476,5 +475,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    CLASS          INIT     COMPANY       FULLNAME       FLAGS */
-COMP( 1983, amust,  0,      0,       amust,     amust,   amust_state,   amust,  "Amust", "Amust Executive 816", MACHINE_NOT_WORKING )
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    CLASS          INIT     COMPANY  FULLNAME               FLAGS
+COMP( 1983, amust,  0,      0,       amust,     amust,   amust_state,   amust,  "Amust",  "Amust Executive 816", MACHINE_NOT_WORKING )

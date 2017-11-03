@@ -954,7 +954,7 @@ FLOPPY_FORMATS_MEMBER( fanucspmg_state::floppy_formats )
 	FLOPPY_IMD_FORMAT
 FLOPPY_FORMATS_END
 
-static MACHINE_CONFIG_START( fanucspmg, fanucspmg_state )
+static MACHINE_CONFIG_START( fanucspmg )
 	/* basic machine hardware */
 	MCFG_CPU_ADD(MAINCPU_TAG, I8086, XTAL_15MHz/3)
 	MCFG_CPU_PROGRAM_MAP(maincpu_mem)
@@ -986,8 +986,14 @@ static MACHINE_CONFIG_START( fanucspmg, fanucspmg_state )
 	MCFG_I8257_IN_IOR_0_CB(READ8(fanucspmg_state, fdcdma_r))
 	MCFG_I8257_OUT_IOW_0_CB(WRITE8(fanucspmg_state, fdcdma_w))
 
-	MCFG_PIC8259_ADD(PIC0_TAG, INPUTLINE("maincpu", 0), VCC, READ8(fanucspmg_state, get_slave_ack))
-	MCFG_PIC8259_ADD(PIC1_TAG, DEVWRITELINE(PIC0_TAG, pic8259_device, ir7_w), GND, NOOP)
+	MCFG_DEVICE_ADD(PIC0_TAG, PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
+	MCFG_PIC8259_IN_SP_CB(VCC)
+	MCFG_PIC8259_CASCADE_ACK_CB(READ8(fanucspmg_state, get_slave_ack))
+
+	MCFG_DEVICE_ADD(PIC1_TAG, PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(DEVWRITELINE(PIC0_TAG, pic8259_device, ir7_w))
+	MCFG_PIC8259_IN_SP_CB(GND)
 
 	MCFG_UPD765A_ADD(FDC_TAG, true, true)
 	MCFG_UPD765_INTRQ_CALLBACK(DEVWRITELINE(PIC0_TAG, pic8259_device, ir3_w))
@@ -1042,6 +1048,6 @@ ROM_START( fanucspgm )
 ROM_END
 
 /* Driver */
-/*    YEAR  NAME       PARENT       COMPAT   MACHINE    INPUT      CLASS           INIT       COMPANY  FULLNAME            FLAGS */
-COMP( 1983, fanucspg,  0,             0,    fanucspmg,  fanucspmg, fanucspmg_state, fanucspmg, "Fanuc", "System P Model G", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
-COMP( 1983, fanucspgm, fanucspg,      0,    fanucspmgm, fanucspmg, fanucspmg_state, fanucspmg, "Fanuc", "System P Model G (monochrome)", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+//    YEAR  NAME       PARENT    COMPAT  MACHINE     INPUT      CLASS            INIT       COMPANY  FULLNAME                         FLAGS
+COMP( 1983, fanucspg,  0,        0,      fanucspmg,  fanucspmg, fanucspmg_state, fanucspmg, "Fanuc", "System P Model G",              MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+COMP( 1983, fanucspgm, fanucspg, 0,      fanucspmgm, fanucspmg, fanucspmg_state, fanucspmg, "Fanuc", "System P Model G (monochrome)", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)

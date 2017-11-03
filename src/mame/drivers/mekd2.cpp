@@ -79,6 +79,7 @@ TODO
 #include "machine/6821pia.h"
 #include "machine/6850acia.h"
 #include "machine/clock.h"
+#include "machine/timer.h"
 #include "sound/wave.h"
 #include "speaker.h"
 
@@ -95,12 +96,12 @@ public:
 	};
 
 	mekd2_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
-		m_maincpu(*this, "maincpu"),
-		m_pia_s(*this, "pia_s"),
-		m_pia_u(*this, "pia_u"),
-		m_acia(*this, "acia"),
-		m_cass(*this, "cassette")
+		: driver_device(mconfig, type, tag)
+		, m_maincpu(*this, "maincpu")
+		, m_pia_s(*this, "pia_s")
+		, m_pia_u(*this, "pia_u")
+		, m_acia(*this, "acia")
+		, m_cass(*this, "cassette")
 	{ }
 
 	DECLARE_READ_LINE_MEMBER(mekd2_key40_r);
@@ -113,10 +114,8 @@ public:
 	TIMER_DEVICE_CALLBACK_MEMBER(mekd2_c);
 	TIMER_DEVICE_CALLBACK_MEMBER(mekd2_p);
 
-protected:
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
-
 private:
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 	uint8_t m_cass_data[4];
 	uint8_t m_segment;
 	uint8_t m_digit;
@@ -364,7 +363,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(mekd2_state::mekd2_p)
 
 ************************************************************/
 
-static MACHINE_CONFIG_START( mekd2, mekd2_state )
+static MACHINE_CONFIG_START( mekd2 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6800, XTAL_MEKD2 / 2)        /* 614.4 kHz */
 	MCFG_CPU_PROGRAM_MAP(mekd2_mem)
@@ -424,5 +423,5 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT  CLASS        INIT    COMPANY     FULLNAME   FLAGS */
-COMP( 1977, mekd2,  0,      0,      mekd2,    mekd2, driver_device, 0,  "Motorola", "MEK6800D2" , 0 )
+//    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT  CLASS        INIT  COMPANY     FULLNAME      FLAGS
+COMP( 1977, mekd2,  0,      0,      mekd2,    mekd2, mekd2_state, 0,    "Motorola", "MEK6800D2" , 0 )

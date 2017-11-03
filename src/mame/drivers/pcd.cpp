@@ -20,6 +20,7 @@
 #include "machine/nvram.h"
 #include "machine/pic8259.h"
 #include "machine/ram.h"
+#include "machine/timer.h"
 #include "machine/wd_fdc.h"
 #include "sound/spkrdev.h"
 
@@ -90,9 +91,9 @@ private:
 	required_device<pic8259_device> m_pic1;
 	required_device<pic8259_device> m_pic2;
 	required_device<speaker_sound_device> m_speaker;
-	required_device<wd2793_t> m_fdc;
+	required_device<wd2793_device> m_fdc;
 	required_device<mc146818_device> m_rtc;
-	required_device<SCSI_PORT_DEVICE> m_scsi;
+	required_device<scsi_port_device> m_scsi;
 	required_device<output_latch_device> m_scsi_data_out;
 	required_device<input_buffer_device> m_scsi_data_in;
 	required_device<ram_device> m_ram;
@@ -446,7 +447,7 @@ static ADDRESS_MAP_START( pcd_io, AS_IO, 16, pcd_state )
 	AM_RANGE(0xf840, 0xf841) AM_READWRITE8(stat_r, stat_w, 0x00ff)
 	AM_RANGE(0xf840, 0xf841) AM_READWRITE8(led_r, led_w, 0xff00)
 	AM_RANGE(0xf880, 0xf8bf) AM_READWRITE8(rtc_r, rtc_w, 0xffff)
-	AM_RANGE(0xf900, 0xf903) AM_DEVREADWRITE8("fdc", wd2793_t, read, write, 0xffff)
+	AM_RANGE(0xf900, 0xf903) AM_DEVREADWRITE8("fdc", wd2793_device, read, write, 0xffff)
 	AM_RANGE(0xf904, 0xf905) AM_READWRITE(dskctl_r, dskctl_w)
 	AM_RANGE(0xf940, 0xf943) AM_READWRITE8(scsi_r, scsi_w, 0xffff)
 	AM_RANGE(0xf980, 0xf9bf) AM_DEVICE("video", pcdx_video_device, map)
@@ -486,7 +487,7 @@ static INPUT_PORTS_START(pcx)
 	PORT_CONFSETTING(0x02, "SINIX 1.2")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( pcd, pcd_state )
+static MACHINE_CONFIG_START( pcd )
 	MCFG_CPU_ADD("maincpu", I80186, XTAL_16MHz)
 	MCFG_CPU_PROGRAM_MAP(pcd_map)
 	MCFG_CPU_IO_MAP(pcd_io)
@@ -495,8 +496,11 @@ static MACHINE_CONFIG_START( pcd, pcd_state )
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("timer0_tick", pcd_state, timer0_tick, attotime::from_hz(XTAL_16MHz / 24)) // adjusted to pass post
 
-	MCFG_PIC8259_ADD("pic1", DEVWRITELINE("maincpu", i80186_cpu_device, int0_w), VCC, NOOP)
-	MCFG_PIC8259_ADD("pic2", DEVWRITELINE("maincpu", i80186_cpu_device, int1_w), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic1", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(DEVWRITELINE("maincpu", i80186_cpu_device, int0_w))
+
+	MCFG_DEVICE_ADD("pic2", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(DEVWRITELINE("maincpu", i80186_cpu_device, int1_w))
 
 	MCFG_DEVICE_ADD("video", PCD_VIDEO, 0)
 
@@ -606,5 +610,5 @@ ROM_END
 //  GAME DRIVERS
 //**************************************************************************
 
-COMP( 1984, pcd, 0, 0, pcd, 0, driver_device, 0, "Siemens", "PC-D", MACHINE_NOT_WORKING )
-COMP( 1984, pcx, pcd, 0, pcx, pcx, driver_device, 0, "Siemens", "PC-X", MACHINE_NOT_WORKING )
+COMP( 1984, pcd, 0,   0, pcd, 0,   pcd_state, 0, "Siemens", "PC-D", MACHINE_NOT_WORKING )
+COMP( 1984, pcx, pcd, 0, pcx, pcx, pcd_state, 0, "Siemens", "PC-X", MACHINE_NOT_WORKING )

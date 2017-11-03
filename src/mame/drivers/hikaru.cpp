@@ -382,7 +382,7 @@ Notes:
 */
 
 #include "emu.h"
-#include "cpu/sh4/sh4.h"
+#include "cpu/sh/sh4.h"
 #include "screen.h"
 
 
@@ -481,7 +481,7 @@ static ADDRESS_MAP_START( hikaru_map_slave, AS_PROGRAM, 64, hikaru_state )
 ADDRESS_MAP_END
 
 
-static MACHINE_CONFIG_START( hikaru, hikaru_state )
+static MACHINE_CONFIG_START( hikaru )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", SH4LE, CPU_CLOCK)
 //  MCFG_SH4_MD0(1)
@@ -496,9 +496,13 @@ static MACHINE_CONFIG_START( hikaru, hikaru_state )
 //  MCFG_SH4_CLOCK(CPU_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(hikaru_map)
 //  MCFG_CPU_IO_MAP(hikaru_port)
+	MCFG_CPU_FORCE_NO_DRC()
 //  MCFG_CPU_VBLANK_INT("screen", hikaru,vblank)
+
 	MCFG_CPU_ADD("slave", SH4LE, CPU_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(hikaru_map_slave)
+	MCFG_CPU_FORCE_NO_DRC()
+
 
 //  MCFG_MACHINE_START_OVERRIDE(hikaru_state, hikaru )
 //  MCFG_MACHINE_RESET_OVERRIDE(hikaru_state, hikaru )
@@ -645,7 +649,7 @@ ROM_START( pharrier )
 	ROM_PARAMETER( ":rom_board:segam2crypt:key", "2912c68a" )
 ROM_END
 
-ROM_START( podrace )
+ROM_START( swracer )
 	ROM_REGION( 0x200000, "maincpu", 0)
 	HIKARU_BIOS
 
@@ -806,11 +810,11 @@ ROM_START( sgnascaro )
 	ROM_PARAMETER( ":rom_board:key", "56dedf33" )
 ROM_END
 
-GAME( 2000, hikaru,   0,        hikaru,   hikaru, driver_device,   0, ROT0, "Sega",            "Hikaru Bios", MACHINE_NO_SOUND|MACHINE_NOT_WORKING|MACHINE_IS_BIOS_ROOT )
-GAME( 1999, braveff,  hikaru,   hikaru,   hikaru, driver_device,   0, ROT0, "Sega",            "Brave Fire Fighters", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
-GAME( 2000, airtrix,  hikaru,   hikaru,   hikaru, driver_device,   0, ROT0, "Sega",            "Air Trix (Rev A)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
-GAME( 2000, airtrixo, airtrix,  hikaru,   hikaru, driver_device,   0, ROT0, "Sega",            "Air Trix (original)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
-GAME( 2000, sgnascar, hikaru,   hikaru,   hikaru, driver_device,   0, ROT0, "Sega / Electronic Arts", "NASCAR Racing (Rev A)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
-GAME( 2000, sgnascaro,sgnascar, hikaru,   hikaru, driver_device,   0, ROT0, "Sega / Electronic Arts", "NASCAR Racing (original)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
-GAME( 2001, pharrier, hikaru,   hikaru,   hikaru, driver_device,   0, ROT0, "Sega",            "Planet Harriers (Rev A)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
-GAME( 2001, podrace,  hikaru,   hikaru,   hikaru, driver_device,   0, ROT0, "Sega",            "Star Wars Pod Racer", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 2000, hikaru,   0,        hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega",            "Hikaru Bios", MACHINE_NO_SOUND|MACHINE_NOT_WORKING|MACHINE_IS_BIOS_ROOT )
+GAME( 1999, braveff,  hikaru,   hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega",            "Brave Firefighters", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 2000, airtrix,  hikaru,   hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega",            "Air Trix (Rev A)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 2000, airtrixo, airtrix,  hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega",            "Air Trix (original)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 2000, sgnascar, hikaru,   hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega / Electronic Arts", "NASCAR Racing (Rev A)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 2000, sgnascaro,sgnascar, hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega / Electronic Arts", "NASCAR Racing (original)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 2000, pharrier, hikaru,   hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega",            "Planet Harriers (Rev A)", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 2000, swracer,  hikaru,   hikaru,   hikaru, hikaru_state,   0, ROT0, "Sega",            "Star Wars: Racer Arcade", MACHINE_NO_SOUND|MACHINE_NOT_WORKING )

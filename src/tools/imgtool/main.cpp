@@ -234,9 +234,11 @@ static int cmd_dir(const struct command *c, int argc, char *argv[])
 			? "<DIR>"
 			: string_format("%u", (unsigned int) ent.filesize);
 
-		if (ent.lastmodified_time != 0)
-			strftime(last_modified, sizeof(last_modified), "%d-%b-%y %H:%M:%S",
-				localtime(&ent.lastmodified_time));
+		if (!ent.lastmodified_time.empty())
+		{
+			std::tm t = ent.lastmodified_time.localtime();
+			strftime(last_modified, sizeof(last_modified), "%d-%b-%y %H:%M:%S", &t);
+		}
 
 		if (ent.hardlink)
 			strcat(ent.filename, " <hl>");
@@ -412,7 +414,7 @@ static int cmd_getall(const struct command *c, int argc, char *argv[])
 	imgtool_dirent ent;
 	filter_getinfoproc filter;
 	int unnamedargs;
-	const char *path = nullptr;
+	const char *path = "";
 	int arg;
 	int partition_index = 0;
 
@@ -708,8 +710,8 @@ static int cmd_listfilters(const struct command *c, int argc, char *argv[])
 	for (i = 0; filters[i]; i++)
 	{
 		util::stream_format(std::wcout, L"  %-11s%s\n",
-			filter_get_info_string(filters[i], FILTINFO_STR_NAME),
-			filter_get_info_string(filters[i], FILTINFO_STR_HUMANNAME));
+			wstring_from_utf8(filter_get_info_string(filters[i], FILTINFO_STR_NAME)),
+			wstring_from_utf8(filter_get_info_string(filters[i], FILTINFO_STR_HUMANNAME)));
 	}
 
 	return 0;
@@ -863,6 +865,12 @@ int main(int argc, char *argv[])
 	if (imgtool_validitychecks())
 		return -1;
 #endif // MAME_DEBUG
+
+	// convert arguments to UTF-8
+	std::vector<std::string> args = osd_get_command_line(argc, argv);
+	argv = (char **)alloca(sizeof(char *) * args.size());
+	for (i = 0; i < args.size(); i++)
+		argv[i] = (char *)args[i].c_str();
 
 	util::stream_format(std::wcout, L"\n");
 

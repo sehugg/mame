@@ -7,6 +7,7 @@
 *************************************************************************/
 
 #include "machine/atarigen.h"
+#include "machine/timer.h"
 #include "video/atarimo.h"
 
 class badlands_state : public atarigen_state
@@ -27,7 +28,7 @@ public:
 	required_device<tilemap_device> m_playfield_tilemap;
 	required_device<atari_motion_objects_device> m_mob;
 	optional_shared_ptr<uint8_t> m_b_sharedram;
-	
+
 	uint8_t           m_pedal_value[2];
 	uint8_t           m_playfield_tile_bank;
 
@@ -47,6 +48,8 @@ public:
 	DECLARE_MACHINE_RESET(badlandsb);
 	uint32_t screen_update_badlands(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(vblank_int);
+	TIMER_DEVICE_CALLBACK_MEMBER(sound_scanline);
+	TIMER_DEVICE_CALLBACK_MEMBER(bootleg_sound_scanline);
 	DECLARE_WRITE16_MEMBER( badlands_pf_bank_w );
 	DECLARE_READ8_MEMBER(bootleg_shared_r);
 	DECLARE_WRITE8_MEMBER(bootleg_shared_w);

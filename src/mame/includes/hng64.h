@@ -1,6 +1,8 @@
 // license:LGPL-2.1+
 // copyright-holders:David Haywood, Angelo Salese, ElSemi, Andrew Gardner
+
 #include "machine/msm6242.h"
+#include "machine/timer.h"
 #include "cpu/mips/mips3.h"
 #include "cpu/nec/v53.h"
 #include "sound/l7a1045_l6028_dsp_a.h"
@@ -340,6 +342,7 @@ public:
 	std::unique_ptr<hng64_poly_renderer> m_poly_renderer;
 
 	TIMER_CALLBACK_MEMBER(hng64_3dfifo_processed);
+	emu_timer *m_3dfifo_timer;
 
 	uint8_t *m_texturerom;
 	uint16_t* m_vertsrom;

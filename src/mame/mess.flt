@@ -13,8 +13,11 @@ abc1600.cpp
 abc80.cpp
 abc80x.cpp
 ac1.cpp
+accomm.cpp
+acd.cpp
 aceex.cpp
 acrnsys1.cpp
+acvirus.cpp
 adam.cpp
 advision.cpp
 agat.cpp
@@ -24,14 +27,18 @@ akaiax80.cpp
 alesis.cpp
 alesis_qs.cpp
 alphasma.cpp
+alphatpx.cpp
 alphatro.cpp
 altair.cpp
 alto2.cpp
+altos2.cpp
 altos5.cpp
 altos486.cpp
+altos8600.cpp
 amico2k.cpp
 amiga.cpp
 ampro.cpp
+ampscarp.cpp
 amstr_pc.cpp
 amstrad.cpp
 amust.cpp
@@ -62,6 +69,7 @@ atarist.cpp
 atm.cpp
 atom.cpp
 atpci.cpp
+att4425.cpp
 attache.cpp
 aussiebyte.cpp
 avigo.cpp
@@ -122,11 +130,13 @@ coco12.cpp
 coco3.cpp
 codata.cpp
 coleco.cpp
+compc.cpp
 compis.cpp
 compucolor.cpp
 comquest.cpp
 comx35.cpp
 concept.cpp
+controlid.cpp
 cortex.cpp
 cosmicos.cpp
 cp1.cpp
@@ -143,6 +153,7 @@ d6809.cpp
 dai.cpp
 daruma.cpp
 datum.cpp
+dbox.cpp
 dccons.cpp
 dct11em.cpp
 dectalk.cpp
@@ -170,6 +181,7 @@ ec65.cpp
 einstein.cpp
 electron.cpp
 elekscmp.cpp
+elektronmono.cpp
 elf.cpp
 elwro800.cpp
 enmirage.cpp
@@ -183,6 +195,7 @@ et3400.cpp
 eti660.cpp
 eurocom2.cpp
 europc.cpp
+eva.cpp
 evmbug.cpp
 excali64.cpp
 exelv.cpp
@@ -200,6 +213,7 @@ fidelz80.cpp
 fk1.cpp
 fm7.cpp
 fmtowns.cpp
+fontwriter.cpp
 force68k.cpp
 fp1100.cpp
 fp200.cpp
@@ -209,6 +223,7 @@ galaxy.cpp
 galeb.cpp
 gamate.cpp
 gamecom.cpp
+gamecube.cpp
 gameking.cpp
 gamepock.cpp
 gb.cpp
@@ -224,18 +239,19 @@ goupil.cpp
 gp2x.cpp
 gp32.cpp
 grfd2301.cpp
+gridcomp.cpp
 h19.cpp
 h8.cpp
 h89.cpp
 harriet.cpp
 hazeltin.cpp
+hazeltine.cpp
 hec2hrp.cpp
 hh_amis2k.cpp
 hh_cop400.cpp
 hh_hmcs40.cpp
 hh_melps4.cpp
 hh_pic16.cpp
-hh_sm500.cpp
 hh_sm510.cpp
 hh_tms1k.cpp
 hh_ucom4.cpp
@@ -253,6 +269,7 @@ hp9k.cpp
 hp9k_3xx.cpp
 hprot1.cpp
 hpz80unk.cpp
+hp80.cpp
 ht68k.cpp
 huebler.cpp
 hunter2.cpp
@@ -273,6 +290,7 @@ indiana.cpp
 indigo.cpp
 indy_indigo2.cpp
 instruct.cpp
+intellec4.cpp
 interact.cpp
 interpro.cpp
 intv.cpp
@@ -300,18 +318,22 @@ k28.cpp
 k8915.cpp
 kaypro.cpp
 kc.cpp
+kdt6.cpp
 kim1.cpp
 konin.cpp
 kramermc.cpp
 kron.cpp
+krz2000.cpp
 kyocera.cpp
 laser3k.cpp
 lb186.cpp
 lc80.cpp
 lcmate2.cpp
 leapster.cpp
+learnwin.cpp
 lft.cpp
 lg-dvd.cpp
+lilith.cpp
 lisa.cpp
 llc.cpp
 lola8a.cpp
@@ -340,7 +362,9 @@ mccpm.cpp
 megadriv.cpp
 mekd2.cpp
 mephisto.cpp
+mephisto_montec.cpp
 mes.cpp
+mfabfz.cpp
 mice.cpp
 micral.cpp
 micro20.cpp
@@ -352,9 +376,11 @@ microvsn.cpp
 mikro80.cpp
 mikromik.cpp
 mikrosha.cpp
+mightyframe.cpp
 mini2440.cpp
 minicom.cpp
 miniforce.cpp
+miniframe.cpp
 minitel_2_rpic.cpp
 mits680b.cpp
 mk1.cpp
@@ -373,6 +399,7 @@ mpf1.cpp
 mps1230.cpp
 mpz80.cpp
 ms0515.cpp
+ms6102.cpp
 ms9540.cpp
 msbc1.cpp
 mstation.cpp
@@ -398,8 +425,10 @@ nakajies.cpp
 nanos.cpp
 nascom1.cpp
 nc.cpp
+nds.cpp
 neogeocd.cpp
 nes.cpp
+nes_vt.cpp
 newbrain.cpp
 next.cpp
 ngen.cpp
@@ -461,6 +490,7 @@ pegasus.cpp
 pencil2.cpp
 pentagon.cpp
 peoplepc.cpp
+perq.cpp
 pes.cpp
 pet.cpp
 pg685.cpp
@@ -482,9 +512,11 @@ pockstat.cpp
 pofo.cpp
 poisk1.cpp
 pokemini.cpp
+polgar.cpp
 poly.cpp
 poly88.cpp
 poly880.cpp
+powerstack.cpp
 pp01.cpp
 prestige.cpp
 primo.cpp
@@ -531,6 +563,7 @@ rsc55.cpp
 rt1715.cpp
 rvoice.cpp
 rx78.cpp
+rzone.cpp
 sacstate.cpp
 sage2.cpp
 samcoupe.cpp
@@ -565,6 +598,7 @@ snes.cpp
 socrates.cpp
 softbox.cpp
 sorcerer.cpp
+solbourne.cpp
 spc1000.cpp
 spc1500.cpp
 spec128.cpp
@@ -596,6 +630,7 @@ swyft.cpp
 sym1.cpp
 symbolics.cpp
 sys2900.cpp
+sys9002.cpp
 systec.cpp
 tamag1.cpp
 tandy1t.cpp
@@ -610,8 +645,10 @@ tek410x.cpp
 tek440x.cpp
 tekxp33x.cpp
 terak.cpp
+terco.cpp
 test_t400.cpp
 testconsole.cpp
+tg100.cpp
 thomson.cpp
 ti630.cpp
 ti74.cpp
@@ -642,11 +679,14 @@ tr606.cpp
 tranz330.cpp
 tricep.cpp
 trs80.cpp
+trs80dt1.cpp
 trs80m2.cpp
 ts802.cpp
 ts803.cpp
 ts816.cpp
+ts3000.cpp
 tsispch.cpp
+tti.cpp
 tutor.cpp
 tv910.cpp
 tv950.cpp
@@ -671,6 +711,7 @@ vcs80.cpp
 vector06.cpp
 vector4.cpp
 vectrex.cpp
+vectrix.cpp
 vg5k.cpp
 vic10.cpp
 vic20.cpp
@@ -695,6 +736,7 @@ vtech2.cpp
 wangpc.cpp
 wicat.cpp
 wswan.cpp
+wyse.cpp
 x07.cpp
 x1.cpp
 x1twin.cpp
@@ -716,6 +758,7 @@ zexall.cpp
 zorba.cpp
 zrt80.cpp
 zsbc3.cpp
+zt8802.cpp
 zx.cpp
 //exceptions + to add - to remove from imported list
 //3do.cpp

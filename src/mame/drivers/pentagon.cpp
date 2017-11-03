@@ -175,6 +175,13 @@ READ8_MEMBER(pentagon_state::beta_disable_r)
 	return m_program->read_byte(offset + 0x4000);
 }
 
+static ADDRESS_MAP_START(pentagon_mem, AS_PROGRAM, 8, pentagon_state)
+	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK("bank1")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
+ADDRESS_MAP_END
+
 static ADDRESS_MAP_START (pentagon_io, AS_IO, 8, pentagon_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(pentagon_port_7ffd_w)  AM_MIRROR(0x7ffd)  // (A15 | A1) == 0
@@ -188,7 +195,7 @@ static ADDRESS_MAP_START (pentagon_io, AS_IO, 8, pentagon_state )
 	AM_RANGE(0xc000, 0xc000) AM_DEVREADWRITE("ay8912", ay8910_device, data_r, address_w) AM_MIRROR(0x3ffd)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (pentagon_switch, AS_DECRYPTED_OPCODES, 8, pentagon_state)
+static ADDRESS_MAP_START (pentagon_switch, AS_OPCODES, 8, pentagon_state)
 	AM_RANGE(0x3d00, 0x3dff) AM_READ(beta_enable_r)
 	AM_RANGE(0x0000, 0x3fff) AM_READ(beta_neutral_r) // Overlap with previous because we want real addresses on the 3e00-3fff range
 	AM_RANGE(0x4000, 0xffff) AM_READ(beta_disable_r)
@@ -241,9 +248,10 @@ GFXDECODE_END
 
 
 
-static MACHINE_CONFIG_DERIVED_CLASS( pentagon, spectrum_128, pentagon_state )
+static MACHINE_CONFIG_DERIVED( pentagon, spectrum_128 )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_CLOCK(XTAL_14MHz / 4)
+	MCFG_CPU_PROGRAM_MAP(pentagon_mem)
 	MCFG_CPU_IO_MAP(pentagon_io)
 	MCFG_CPU_DECRYPTED_OPCODES_MAP(pentagon_switch)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", pentagon_state,  pentagon_interrupt)
@@ -263,6 +271,8 @@ static MACHINE_CONFIG_DERIVED_CLASS( pentagon, spectrum_128, pentagon_state )
 	MCFG_SOUND_ROUTE(1, "lspeaker", 0.25)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.25)
 	MCFG_SOUND_ROUTE(2, "rspeaker", 0.50)
+
+	MCFG_DEVICE_REMOVE("exp")
 
 	MCFG_SOFTWARE_LIST_ADD("cass_list_pen","pentagon_cass")
 MACHINE_CONFIG_END
@@ -347,6 +357,6 @@ ROM_START(pent1024)
 	ROMX_LOAD( "gluk51.rom",   0x018000, 0x4000, CRC(ea8c760b) SHA1(adaab28066ca46fbcdcf084c3b53d5a1b82d94a9), ROM_BIOS(9))
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    COMPANY     FULLNAME */
-COMP( 1989, pentagon, spec128,  0,      pentagon,   spec_plus, driver_device,   0,      "<unknown>",        "Pentagon", 0)
-COMP( 19??, pent1024, spec128,  0,      pent1024,   spec_plus, driver_device,   0,      "<unknown>",        "Pentagon 1024", 0)
+//    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT      STATE            INIT    COMPANY       FULLNAME         FLAGS
+COMP( 1989, pentagon, spec128,  0,      pentagon,   spec_plus, pentagon_state,  0,      "<unknown>",  "Pentagon",      0 )
+COMP( 19??, pent1024, spec128,  0,      pent1024,   spec_plus, pentagon_state,  0,      "<unknown>",  "Pentagon 1024", 0 )

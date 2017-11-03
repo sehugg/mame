@@ -574,7 +574,7 @@ project "lualibs"
 	}
 if (_OPTIONS["osd"] ~= "uwp") then
 	includedirs {
-		MAME_DIR .. "3rdparty/linenoise-ng/include",
+		MAME_DIR .. "3rdparty/linenoise",
 	}
 end
 	includedirs {
@@ -1138,9 +1138,11 @@ if _OPTIONS["targetos"]=="android" then
 		"GLESv1_CM",
 		"GLESv2",
 		"log",
+		"OpenSLES",
+		"c++_static"
 	}
 	linkoptions {
-		"-Wl,-soname,libSDL2.so"
+		"-Wl,-soname,libSDL2.so",
 	}
 
 	if _OPTIONS["SEPARATE_BIN"]~="1" then
@@ -1414,8 +1416,10 @@ end
 
 	if _OPTIONS["targetos"]=="android" then
 		files {
-			MAME_DIR .. "3rdparty/SDL2/src/audio/android/SDL_androidaudio.c",
+			MAME_DIR .. "3rdparty/SDL2/src/audio/android/opensl_io.h",
+			MAME_DIR .. "3rdparty/SDL2/src/audio/android/opensl_io.c",
 			MAME_DIR .. "3rdparty/SDL2/src/audio/android/SDL_androidaudio.h",
+			MAME_DIR .. "3rdparty/SDL2/src/audio/android/SDL_androidaudio.c",
 			MAME_DIR .. "3rdparty/SDL2/src/core/android/SDL_android.c",
 			MAME_DIR .. "3rdparty/SDL2/src/core/android/SDL_android.h",
 			MAME_DIR .. "3rdparty/SDL2/src/filesystem/android/SDL_sysfilesystem.c",
@@ -1631,10 +1635,10 @@ end
 end
 
 --------------------------------------------------
--- linenoise-ng library
+-- linenoise library
 --------------------------------------------------
 if (_OPTIONS["osd"] ~= "uwp") then
-project "linenoise-ng"
+project "linenoise"
 	uuid "7320ffc8-2748-4add-8864-ae29b72a8511"
 	kind (LIBTYPE)
 
@@ -1648,13 +1652,12 @@ project "linenoise-ng"
 	configuration { }
 
 	includedirs {
-		MAME_DIR .. "3rdparty/linenoise-ng/include",
+		MAME_DIR .. "3rdparty/linenoise",
 	}
 
 	files {
-		MAME_DIR .. "3rdparty/linenoise-ng/src/ConvertUTF.cpp",
-		MAME_DIR .. "3rdparty/linenoise-ng/src/linenoise.cpp",
-		MAME_DIR .. "3rdparty/linenoise-ng/src/wcwidth.cpp",
+		MAME_DIR .. "3rdparty/linenoise/utf8.c",
+		MAME_DIR .. "3rdparty/linenoise/linenoise.c",
 	}
 end
 

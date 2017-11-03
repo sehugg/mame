@@ -40,7 +40,6 @@ enum
 //**************************************************************************
 //    TYPE DEFINITIONS
 //**************************************************************************
-class osd_interface;
 
 class emulator_info
 {
@@ -61,12 +60,10 @@ public:
 	static void draw_user_interface(running_machine& machine);
 	static void periodic_check();
 	static bool frame_hook();
-	static void layout_file_cb(util::xml::data_node &layout);
+	static void layout_file_cb(util::xml::data_node const &layout);
 	static bool standalone();
 };
 
-// ======================> machine_manager
-class ui_manager;
 
 class machine_manager
 {
@@ -101,5 +98,4 @@ protected:
 	std::unique_ptr<http_manager> m_http;
 };
 
-
-#endif  /* MAME_EMU_MAIN_H */
+#endif // MAME_EMU_MAIN_H

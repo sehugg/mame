@@ -87,7 +87,7 @@ static INPUT_PORTS_START( mz80k )
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) PORT_CHAR('G')
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_J) PORT_CHAR('J')
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_L) PORT_CHAR('L')
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('\xA3')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(0xA3)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("G12") PORT_CODE(KEYCODE_F2)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("G14") PORT_CODE(KEYCODE_F4)
 
@@ -274,7 +274,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(mz80_state::ne555_tempo_callback)
 	m_mz80k_tempo_strobe ^= 1;
 }
 
-static MACHINE_CONFIG_START( mz80k, mz80_state )
+static MACHINE_CONFIG_START( mz80k )
 	/* basic machine hardware */
 
 	/* main CPU */
@@ -371,7 +371,7 @@ ROM_START( mz80a )
 	ROM_LOAD( "mz80acg.rom", 0x0000, 0x0800, CRC(a87c2e2b) SHA1(e8aefbdb48a63e5f96692af868c353ca7e1bfcd2) )
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT   INIT   COMPANY    FULLNAME */
+//    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT  STATE        INIT   COMPANY    FULLNAME             FLAGS
 COMP( 1979, mz80kj,   0,        0,      mz80kj,  mz80k, mz80_state,  mz80k, "Sharp",   "MZ-80K (Japanese)", 0 )
-COMP( 1979, mz80k,    mz80kj,   0,      mz80k,   mz80k, mz80_state,  mz80k, "Sharp",   "MZ-80K", 0 )
-COMP( 1982, mz80a,    0,        0,      mz80a,   mz80a, mz80_state,  mz80k, "Sharp",   "MZ-80A", 0 )
+COMP( 1979, mz80k,    mz80kj,   0,      mz80k,   mz80k, mz80_state,  mz80k, "Sharp",   "MZ-80K",            0 )
+COMP( 1982, mz80a,    0,        0,      mz80a,   mz80a, mz80_state,  mz80k, "Sharp",   "MZ-80A",            0 )

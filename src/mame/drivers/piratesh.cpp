@@ -31,6 +31,7 @@
 #include "speaker.h"
 #include "video/k053250_ps.h"
 #include "machine/nvram.h"
+#include "machine/timer.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/k054539.h"
 #include "includes/konamigx.h" // TODO: WHY?
@@ -579,7 +580,7 @@ MACHINE_RESET_MEMBER(piratesh_state,piratesh)
 
 }
 
-static MACHINE_CONFIG_START( piratesh, piratesh_state )
+static MACHINE_CONFIG_START( piratesh )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)
@@ -675,5 +676,5 @@ ROM_START( piratesh )
 //  ROM_LOAD( "piratesh.nv", 0x0000, 0x080, CRC(28df2269) SHA1(3f071c97662745a199f96964e2e79f795bd5a391) )
 ROM_END
 
-/*           ROM       parent    machine   inp       init */
-GAME( 1995, piratesh,   0,        piratesh, piratesh, driver_device, 0, ROT90,  "Konami", "Pirate Ship (ver UAA)", MACHINE_IMPERFECT_GRAPHICS )
+//    year  name        parent    machine   input     state           init
+GAME( 1995, piratesh,   0,        piratesh, piratesh, piratesh_state, 0, ROT90,  "Konami", "Pirate Ship (ver UAA)", MACHINE_IMPERFECT_GRAPHICS )

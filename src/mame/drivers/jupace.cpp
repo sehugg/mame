@@ -49,6 +49,7 @@ Ports:
 #include "bus/centronics/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/ram.h"
+#include "machine/timer.h"
 #include "machine/z80pio.h"
 #include "sound/ay8910.h"
 #include "sound/sp0256.h"
@@ -452,7 +453,7 @@ static INPUT_PORTS_START( ace )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_RSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Symbol Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z)          PORT_CHAR('z') PORT_CHAR('Z') PORT_CHAR(':')
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X)          PORT_CHAR('x') PORT_CHAR('X') PORT_CHAR('\xA3')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X)          PORT_CHAR('x') PORT_CHAR('X') PORT_CHAR(0xA3)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C)          PORT_CHAR('c') PORT_CHAR('C') PORT_CHAR('?')
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
@@ -745,7 +746,7 @@ void ace_state::machine_start()
 //  MACHINE_CONFIG( ace )
 //-------------------------------------------------
 
-static MACHINE_CONFIG_START( ace, ace_state )
+static MACHINE_CONFIG_START( ace )
 	// basic machine hardware
 	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_6_5MHz/2)
 	MCFG_CPU_PROGRAM_MAP(ace_mem)
@@ -835,5 +836,5 @@ ROM_END
 //  SYSTEM DRIVERS
 //**************************************************************************
 
-//    YEAR  NAME     PARENT    COMPAT  MACHINE    INPUT     INIT     COMPANY         FULLNAME      FLAGS
-COMP( 1981, jupace,     0,        0,      ace,       ace, driver_device,      0,   "Jupiter Cantab", "Jupiter Ace" , 0 )
+//    YEAR  NAME     PARENT    COMPAT  MACHINE    INPUT  STATE      INIT  COMPANY           FULLNAME       FLAGS
+COMP( 1981, jupace,  0,        0,      ace,       ace,   ace_state, 0,    "Jupiter Cantab", "Jupiter Ace", 0 )

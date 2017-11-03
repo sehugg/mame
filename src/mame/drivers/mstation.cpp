@@ -32,6 +32,7 @@
 #include "machine/intelfsh.h"
 #include "machine/ram.h"
 #include "machine/rp5c01.h"
+#include "machine/timer.h"
 #include "rendlay.h"
 #include "screen.h"
 
@@ -435,7 +436,7 @@ PALETTE_INIT_MEMBER(mstation_state, mstation)
 }
 
 
-static MACHINE_CONFIG_START( mstation, mstation_state )
+static MACHINE_CONFIG_START( mstation )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)      //unknown clock
 	MCFG_CPU_PROGRAM_MAP(mstation_mem)
@@ -494,5 +495,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( 1999, mstation,  0,       0,  mstation,   mstation, driver_device,  0,   "CIDCO",   "MailStation",        MACHINE_NOT_WORKING | MACHINE_NO_SOUND )
+//    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     STATE           INIT  COMPANY  FULLNAME       FLAGS
+COMP( 1999, mstation, 0,      0,      mstation, mstation, mstation_state, 0,    "CIDCO", "MailStation", MACHINE_NOT_WORKING | MACHINE_NO_SOUND )

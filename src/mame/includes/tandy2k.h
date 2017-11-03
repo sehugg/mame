@@ -15,6 +15,7 @@
 #include "machine/pic8259.h"
 #include "machine/ram.h"
 #include "machine/tandy2kb.h"
+#include "machine/timer.h"
 #include "machine/upd765.h"
 #include "sound/spkrdev.h"
 #include "video/crt9007.h"
@@ -108,10 +109,10 @@ public:
 	required_device<i8272a_device> m_fdc;
 	required_device<pic8259_device> m_pic0;
 	required_device<pic8259_device> m_pic1;
-	required_device<crt9007_t> m_vpac;
-	required_device<crt9212_t> m_drb0;
-	required_device<crt9212_t> m_drb1;
-	required_device<crt9021_t> m_vac;
+	required_device<crt9007_device> m_vpac;
+	required_device<crt9212_device> m_drb0;
+	required_device<crt9212_device> m_drb1;
+	required_device<crt9021_device> m_vac;
 	required_device<palette_device> m_palette;
 	required_device<timer_device> m_timer_vidldsh;
 	required_device<centronics_device> m_centronics;

@@ -82,10 +82,10 @@ public:
 #if OLD_SOUND
 	optional_device<discrete_device> m_discrete;
 #else
-	optional_device<netlist_mame_logic_input_t> m_audio_snd0;
-	optional_device<netlist_mame_logic_input_t> m_audio_snd1;
-	optional_device<netlist_mame_logic_input_t> m_audio_snd7;
-	optional_device<netlist_mame_int_input_t> m_audio_dac;
+	optional_device<netlist_mame_logic_input_device> m_audio_snd0;
+	optional_device<netlist_mame_logic_input_device> m_audio_snd1;
+	optional_device<netlist_mame_logic_input_device> m_audio_snd7;
+	optional_device<netlist_mame_int_input_device> m_audio_dac;
 #endif
 
 	/* memory pointers */
@@ -105,24 +105,25 @@ public:
 	tilemap_t *m_bg_tilemap;
 	int m_monitor;
 
-	uint8_t   m_nmi_mask;
-	DECLARE_WRITE8_MEMBER(nmi_mask_w);
+	bool      m_nmi_mask;
+	DECLARE_WRITE_LINE_MEMBER(nmi_mask_w);
+	DECLARE_WRITE_LINE_MEMBER(coin_counter_1_w);
+	DECLARE_WRITE_LINE_MEMBER(coin_counter_2_w);
 	DECLARE_WRITE8_MEMBER(mario_videoram_w);
-	DECLARE_WRITE8_MEMBER(mario_gfxbank_w);
-	DECLARE_WRITE8_MEMBER(mario_palettebank_w);
+	DECLARE_WRITE_LINE_MEMBER(gfx_bank_w);
+	DECLARE_WRITE_LINE_MEMBER(palette_bank_w);
 	DECLARE_WRITE8_MEMBER(mario_scroll_w);
-	DECLARE_WRITE8_MEMBER(mario_flip_w);
+	DECLARE_WRITE_LINE_MEMBER(flip_w);
 	DECLARE_READ8_MEMBER(mario_sh_p1_r);
 	DECLARE_READ8_MEMBER(mario_sh_p2_r);
-	DECLARE_READ8_MEMBER(mario_sh_t0_r);
-	DECLARE_READ8_MEMBER(mario_sh_t1_r);
+	DECLARE_READ_LINE_MEMBER(mario_sh_t0_r);
+	DECLARE_READ_LINE_MEMBER(mario_sh_t1_r);
 	DECLARE_READ8_MEMBER(mario_sh_tune_r);
 	DECLARE_WRITE8_MEMBER(mario_sh_p1_w);
 	DECLARE_WRITE8_MEMBER(mario_sh_p2_w);
 	DECLARE_WRITE8_MEMBER(masao_sh_irqtrigger_w);
 	DECLARE_WRITE8_MEMBER(mario_sh_tuneselect_w);
 	DECLARE_WRITE8_MEMBER(mario_sh3_w);
-	DECLARE_WRITE8_MEMBER(mario_z80dma_rdy_w);
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);
 	virtual void video_start() override;
 	virtual void sound_start() override;

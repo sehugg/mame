@@ -241,7 +241,7 @@ static INPUT_PORTS_START( mc1502 )
 	PORT_INCLUDE( mc7007_3_keyboard )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( mc1502, mc1502_state )
+static MACHINE_CONFIG_START( mc1502 )
 	MCFG_CPU_ADD("maincpu", I8088, XTAL_16MHz/3)
 	MCFG_CPU_PROGRAM_MAP(mc1502_map)
 	MCFG_CPU_IO_MAP(mc1502_io)
@@ -258,7 +258,8 @@ static MACHINE_CONFIG_START( mc1502, mc1502_state )
 	MCFG_PIT8253_CLK2(XTAL_16MHz/12) /* pio port c pin 4, and speaker polling enough */
 	MCFG_PIT8253_OUT2_HANDLER(WRITELINE(mc1502_state, mc1502_pit8253_out2_changed))
 
-	MCFG_PIC8259_ADD("pic8259", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic8259", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	MCFG_DEVICE_ADD("ppi8255n1", I8255, 0)
 	MCFG_I8255_OUT_PORTA_CB(DEVWRITE8("cent_data_out", output_latch_device, write))
@@ -365,7 +366,7 @@ ROM_START( mc1502 )
 	ROMX_LOAD( "ms1502b0.pgm", 0xc000, 0x2000, CRC(92fcc29a) SHA1(930a4cffcd6ec6110dd9a18bd389b78f0ccb110a),ROM_BIOS(8))
 	ROMX_LOAD( "ms1502b1.pgm", 0xe000, 0x2000, CRC(fe355a58) SHA1(b4ef7775045c6f2095e2b487fe19824986a4892c),ROM_BIOS(8))
 	// 5.31
-	ROM_SYSTEM_BIOS(8, "v531_92", "v5.31 12/10/92")
+	ROM_SYSTEM_BIOS(8, "v531_93", "v5.31 21/01/93")
 	ROMX_LOAD( "ms531b0.pgm", 0xc000, 0x2000, CRC(d97157d1) SHA1(cb1a1e0e2d9a0fcc78f9b09bfb4814d408ee4fae),ROM_BIOS(9))
 	ROMX_LOAD( "ms531b1.pgm", 0xe000, 0x2000, CRC(b1368e1a) SHA1(286496d25dc0ac2d8fe1802caffc6c37b236d105),ROM_BIOS(9))
 	// 5.2
@@ -398,6 +399,6 @@ ROM_END
 
 ***************************************************************************/
 
-/*     YEAR     NAME        PARENT      COMPAT  MACHINE     INPUT       INIT                COMPANY       FULLNAME */
-COMP ( 1989,    mc1502,     0,          0,      mc1502,     mc1502,     mc1502_state, mc1502,   "NPO Microprocessor", "Elektronika MS 1502", 0)
-COMP ( 1988,    pk88,       0,          0,      mc1502,     mc1502,     mc1502_state, mc1502,   "NPO Microprocessor", "Elektronika PK-88", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+//     YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       STATE         INIT      COMPANY               FULLNAME               FLAGS
+COMP ( 1989, mc1502, 0,      0,      mc1502,     mc1502,     mc1502_state, mc1502,   "NPO Microprocessor", "Elektronika MS 1502", 0 )
+COMP ( 1988, pk88,   0,      0,      mc1502,     mc1502,     mc1502_state, mc1502,   "NPO Microprocessor", "Elektronika PK-88",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND )

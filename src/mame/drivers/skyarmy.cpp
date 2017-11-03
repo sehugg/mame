@@ -26,6 +26,7 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
+#include "machine/74259.h"
 #include "sound/ay8910.h"
 #include "screen.h"
 #include "speaker.h"
@@ -56,12 +57,12 @@ public:
 	tilemap_t* m_tilemap;
 	int m_nmi;
 
-	DECLARE_WRITE8_MEMBER(flip_screen_x_w);
-	DECLARE_WRITE8_MEMBER(flip_screen_y_w);
+	DECLARE_WRITE_LINE_MEMBER(flip_screen_x_w);
+	DECLARE_WRITE_LINE_MEMBER(flip_screen_y_w);
 	DECLARE_WRITE8_MEMBER(videoram_w);
 	DECLARE_WRITE8_MEMBER(colorram_w);
-	DECLARE_WRITE8_MEMBER(coin_counter_w);
-	DECLARE_WRITE8_MEMBER(nmi_enable_w);
+	DECLARE_WRITE_LINE_MEMBER(coin_counter_w);
+	DECLARE_WRITE_LINE_MEMBER(nmi_enable_w);
 
 	TILE_GET_INFO_MEMBER(get_tile_info);
 
@@ -79,14 +80,14 @@ void skyarmy_state::machine_start()
 	save_item(NAME(m_nmi));
 }
 
-WRITE8_MEMBER(skyarmy_state::flip_screen_x_w)
+WRITE_LINE_MEMBER(skyarmy_state::flip_screen_x_w)
 {
-	flip_screen_x_set(data & 0x01);
+	flip_screen_x_set(state);
 }
 
-WRITE8_MEMBER(skyarmy_state::flip_screen_y_w)
+WRITE_LINE_MEMBER(skyarmy_state::flip_screen_y_w)
 {
-	flip_screen_y_set(data & 0x01);
+	flip_screen_y_set(state);
 }
 
 TILE_GET_INFO_MEMBER(skyarmy_state::get_tile_info)
@@ -192,15 +193,15 @@ INTERRUPT_GEN_MEMBER(skyarmy_state::nmi_source)
 }
 
 
-WRITE8_MEMBER(skyarmy_state::coin_counter_w)
+WRITE_LINE_MEMBER(skyarmy_state::coin_counter_w)
 {
-	machine().bookkeeping().coin_counter_w(0, data & 1);
+	machine().bookkeeping().coin_counter_w(0, state);
 }
 
 
-WRITE8_MEMBER(skyarmy_state::nmi_enable_w)
+WRITE_LINE_MEMBER(skyarmy_state::nmi_enable_w)
 {
-	m_nmi=data & 1;
+	m_nmi = state;
 	if (!m_nmi)
 		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
@@ -213,14 +214,11 @@ static ADDRESS_MAP_START( skyarmy_map, AS_PROGRAM, 8, skyarmy_state )
 	AM_RANGE(0x9000, 0x93ff) AM_RAM_WRITE(colorram_w) AM_SHARE("colorram") /* Color RAM */
 	AM_RANGE(0x9800, 0x983f) AM_RAM AM_SHARE("spriteram") /* Sprites */
 	AM_RANGE(0x9840, 0x985f) AM_RAM AM_SHARE("scrollram")  /* Scroll RAM */
-	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("DSW") AM_WRITE(coin_counter_w)
+	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("DSW")
 	AM_RANGE(0xa001, 0xa001) AM_READ_PORT("P1")
 	AM_RANGE(0xa002, 0xa002) AM_READ_PORT("P2")
 	AM_RANGE(0xa003, 0xa003) AM_READ_PORT("SYSTEM")
-	AM_RANGE(0xa004, 0xa004) AM_WRITE(nmi_enable_w) // ???
-	AM_RANGE(0xa005, 0xa005) AM_WRITE(flip_screen_x_w)
-	AM_RANGE(0xa006, 0xa006) AM_WRITE(flip_screen_y_w)
-	AM_RANGE(0xa007, 0xa007) AM_WRITENOP // video RAM buffering?
+	AM_RANGE(0xa000, 0xa007) AM_DEVWRITE("latch", ls259_device, write_d0)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( skyarmy_io_map, AS_IO, 8, skyarmy_state )
@@ -317,13 +315,20 @@ static GFXDECODE_START( skyarmy )
 	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 0, 8 )
 GFXDECODE_END
 
-static MACHINE_CONFIG_START( skyarmy, skyarmy_state )
+static MACHINE_CONFIG_START( skyarmy )
 
 	MCFG_CPU_ADD("maincpu", Z80,4000000)
 	MCFG_CPU_PROGRAM_MAP(skyarmy_map)
 	MCFG_CPU_IO_MAP(skyarmy_io_map)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", skyarmy_state,  irq0_line_hold)
 	MCFG_CPU_PERIODIC_INT_DRIVER(skyarmy_state, nmi_source, 650)    /* Hz */
+
+	MCFG_DEVICE_ADD("latch", LS259, 0) // 11C
+	MCFG_ADDRESSABLE_LATCH_Q0_OUT_CB(WRITELINE(skyarmy_state, coin_counter_w))
+	MCFG_ADDRESSABLE_LATCH_Q4_OUT_CB(WRITELINE(skyarmy_state, nmi_enable_w)) // ???
+	MCFG_ADDRESSABLE_LATCH_Q5_OUT_CB(WRITELINE(skyarmy_state, flip_screen_x_w))
+	MCFG_ADDRESSABLE_LATCH_Q6_OUT_CB(WRITELINE(skyarmy_state, flip_screen_y_w))
+	MCFG_ADDRESSABLE_LATCH_Q7_OUT_CB(NOOP) // video RAM buffering?
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -366,4 +371,4 @@ ROM_START( skyarmy )
 	ROM_LOAD( "a6.bin",  0x0000, 0x0020, CRC(c721220b) SHA1(61b3320fb616c0600d56840cb6438616c7e0c6eb) )
 ROM_END
 
-GAME( 1982, skyarmy, 0, skyarmy, skyarmy, driver_device, 0, ROT90, "Shoei", "Sky Army", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, skyarmy, 0, skyarmy, skyarmy, skyarmy_state, 0, ROT90, "Shoei", "Sky Army", MACHINE_SUPPORTS_SAVE )

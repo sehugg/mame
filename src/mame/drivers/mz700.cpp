@@ -208,7 +208,7 @@ static INPUT_PORTS_START( mz700 )
 	PORT_BIT(0x04, 0x04, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON)         PORT_CHAR(';') PORT_CHAR('+')
 	PORT_BIT(0x08, 0x08, IPT_UNUSED )
 	PORT_BIT(0x10, 0x10, IPT_KEYBOARD) PORT_NAME("Alpha") PORT_CODE(KEYCODE_TAB) PORT_CHAR(UCHAR_MAMEKEY(F6))
-	PORT_BIT(0x20, 0x20, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93  \xC2\xA3") PORT_CODE(KEYCODE_TILDE) PORT_CHAR('\xA3') // this one would be 2nd row, 3rd key after 'P'
+	PORT_BIT(0x20, 0x20, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93  \xC2\xA3") PORT_CODE(KEYCODE_TILDE) PORT_CHAR(0xA3) // this one would be 2nd row, 3rd key after 'P'
 	PORT_BIT(0x40, 0x40, IPT_KEYBOARD) PORT_NAME("Graph") PORT_CODE(KEYCODE_ESC) PORT_CHAR(UCHAR_MAMEKEY(F7))
 	PORT_BIT(0x80, 0x80, IPT_KEYBOARD) PORT_CODE(KEYCODE_PGUP)          PORT_CHAR('_') // this one would be 2nd row, 4th key after 'P'
 
@@ -368,7 +368,7 @@ GFXDECODE_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static MACHINE_CONFIG_START( mz700, mz_state )
+static MACHINE_CONFIG_START( mz700 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_17_73447MHz/5)
 	MCFG_CPU_PROGRAM_MAP(mz700_mem)
@@ -518,8 +518,8 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    COMPANY      FULLNAME */
-COMP( 1982, mz700,    0,        0,      mz700,    mz700, mz_state,    mz700,  "Sharp",     "MZ-700", 0 )
+//    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT  STATE        INIT    COMPANY      FULLNAME          FLAGS
+COMP( 1982, mz700,    0,        0,      mz700,    mz700, mz_state,    mz700,  "Sharp",     "MZ-700",         0 )
 COMP( 1982, mz700j,   mz700,    0,      mz700,    mz700, mz_state,    mz700,  "Sharp",     "MZ-700 (Japan)", 0 )
-COMP( 1984, mz800,    0,        0,      mz800,    mz800, mz_state,    mz800,  "Sharp",     "MZ-800", MACHINE_NOT_WORKING )
-COMP( 1984, mz1500,   0,        0,      mz800,    mz800, mz_state,    mz800,  "Sharp",     "MZ-1500", MACHINE_NOT_WORKING )    // Japanese version of the MZ-800
+COMP( 1984, mz800,    0,        0,      mz800,    mz800, mz_state,    mz800,  "Sharp",     "MZ-800",         MACHINE_NOT_WORKING )
+COMP( 1984, mz1500,   0,        0,      mz800,    mz800, mz_state,    mz800,  "Sharp",     "MZ-1500",        MACHINE_NOT_WORKING )    // Japanese version of the MZ-800

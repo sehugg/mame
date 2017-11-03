@@ -25,6 +25,10 @@ Atomiswave ROM board specs from Cah4e3 @ http://cah4e3.wordpress.com/2009/07/26/
 
   Both low and high words of 32-bit offset from start of EPR-ROM area. Used for
   reading header and program code data, cannot be used for reading MPR-ROMs data.
+  During program code DMA transfer Romeo MCU perform data checksuming (decrypted data, in 8bit units),
+  result must match some CPLD / encryption key-specific value, otherwise MPR-ROM access
+  described below will not work correctly.
+  Game header (first 256 bytes of ROM) is not checksum protected.
 
  AW_MPR_RECORD_INDEX                                     Register addres: 0x5f700c
  +-------------------------------------------------------------------------------+
@@ -153,7 +157,7 @@ ROM board internal layouts:
 
 */
 
-const device_type AW_ROM_BOARD = device_creator<aw_rom_board>;
+DEFINE_DEVICE_TYPE(AW_ROM_BOARD, aw_rom_board, "aw_rom_board", "Sammy Atomiswave ROM Board")
 
 DEVICE_ADDRESS_MAP_START(submap, 16, aw_rom_board)
 	AM_RANGE(0x00, 0x01) AM_WRITE(epr_offsetl_w)
@@ -166,7 +170,7 @@ DEVICE_ADDRESS_MAP_START(submap, 16, aw_rom_board)
 ADDRESS_MAP_END
 
 aw_rom_board::aw_rom_board(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: naomi_g1_device(mconfig, AW_ROM_BOARD, "Sammy Atomiswave ROM Board", tag, owner, clock, "aw_rom_board", __FILE__)
+	: naomi_g1_device(mconfig, AW_ROM_BOARD, tag, owner, clock)
 	, m_region(*this, DEVICE_SELF)
 	, m_keyregion(*this, finder_base::DUMMY_TAG)
 {

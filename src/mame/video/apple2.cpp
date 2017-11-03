@@ -668,14 +668,14 @@ uint32_t apple2_state::screen_update_apple2(screen_device &screen, bitmap_ind16 
     New implementation
 */
 
-const device_type APPLE2_VIDEO = device_creator<a2_video_device>;
+DEFINE_DEVICE_TYPE(APPLE2_VIDEO, a2_video_device, "a2video", "Apple II video")
 
 //-------------------------------------------------
 //  a2_video_device - constructor
 //-------------------------------------------------
 
 a2_video_device::a2_video_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, APPLE2_VIDEO, "Apple II video", tag, owner, clock, "a2video", __FILE__)
+	: device_t(mconfig, APPLE2_VIDEO, tag, owner, clock)
 {
 }
 
@@ -1366,6 +1366,12 @@ void a2_video_device::hgr_update(screen_device &screen, bitmap_ind16 &bitmap, co
 			else
 			{
 				artifact_map_ptr = &m_hires_artifact_map[((vram_row[col + 1] & 0x80) >> 7) * 16];
+			}
+
+			// CEC mono HGR mode
+			if ((m_monohgr) && (mon_type == 0))
+			{
+				mon_type = 1;
 			}
 
 			switch (mon_type)

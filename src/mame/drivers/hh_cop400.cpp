@@ -14,6 +14,7 @@
 #include "emu.h"
 #include "cpu/cop400/cop400.h"
 
+#include "machine/timer.h"
 #include "sound/spkrdev.h"
 #include "sound/dac.h"
 #include "sound/volt_reg.h"
@@ -43,6 +44,9 @@ public:
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_inp_matrix(*this, "IN.%u", 0),
+		m_out_x(*this, "%u.%u", 0U, 0U),
+		m_out_a(*this, "%u.a", 0U),
+		m_out_digit(*this, "digit%u", 0U),
 		m_speaker(*this, "speaker"),
 		m_display_wait(33),
 		m_display_maxy(1),
@@ -52,6 +56,9 @@ public:
 	// devices
 	required_device<cpu_device> m_maincpu;
 	optional_ioport_array<6> m_inp_matrix; // max 6
+	output_finder<0x20, 0x20> m_out_x;
+	output_finder<0x20> m_out_a;
+	output_finder<0x20> m_out_digit;
 	optional_device<speaker_sound_device> m_speaker;
 
 	// misc common
@@ -65,13 +72,12 @@ public:
 	u16 read_inputs(int columns);
 
 	// display common
-	int m_display_wait;             // led/lamp off-delay in microseconds (default 33ms)
+	int m_display_wait;             // led/lamp off-delay in milliseconds (default 33ms)
 	int m_display_maxy;             // display matrix number of rows
 	int m_display_maxx;             // display matrix number of columns (max 31 for now)
 
 	u32 m_display_state[0x20];      // display matrix rows data (last bit is used for always-on)
 	u16 m_display_segmask[0x20];    // if not 0, display matrix row is a digit, mask indicates connected segments
-	u32 m_display_cache[0x20];      // (internal use)
 	u8 m_display_decay[0x20][0x20]; // (internal use)
 
 	TIMER_DEVICE_CALLBACK_MEMBER(display_decay_tick);
@@ -90,9 +96,13 @@ protected:
 
 void hh_cop400_state::machine_start()
 {
+	// resolve handlers
+	m_out_x.resolve();
+	m_out_a.resolve();
+	m_out_digit.resolve();
+
 	// zerofill
 	memset(m_display_state, 0, sizeof(m_display_state));
-	memset(m_display_cache, ~0, sizeof(m_display_cache));
 	memset(m_display_decay, 0, sizeof(m_display_decay));
 	memset(m_display_segmask, 0, sizeof(m_display_segmask));
 
@@ -109,7 +119,6 @@ void hh_cop400_state::machine_start()
 	save_item(NAME(m_display_wait));
 
 	save_item(NAME(m_display_state));
-	/* save_item(NAME(m_display_cache)); */ // don't save!
 	save_item(NAME(m_display_decay));
 	save_item(NAME(m_display_segmask));
 
@@ -138,11 +147,9 @@ void hh_cop400_state::machine_reset()
 
 void hh_cop400_state::display_update()
 {
-	u32 active_state[0x20];
-
 	for (int y = 0; y < m_display_maxy; y++)
 	{
-		active_state[y] = 0;
+		u32 active_state = 0;
 
 		for (int x = 0; x <= m_display_maxx; x++)
 		{
@@ -152,41 +159,19 @@ void hh_cop400_state::display_update()
 
 			// determine active state
 			u32 ds = (m_display_decay[y][x] != 0) ? 1 : 0;
-			active_state[y] |= (ds << x);
+			active_state |= (ds << x);
+
+			// output to y.x, or y.a when always-on
+			if (x != m_display_maxx)
+				m_out_x[y][x] = ds;
+			else
+				m_out_a[y] = ds;
 		}
+
+		// output to digity
+		if (m_display_segmask[y] != 0)
+			m_out_digit[y] = active_state & m_display_segmask[y];
 	}
-
-	// on difference, send to output
-	for (int y = 0; y < m_display_maxy; y++)
-		if (m_display_cache[y] != active_state[y])
-		{
-			if (m_display_segmask[y] != 0)
-				output().set_digit_value(y, active_state[y] & m_display_segmask[y]);
-
-			const int mul = (m_display_maxx <= 10) ? 10 : 100;
-			for (int x = 0; x <= m_display_maxx; x++)
-			{
-				int state = active_state[y] >> x & 1;
-				char buf1[0x10]; // lampyx
-				char buf2[0x10]; // y.x
-
-				if (x == m_display_maxx)
-				{
-					// always-on if selected
-					sprintf(buf1, "lamp%da", y);
-					sprintf(buf2, "%d.a", y);
-				}
-				else
-				{
-					sprintf(buf1, "lamp%d", y * mul + x);
-					sprintf(buf2, "%d.%d", y, x);
-				}
-				output().set_value(buf1, state);
-				output().set_value(buf2, state);
-			}
-		}
-
-	memcpy(m_display_cache, active_state, sizeof(m_display_cache));
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(hh_cop400_state::display_decay_tick)
@@ -320,7 +305,7 @@ static INPUT_PORTS_START( ctstein )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Blue Button")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( ctstein, ctstein_state )
+static MACHINE_CONFIG_START( ctstein )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP421, 850000) // approximation - RC osc. R=12K, C=100pF
@@ -443,7 +428,7 @@ static INPUT_PORTS_START( h2hbaskb )
 	PORT_CONFSETTING(    0x0c, "Soccer" )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( h2hbaskb, h2hbaskb_state )
+static MACHINE_CONFIG_START( h2hbaskb )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP420, 850000) // approximation - RC osc. R=43K, C=101pF
@@ -555,7 +540,7 @@ static INPUT_PORTS_START( einvaderc )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( einvaderc, einvaderc_state )
+static MACHINE_CONFIG_START( einvaderc )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP444L, 900000) // approximation - RC osc. R=47K, C=100pF
@@ -716,7 +701,7 @@ void lchicken_state::machine_start()
 	save_item(NAME(m_motor_pos));
 }
 
-static MACHINE_CONFIG_START( lchicken, lchicken_state )
+static MACHINE_CONFIG_START( lchicken )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP421, 850000) // approximation - RC osc. R=12K, C=100pF
@@ -826,7 +811,7 @@ static INPUT_PORTS_START( funjacks )
 	PORT_CONFSETTING(    0x08, "2" )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( funjacks, funjacks_state )
+static MACHINE_CONFIG_START( funjacks )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP410, 1000000) // approximation - RC osc. R=47K, C=56pF
@@ -921,7 +906,7 @@ INPUT_CHANGED_MEMBER(funrlgl_state::reset_button)
 	m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static MACHINE_CONFIG_START( funrlgl, funrlgl_state )
+static MACHINE_CONFIG_START( funrlgl )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP410, 1000000) // approximation - RC osc. R=51K, C=91pF
@@ -1057,7 +1042,7 @@ static INPUT_PORTS_START( mdallas )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_CODE(KEYCODE_W) PORT_NAME("North") // N
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( mdallas, mdallas_state )
+static MACHINE_CONFIG_START( mdallas )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP444L, 1000000) // approximation - RC osc. R=57K, C=101pF
@@ -1141,7 +1126,7 @@ static INPUT_PORTS_START( plus1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( plus1, plus1_state )
+static MACHINE_CONFIG_START( plus1 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP410, 1000000) // approximation - RC osc. R=51K, C=100pF
@@ -1269,7 +1254,7 @@ static INPUT_PORTS_START( lightfgt )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_COCKTAIL
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( lightfgt, lightfgt_state )
+static MACHINE_CONFIG_START( lightfgt )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP421, 950000) // approximation - RC osc. R=82K, C=56pF
@@ -1423,7 +1408,7 @@ base pulled high with 4.7K resistor, connects directly to G3, 1K resistor to G2,
 
 */
 
-static MACHINE_CONFIG_START( bship82, bship82_state )
+static MACHINE_CONFIG_START( bship82 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP420, 750000) // approximation - RC osc. R=14K, C=100pF
@@ -1555,7 +1540,7 @@ static INPUT_PORTS_START( qkracer )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_CODE(KEYCODE_R) PORT_NAME("Tables")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( qkracer, qkracer_state )
+static MACHINE_CONFIG_START( qkracer )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", COP420, 1000000) // approximation - RC osc. R=47K, C=100pF
@@ -1599,7 +1584,7 @@ ROM_START( einvaderc )
 	ROM_LOAD( "copl444-hrz_n_inv_ii", 0x0000, 0x0800, CRC(76400f38) SHA1(0e92ab0517f7b7687293b189d30d57110df20fe0) )
 
 	ROM_REGION( 80636, "svg", 0)
-	ROM_LOAD( "einvaderc.svg", 0, 80636, CRC(a52d0166) SHA1(f69397ebcc518701f30a47b4d62e5a700825375a) ) // by hap, ver. 18 jan 2017
+	ROM_LOAD( "einvaderc.svg", 0, 80636, CRC(a52d0166) SHA1(f69397ebcc518701f30a47b4d62e5a700825375a) )
 ROM_END
 
 
@@ -1652,24 +1637,24 @@ ROM_END
 
 
 
-/*    YEAR  NAME       PARENT COMPAT MACHINE   INPUT      INIT              COMPANY, FULLNAME, FLAGS */
-CONS( 1979, ctstein,   0,        0, ctstein,   ctstein,   driver_device, 0, "Castle Toy", "Einstein (Castle Toy)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME       PARENT   CMP MACHINE    INPUT      STATE          INIT COMPANY, FULLNAME, FLAGS
+CONS( 1979, ctstein,   0,        0, ctstein,   ctstein,   ctstein_state,   0, "Castle Toy", "Einstein (Castle Toy)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1980, h2hbaskb,  0,        0, h2hbaskb,  h2hbaskb,  driver_device, 0, "Coleco", "Head to Head Basketball/Hockey/Soccer (COP420L version)", MACHINE_SUPPORTS_SAVE )
+CONS( 1980, h2hbaskb,  0,        0, h2hbaskb,  h2hbaskb,  h2hbaskb_state,  0, "Coleco", "Head to Head Basketball/Hockey/Soccer (COP420L version)", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1981, einvaderc, einvader, 0, einvaderc, einvaderc, driver_device, 0, "Entex", "Space Invader (Entex, COP444L version)", MACHINE_SUPPORTS_SAVE )
+CONS( 1981, einvaderc, einvader, 0, einvaderc, einvaderc, einvaderc_state, 0, "Entex", "Space Invader (Entex, COP444L version)", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1980, lchicken,  0,        0, lchicken,  lchicken,  driver_device, 0, "LJN", "I Took a Lickin' From a Chicken", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK | MACHINE_MECHANICAL )
+CONS( 1980, lchicken,  0,        0, lchicken,  lchicken,  lchicken_state,  0, "LJN", "I Took a Lickin' From a Chicken", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK | MACHINE_MECHANICAL )
 
-CONS( 1979, funjacks,  0,        0, funjacks,  funjacks,  driver_device, 0, "Mattel", "Funtronics Jacks", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1979, funrlgl,   0,        0, funrlgl,   funrlgl,   driver_device, 0, "Mattel", "Funtronics Red Light Green Light", MACHINE_SUPPORTS_SAVE )
-CONS( 1981, mdallas,   0,        0, mdallas,   mdallas,   driver_device, 0, "Mattel", "Dalla$ (J.R. handheld)", MACHINE_SUPPORTS_SAVE ) // ***
+CONS( 1979, funjacks,  0,        0, funjacks,  funjacks,  funjacks_state,  0, "Mattel", "Funtronics Jacks", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1979, funrlgl,   0,        0, funrlgl,   funrlgl,   funrlgl_state,   0, "Mattel", "Funtronics Red Light Green Light", MACHINE_SUPPORTS_SAVE )
+CONS( 1981, mdallas,   0,        0, mdallas,   mdallas,   mdallas_state,   0, "Mattel", "Dalla$ (J.R. handheld)", MACHINE_SUPPORTS_SAVE ) // ***
 
-CONS( 1980, plus1,     0,        0, plus1,     plus1,     driver_device, 0, "Milton Bradley", "Plus One", MACHINE_SUPPORTS_SAVE ) // ***
-CONS( 1981, lightfgt,  0,        0, lightfgt,  lightfgt,  driver_device, 0, "Milton Bradley", "Lightfight", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1982, bship82,   bship,    0, bship82,   bship82,   driver_device, 0, "Milton Bradley", "Electronic Battleship (1982 version)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK ) // ***
+CONS( 1980, plus1,     0,        0, plus1,     plus1,     plus1_state,     0, "Milton Bradley", "Plus One", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_CONTROLS ) // ***
+CONS( 1981, lightfgt,  0,        0, lightfgt,  lightfgt,  lightfgt_state,  0, "Milton Bradley", "Lightfight", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1982, bship82,   bship,    0, bship82,   bship82,   bship82_state,   0, "Milton Bradley", "Electronic Battleship (1982 version)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK ) // ***
 
-CONS( 1978, qkracer,   0,        0, qkracer,   qkracer,   driver_device, 0, "National Semiconductor", "QuizKid Racer (COP420 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+CONS( 1978, qkracer,   0,        0, qkracer,   qkracer,   qkracer_state,   0, "National Semiconductor", "QuizKid Racer (COP420 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
 // ***: As far as MAME is concerned, the game is emulated fine. But for it to be playable, it requires interaction
 // with other, unemulatable, things eg. game board/pieces, playing cards, pen & paper, etc.

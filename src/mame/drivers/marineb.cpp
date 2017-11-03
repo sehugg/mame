@@ -41,6 +41,7 @@ write
 #include "includes/marineb.h"
 
 #include "cpu/z80/z80.h"
+#include "machine/74259.h"
 #include "sound/ay8910.h"
 #include "screen.h"
 #include "speaker.h"
@@ -53,26 +54,15 @@ void marineb_state::machine_reset()
 {
 	m_palette_bank = 0;
 	m_column_scroll = 0;
-	m_flipscreen_x = 0;
-	m_flipscreen_y = 0;
-	m_marineb_active_low_flipscreen = 0;
-}
-
-MACHINE_RESET_MEMBER(marineb_state,springer)
-{
-	marineb_state::machine_reset();
-
-	m_marineb_active_low_flipscreen = 1;
 }
 
 void marineb_state::machine_start()
 {
-	save_item(NAME(m_marineb_active_low_flipscreen));
 }
 
-WRITE8_MEMBER(marineb_state::irq_mask_w)
+WRITE_LINE_MEMBER(marineb_state::irq_mask_w)
 {
-	m_irq_mask = data & 1;
+	m_irq_mask = state;
 }
 
 static ADDRESS_MAP_START( marineb_map, AS_PROGRAM, 8, marineb_state )
@@ -84,9 +74,8 @@ static ADDRESS_MAP_START( marineb_map, AS_PROGRAM, 8, marineb_state )
 	AM_RANGE(0x9800, 0x9800) AM_WRITE(marineb_column_scroll_w)
 	AM_RANGE(0x9a00, 0x9a00) AM_WRITE(marineb_palette_bank_0_w)
 	AM_RANGE(0x9c00, 0x9c00) AM_WRITE(marineb_palette_bank_1_w)
-	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("P2") AM_WRITE(irq_mask_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(marineb_flipscreen_y_w)
-	AM_RANGE(0xa002, 0xa002) AM_WRITE(marineb_flipscreen_x_w)
+	AM_RANGE(0xa000, 0xa007) AM_DEVWRITE("outlatch", ls259_device, write_d0)
+	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("P2")
 	AM_RANGE(0xa800, 0xa800) AM_READ_PORT("P1")
 	AM_RANGE(0xb000, 0xb000) AM_READ_PORT("DSW")
 	AM_RANGE(0xb800, 0xb800) AM_READ_PORT("SYSTEM") AM_WRITENOP     /* also watchdog */
@@ -537,7 +526,7 @@ INTERRUPT_GEN_MEMBER(marineb_state::wanted_vblank_irq)
 }
 
 
-static MACHINE_CONFIG_START( marineb, marineb_state )
+static MACHINE_CONFIG_START( marineb )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, CPU_CLOCK)   /* 3 MHz? */
@@ -545,6 +534,10 @@ static MACHINE_CONFIG_START( marineb, marineb_state )
 	MCFG_CPU_IO_MAP(marineb_io_map)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", marineb_state,  marineb_vblank_irq)
 
+	MCFG_DEVICE_ADD("outlatch", LS259, 0)
+	MCFG_ADDRESSABLE_LATCH_Q0_OUT_CB(WRITELINE(marineb_state, irq_mask_w))
+	MCFG_ADDRESSABLE_LATCH_Q1_OUT_CB(WRITELINE(marineb_state, flipscreen_y_w))
+	MCFG_ADDRESSABLE_LATCH_Q2_OUT_CB(WRITELINE(marineb_state, flipscreen_x_w))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -580,7 +573,9 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( springer, marineb )
 
 	/* basic machine hardware */
-	MCFG_MACHINE_RESET_OVERRIDE(marineb_state,springer)
+	MCFG_DEVICE_MODIFY("outlatch")
+	MCFG_ADDRESSABLE_LATCH_Q1_OUT_CB(WRITELINE(marineb_state, flipscreen_y_w)) MCFG_DEVCB_INVERT
+	MCFG_ADDRESSABLE_LATCH_Q2_OUT_CB(WRITELINE(marineb_state, flipscreen_x_w)) MCFG_DEVCB_INVERT
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
@@ -634,7 +629,9 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( bcruzm12, wanted )
 
 	/* basic machine hardware */
-	MCFG_MACHINE_RESET_OVERRIDE(marineb_state,springer)
+	MCFG_DEVICE_MODIFY("outlatch")
+	MCFG_ADDRESSABLE_LATCH_Q1_OUT_CB(WRITELINE(marineb_state, flipscreen_y_w)) MCFG_DEVCB_INVERT
+	MCFG_ADDRESSABLE_LATCH_Q2_OUT_CB(WRITELINE(marineb_state, flipscreen_x_w)) MCFG_DEVCB_INVERT
 MACHINE_CONFIG_END
 
 /***************************************************************************
@@ -874,13 +871,13 @@ ROM_END
 
 
 /*    year  name      parent   machine   inputs */
-GAME( 1982, marineb,  0,       marineb,  marineb, driver_device, 0, ROT0,   "Orca", "Marine Boy", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, changes,  0,       changes,  changes, driver_device, 0, ROT0,   "Orca", "Changes", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, changesa, changes, changes,  changes, driver_device, 0, ROT0,   "Orca (Eastern Micro Electronics, Inc. license)", "Changes (EME license)", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, looper,   changes, changes,  changes, driver_device, 0, ROT0,   "Orca", "Looper", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, springer, 0,       springer, marineb, driver_device, 0, ROT270, "Orca", "Springer", MACHINE_SUPPORTS_SAVE )
-GAME( 1983, hoccer,   0,       hoccer,   hoccer, driver_device,  0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1983, hoccer2,  hoccer,  hoccer,   hoccer, driver_device,  0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 2)" , MACHINE_SUPPORTS_SAVE )  /* earlier */
-GAME( 1983, bcruzm12, 0,       bcruzm12, bcruzm12, driver_device,0, ROT90,  "Sigma Enterprises Inc.", "Battle Cruiser M-12", MACHINE_SUPPORTS_SAVE )
-GAME( 1983, hopprobo, 0,       hopprobo, marineb, driver_device, 0, ROT90,  "Sega", "Hopper Robo", MACHINE_SUPPORTS_SAVE )
-GAME( 1984, wanted,   0,       wanted,   wanted, driver_device,  0, ROT90,  "Sigma Enterprises Inc.", "Wanted", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, marineb,  0,       marineb,  marineb,  marineb_state, 0, ROT0,   "Orca", "Marine Boy", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, changes,  0,       changes,  changes,  marineb_state, 0, ROT0,   "Orca", "Changes", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, changesa, changes, changes,  changes,  marineb_state, 0, ROT0,   "Orca (Eastern Micro Electronics, Inc. license)", "Changes (EME license)", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, looper,   changes, changes,  changes,  marineb_state, 0, ROT0,   "Orca", "Looper", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, springer, 0,       springer, marineb,  marineb_state, 0, ROT270, "Orca", "Springer", MACHINE_SUPPORTS_SAVE )
+GAME( 1983, hoccer,   0,       hoccer,   hoccer,   marineb_state, 0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1983, hoccer2,  hoccer,  hoccer,   hoccer,   marineb_state, 0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 2)" , MACHINE_SUPPORTS_SAVE )  /* earlier */
+GAME( 1983, bcruzm12, 0,       bcruzm12, bcruzm12, marineb_state, 0, ROT90,  "Sigma Enterprises Inc.", "Battle Cruiser M-12", MACHINE_SUPPORTS_SAVE )
+GAME( 1983, hopprobo, 0,       hopprobo, marineb,  marineb_state, 0, ROT90,  "Sega", "Hopper Robo", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, wanted,   0,       wanted,   wanted,   marineb_state, 0, ROT90,  "Sigma Enterprises Inc.", "Wanted", MACHINE_SUPPORTS_SAVE )

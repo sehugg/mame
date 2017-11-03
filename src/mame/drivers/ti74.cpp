@@ -271,12 +271,6 @@ static ADDRESS_MAP_START( main_map, AS_PROGRAM, 8, ti74_state )
 	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK("sysbank")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( main_io_map, AS_IO, 8, ti74_state )
-	AM_RANGE(TMS7000_PORTA, TMS7000_PORTA) AM_READ(keyboard_r)
-	AM_RANGE(TMS7000_PORTB, TMS7000_PORTB) AM_WRITE(bankswitch_w)
-	AM_RANGE(TMS7000_PORTE, TMS7000_PORTE) AM_WRITE(keyboard_w) AM_READNOP
-ADDRESS_MAP_END
-
 
 
 /***************************************************************************
@@ -287,7 +281,7 @@ ADDRESS_MAP_END
 
 INPUT_CHANGED_MEMBER(ti74_state::battery_status_changed)
 {
-	if (machine().phase() == MACHINE_PHASE_RUNNING)
+	if (machine().phase() == machine_phase::RUNNING)
 		update_battery_status(newval);
 }
 
@@ -509,12 +503,14 @@ void ti74_state::machine_start()
 	save_item(NAME(m_power));
 }
 
-static MACHINE_CONFIG_START( ti74, ti74_state )
+static MACHINE_CONFIG_START( ti74 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", TMS70C46, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_IO_MAP(main_io_map)
+	MCFG_TMS7000_IN_PORTA_CB(READ8(ti74_state, keyboard_r))
+	MCFG_TMS7000_OUT_PORTB_CB(WRITE8(ti74_state, bankswitch_w))
+	MCFG_TMS7000_OUT_PORTE_CB(WRITE8(ti74_state, keyboard_w))
 
 	MCFG_NVRAM_ADD_0FILL("sysram.ic3")
 
@@ -543,12 +539,14 @@ static MACHINE_CONFIG_START( ti74, ti74_state )
 	MCFG_SOFTWARE_LIST_ADD("cart_list", "ti74_cart")
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( ti95, ti74_state )
+static MACHINE_CONFIG_START( ti95 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", TMS70C46, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_IO_MAP(main_io_map)
+	MCFG_TMS7000_IN_PORTA_CB(READ8(ti74_state, keyboard_r))
+	MCFG_TMS7000_OUT_PORTB_CB(WRITE8(ti74_state, bankswitch_w))
+	MCFG_TMS7000_OUT_PORTE_CB(WRITE8(ti74_state, keyboard_w))
 
 	MCFG_NVRAM_ADD_0FILL("sysram.ic3")
 
@@ -586,8 +584,8 @@ MACHINE_CONFIG_END
 ***************************************************************************/
 
 ROM_START( ti74 )
-	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "c70009.ic2", 0xf000, 0x1000, CRC(55a2f7c0) SHA1(530e3de42f2e304c8f4805ad389f38a459ec4e33) ) // internal cpu rom
+	ROM_REGION( 0x1000, "maincpu", 0 )
+	ROM_LOAD( "c70009.ic2", 0x0000, 0x1000, CRC(55a2f7c0) SHA1(530e3de42f2e304c8f4805ad389f38a459ec4e33) ) // internal cpu rom
 
 	ROM_REGION( 0x8000, "system", 0 )
 	ROM_LOAD( "hn61256pc93.ic1", 0x0000, 0x8000, CRC(019aaa2f) SHA1(04a1e694a49d50602e45a7834846de4d9f7d587d) ) // system rom, banked
@@ -595,13 +593,14 @@ ROM_END
 
 
 ROM_START( ti95 )
-	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "c70011.ic2", 0xf000, 0x1000, CRC(b4d0a5c1) SHA1(3ff41946d014f72220a88803023b6a06d5086ce4) ) // internal cpu rom
+	ROM_REGION( 0x1000, "maincpu", 0 )
+	ROM_LOAD( "c70011.ic2", 0x0000, 0x1000, CRC(b4d0a5c1) SHA1(3ff41946d014f72220a88803023b6a06d5086ce4) ) // internal cpu rom
 
 	ROM_REGION( 0x8000, "system", 0 )
 	ROM_LOAD( "hn61256pc95.ic1", 0x0000, 0x8000, CRC(c46d29ae) SHA1(c653f08590dbc28241a9f5a6c2541641bdb0208b) ) // system rom, banked
 ROM_END
 
 
-COMP( 1985, ti74, 0, 0, ti74, ti74, driver_device, 0, "Texas Instruments", "TI-74 BASICALC", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1986, ti95, 0, 0, ti95, ti95, driver_device, 0, "Texas Instruments", "TI-95 PROCALC", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+//    YEAR  NAME  PARENT CMP MACHINE INPUT STATE    INIT  COMPANY, FULLNAME, FLAGS
+COMP( 1985, ti74, 0,      0, ti74,   ti74, ti74_state, 0, "Texas Instruments", "TI-74 BASICALC", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1986, ti95, 0,      0, ti95,   ti95, ti74_state, 0, "Texas Instruments", "TI-95 PROCALC", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )

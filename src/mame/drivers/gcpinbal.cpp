@@ -49,7 +49,7 @@ ES-9209B
 |                 6116      |       |  AS7C256  |
 |                 6116      +-------+  AS7C256  |
 |J                                     AS7C256  |
-|A                            AS7C256  AS7C256  |
+|A  MB3773                    AS7C256  AS7C256  |
 |M  TSW1*               +-------+          U13* |
 |M   PAL          32MHz |ES-9303|          U11  |
 |A   PAL     68000P-16  +-------+               |
@@ -146,6 +146,8 @@ WRITE8_MEMBER(gcpinbal_state::bank_w)
 
 	m_bg0_gfxset = (data & 0x04) ? 0x1000 : 0;
 	m_bg1_gfxset = (data & 0x08) ? 0x1000 : 0;
+
+	m_watchdog->write_line_ck(BIT(data, 7));
 
 //          machine().bookkeeping().coin_lockout_w(0, ~data & 0x01);
 //          machine().bookkeeping().coin_lockout_w(1, ~data & 0x02);
@@ -325,18 +327,18 @@ static INPUT_PORTS_START( gcpinbal )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1)   // Item right
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)   // Inner flipper right
-	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)   // Outer flipper right
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_PLAYER(1)   // Tilt right
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME("Item Right") PORT_PLAYER(1)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Flipper 1 Right") PORT_PLAYER(1)   // Inner flipper right
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("Flipper 2 Right") PORT_PLAYER(1)   // Outer flipper right
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_NAME("Tilt Right") PORT_PLAYER(1)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)   // Item left
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)   // Inner flipper left
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)   // Outer flipper left
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(1)   // Tilt left
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("Item Left") PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Flipper 1 Left") PORT_PLAYER(1)   // Inner flipper left
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Flipper 2 Left") PORT_PLAYER(1)   // Outer flipper left
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME("Tilt Left") PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START1 )
 
 	PORT_START("IN1")
@@ -447,7 +449,7 @@ void gcpinbal_state::machine_reset()
 	m_msm_bank = 0;
 }
 
-static MACHINE_CONFIG_START( gcpinbal, gcpinbal_state )
+static MACHINE_CONFIG_START( gcpinbal )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_32MHz/2) /* 16 MHz */
@@ -455,6 +457,8 @@ static MACHINE_CONFIG_START( gcpinbal, gcpinbal_state )
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", gcpinbal_state,  gcpinbal_interrupt)
 
 	MCFG_EEPROM_SERIAL_93C46_ADD("eeprom")
+
+	MCFG_DEVICE_ADD("watchdog", MB3773, 0)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -475,15 +479,15 @@ static MACHINE_CONFIG_START( gcpinbal, gcpinbal_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_OKIM6295_ADD("oki", XTAL_1_056MHz, OKIM6295_PIN7_HIGH)
+	MCFG_OKIM6295_ADD("oki", XTAL_1_056MHz, PIN7_HIGH)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
 	MCFG_DEVICE_ADD("adpcm_select", HCT157, 0)
 	MCFG_74157_OUT_CB(DEVWRITE8("msm", msm6585_device, data_w))
 
 	MCFG_SOUND_ADD("msm", MSM6585, XTAL_640kHz)
-	MCFG_MSM6585_VCLK_CB(WRITELINE(gcpinbal_state, gcp_adpcm_int))      /* VCK function */
-	MCFG_MSM6585_PRESCALER_SELECTOR(MSM6585_S40)         /* 16 kHz */
+	MCFG_MSM6585_VCK_CALLBACK(WRITELINE(gcpinbal_state, gcp_adpcm_int))
+	MCFG_MSM6585_PRESCALER_SELECTOR(S40)         /* 16 kHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
@@ -542,5 +546,5 @@ ROM_START( gcpinbal )
 ROM_END
 
 
-GAME( 1994, pwrflip,  0, gcpinbal, gcpinbal, driver_device, 0, ROT270, "Excellent System", "Power Flipper Pinball Shooting v1.33", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1994, gcpinbal, 0, gcpinbal, gcpinbal, driver_device, 0, ROT270, "Excellent System", "Grand Cross v1.02F", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1994, pwrflip,  0, gcpinbal, gcpinbal, gcpinbal_state, 0, ROT270, "Excellent System", "Power Flipper Pinball Shooting v1.33", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1994, gcpinbal, 0, gcpinbal, gcpinbal, gcpinbal_state, 0, ROT270, "Excellent System", "Grand Cross v1.02F",                   MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )

@@ -874,7 +874,7 @@ static SLOT_INTERFACE_START( dw_floppies )
 	SLOT_INTERFACE( "8sssd", IBM_6360 )
 SLOT_INTERFACE_END
 
-static MACHINE_CONFIG_START( ibm6580, ibm6580_state )
+static MACHINE_CONFIG_START( ibm6580 )
 	MCFG_CPU_ADD("maincpu", I8086, XTAL_14_7456MHz/3)
 	MCFG_CPU_PROGRAM_MAP(ibm6580_mem)
 	MCFG_CPU_IO_MAP(ibm6580_io)
@@ -894,7 +894,8 @@ static MACHINE_CONFIG_START( ibm6580, ibm6580_state )
 	MCFG_PALETTE_ADD("palette", 3)
 	MCFG_PALETTE_INIT_OWNER(ibm6580_state, ibm6580)
 
-	MCFG_PIC8259_ADD("pic8259", INPUTLINE("maincpu", 0), VCC, NOOP)
+	MCFG_DEVICE_ADD("pic8259", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE("maincpu", 0))
 
 	MCFG_DEVICE_ADD("ppi8255", I8255, 0)
 	MCFG_I8255_IN_PORTA_CB(READ8(ibm6580_state, ppi_a_r))
@@ -971,5 +972,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME     PARENT  COMPAT   MACHINE   INPUT    CLASS          INIT  COMPANY            FULLNAME       FLAGS */
-COMP( 1980, ibm6580, 0,      0,       ibm6580,  ibm6580, driver_device,  0,  "IBM", "IBM 6580 Displaywriter", MACHINE_IS_SKELETON)
+/*    YEAR  NAME     PARENT  COMPAT   MACHINE   INPUT    CLASS           INIT  COMPANY  FULLNAME       FLAGS */
+COMP( 1980, ibm6580, 0,      0,       ibm6580,  ibm6580, ibm6580_state,  0,    "IBM",   "IBM 6580 Displaywriter", MACHINE_IS_SKELETON)

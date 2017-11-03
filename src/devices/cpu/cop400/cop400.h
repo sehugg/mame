@@ -8,10 +8,10 @@
 
 ***************************************************************************/
 
-#pragma once
+#ifndef MAME_DEVICES_CPU_COP400_H
+#define MAME_DEVICES_CPU_COP400_H
 
-#ifndef __COP400__
-#define __COP400__
+#pragma once
 
 // i/o pins
 
@@ -68,11 +68,13 @@ enum
 	COP400_B,
 	COP400_C,
 	COP400_G,
+	COP400_M,
 	COP400_Q,
 	COP400_EN,
 	COP400_SIO,
 	COP400_SKL,
-	COP400_T
+	COP400_T,
+	COP400_SKIP
 };
 
 /* input lines */
@@ -118,9 +120,6 @@ enum cop400_cko_bond {
 class cop400_cpu_device : public cpu_device
 {
 public:
-	// construction/destruction
-	cop400_cpu_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source, uint8_t program_addr_bits, uint8_t data_addr_bits, uint8_t featuremask, uint8_t g_mask, uint8_t d_mask, uint8_t in_mask, bool has_counter, bool has_inil, address_map_constructor internal_map_program, address_map_constructor internal_map_data);
-
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 
 	// static configuration helpers
@@ -144,6 +143,9 @@ public:
 	DECLARE_WRITE8_MEMBER( microbus_wr );
 
 protected:
+	// construction/destruction
+	cop400_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint8_t program_addr_bits, uint8_t data_addr_bits, uint8_t featuremask, uint8_t g_mask, uint8_t d_mask, uint8_t in_mask, bool has_counter, bool has_inil, address_map_constructor internal_map_program, address_map_constructor internal_map_data);
+
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
@@ -157,14 +159,9 @@ protected:
 	virtual void execute_run() override;
 
 	// device_memory_interface overrides
-	virtual const address_space_config *memory_space_config(address_spacenum spacenum = AS_0) const override
-	{
-		return (spacenum == AS_PROGRAM) ? &m_program_config : ( (spacenum == AS_DATA) ? &m_data_config : nullptr );
-	}
+	virtual space_config_vector memory_space_config() const override;
 
 	// device_state_interface overrides
-	virtual void state_import(const device_state_entry &entry) override;
-	virtual void state_export(const device_state_entry &entry) override;
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
 
 	// device_disasm_interface overrides
@@ -227,7 +224,6 @@ protected:
 	uint16_t  m_sa, m_sb, m_sc; /* subroutine save registers */
 	uint8_t   m_sio;            /* 4-bit shift register and counter */
 	int     m_skl;            /* 1-bit latch for SK output */
-	uint8_t   m_flags;          // used for I/O only
 
 	/* counter */
 	uint8_t   m_t;              /* 8-bit timer */
@@ -251,13 +247,13 @@ protected:
 	/* execution logic */
 	int m_InstLen[256];       /* instruction length in bytes */
 	int m_icount;             /* instruction counter */
+	uint8_t m_opcode;         /* opcode being executed */
+	bool m_second_byte;       /* second byte of opcode */
 
 	/* timers */
-	emu_timer *m_serial_timer;
 	emu_timer *m_counter_timer;
-	emu_timer *m_inil_timer;
 
-	typedef void ( cop400_cpu_device::*cop400_opcode_func ) (uint8_t opcode);
+	typedef void (cop400_cpu_device::*cop400_opcode_func)(uint8_t operand);
 
 	const cop400_opcode_func *m_opcode_map;
 
@@ -274,6 +270,8 @@ protected:
 	static const cop400_opcode_func COP424C_OPCODE_33_MAP[256];
 	static const cop400_opcode_func COP424C_OPCODE_MAP[256];
 
+	inline static bool is_control_transfer(uint8_t opcode);
+
 	void serial_tick();
 	void counter_tick();
 	void inil_tick();
@@ -282,85 +280,92 @@ protected:
 	void POP();
 	void WRITE_Q(uint8_t data);
 	void WRITE_G(uint8_t data);
+	void WRITE_EN(uint8_t data);
 
-	uint8_t fetch();
+	void skip();
+	void sk_update();
 
-	void illegal(uint8_t opcode);
-	void asc(uint8_t opcode);
-	void add(uint8_t opcode);
-	void aisc(uint8_t opcode);
-	void clra(uint8_t opcode);
-	void comp(uint8_t opcode);
-	void nop(uint8_t opcode);
-	void rc(uint8_t opcode);
-	void sc(uint8_t opcode);
-	void xor_(uint8_t opcode);
-	void adt(uint8_t opcode);
-	void casc(uint8_t opcode);
-	void jid(uint8_t opcode);
-	void jmp(uint8_t opcode);
-	void jp(uint8_t opcode);
-	void jsr(uint8_t opcode);
-	void ret(uint8_t opcode);
-	void cop420_ret(uint8_t opcode);
-	void retsk(uint8_t opcode);
-	void halt(uint8_t opcode);
-	void it(uint8_t opcode);
-	void camq(uint8_t opcode);
-	void ld(uint8_t opcode);
-	void lqid(uint8_t opcode);
-	void rmb0(uint8_t opcode);
-	void rmb1(uint8_t opcode);
-	void rmb2(uint8_t opcode);
-	void rmb3(uint8_t opcode);
-	void smb0(uint8_t opcode);
-	void smb1(uint8_t opcode);
-	void smb2(uint8_t opcode);
-	void smb3(uint8_t opcode);
-	void stii(uint8_t opcode);
-	void x(uint8_t opcode);
-	void xad(uint8_t opcode);
-	void xds(uint8_t opcode);
-	void xis(uint8_t opcode);
-	void cqma(uint8_t opcode);
-	void ldd(uint8_t opcode);
-	void camt(uint8_t opcode);
-	void ctma(uint8_t opcode);
-	void cab(uint8_t opcode);
-	void cba(uint8_t opcode);
-	void lbi(uint8_t opcode);
-	void lei(uint8_t opcode);
-	void xabr(uint8_t opcode);
-	void cop444l_xabr(uint8_t opcode);
-	void skc(uint8_t opcode);
-	void ske(uint8_t opcode);
-	void skgz(uint8_t opcode);
-	void skgbz0(uint8_t opcode);
-	void skgbz1(uint8_t opcode);
-	void skgbz2(uint8_t opcode);
-	void skgbz3(uint8_t opcode);
-	void skmbz0(uint8_t opcode);
-	void skmbz1(uint8_t opcode);
-	void skmbz2(uint8_t opcode);
-	void skmbz3(uint8_t opcode);
-	void skt(uint8_t opcode);
-	void ing(uint8_t opcode);
-	void inl(uint8_t opcode);
-	void obd(uint8_t opcode);
-	void omg(uint8_t opcode);
-	void xas(uint8_t opcode);
-	void inin(uint8_t opcode);
-	void cop402m_inin(uint8_t opcode);
-	void inil(uint8_t opcode);
-	void ogi(uint8_t opcode);
-	void cop410_op23(uint8_t opcode);
-	void cop410_op33(uint8_t opcode);
-	void cop420_op23(uint8_t opcode);
-	void cop420_op33(uint8_t opcode);
-	void cop444l_op23(uint8_t opcode);
-	void cop444l_op33(uint8_t opcode);
-	void cop424c_op23(uint8_t opcode);
-	void cop424c_op33(uint8_t opcode);
+	uint8_t get_flags() const;
+	void set_flags(uint8_t flags);
+	uint8_t get_m() const;
+	void set_m(uint8_t m);
+
+	void illegal(uint8_t operand);
+	void asc(uint8_t operand);
+	void add(uint8_t operand);
+	void aisc(uint8_t operand);
+	void clra(uint8_t operand);
+	void comp(uint8_t operand);
+	void nop(uint8_t operand);
+	void rc(uint8_t operand);
+	void sc(uint8_t operand);
+	void xor_(uint8_t operand);
+	void adt(uint8_t operand);
+	void casc(uint8_t operand);
+	void jid(uint8_t operand);
+	void jmp(uint8_t operand);
+	void jp(uint8_t operand);
+	void jsr(uint8_t operand);
+	void ret(uint8_t operand);
+	void cop420_ret(uint8_t operand);
+	void retsk(uint8_t operand);
+	void halt(uint8_t operand);
+	void it(uint8_t operand);
+	void camq(uint8_t operand);
+	void ld(uint8_t operand);
+	void lqid(uint8_t operand);
+	void rmb0(uint8_t operand);
+	void rmb1(uint8_t operand);
+	void rmb2(uint8_t operand);
+	void rmb3(uint8_t operand);
+	void smb0(uint8_t operand);
+	void smb1(uint8_t operand);
+	void smb2(uint8_t operand);
+	void smb3(uint8_t operand);
+	void stii(uint8_t operand);
+	void x(uint8_t operand);
+	void xad(uint8_t operand);
+	void xds(uint8_t operand);
+	void xis(uint8_t operand);
+	void cqma(uint8_t operand);
+	void ldd(uint8_t operand);
+	void camt(uint8_t operand);
+	void ctma(uint8_t operand);
+	void cab(uint8_t operand);
+	void cba(uint8_t operand);
+	void lbi(uint8_t operand);
+	void lei(uint8_t operand);
+	void xabr(uint8_t operand);
+	void cop444l_xabr(uint8_t operand);
+	void skc(uint8_t operand);
+	void ske(uint8_t operand);
+	void skgz(uint8_t operand);
+	void skgbz0(uint8_t operand);
+	void skgbz1(uint8_t operand);
+	void skgbz2(uint8_t operand);
+	void skgbz3(uint8_t operand);
+	void skmbz0(uint8_t operand);
+	void skmbz1(uint8_t operand);
+	void skmbz2(uint8_t operand);
+	void skmbz3(uint8_t operand);
+	void skt(uint8_t operand);
+	void ing(uint8_t operand);
+	void inl(uint8_t operand);
+	void obd(uint8_t operand);
+	void omg(uint8_t operand);
+	void xas(uint8_t operand);
+	void inin(uint8_t operand);
+	void cop402m_inin(uint8_t operand);
+	void inil(uint8_t operand);
+	void ogi(uint8_t operand);
+	void cop410_op23(uint8_t operand);
+	void cop410_op33(uint8_t operand);
+	void cop420_op23(uint8_t operand);
+	void cop420_op33(uint8_t operand);
+	void cop444l_op23(uint8_t operand);
+	void cop444l_op33(uint8_t operand);
+	void cop424c_op23(uint8_t operand);
+	void cop424c_op33(uint8_t operand);
 	void skgbz(int bit);
 	void skmbz(int bit);
 };
@@ -519,22 +524,22 @@ public:
 };
 
 
-extern const device_type COP401;
-extern const device_type COP410;
-extern const device_type COP411;
-extern const device_type COP402;
-extern const device_type COP420;
-extern const device_type COP421;
-extern const device_type COP422;
-extern const device_type COP404L;
-extern const device_type COP444L;
-extern const device_type COP445L;
-extern const device_type COP404C;
-extern const device_type COP424C;
-extern const device_type COP425C;
-extern const device_type COP426C;
-extern const device_type COP444C;
-extern const device_type COP445C;
-extern const device_type COP446C;
+DECLARE_DEVICE_TYPE(COP401, cop401_cpu_device)
+DECLARE_DEVICE_TYPE(COP410, cop410_cpu_device)
+DECLARE_DEVICE_TYPE(COP411, cop411_cpu_device)
+DECLARE_DEVICE_TYPE(COP402, cop402_cpu_device)
+DECLARE_DEVICE_TYPE(COP420, cop420_cpu_device)
+DECLARE_DEVICE_TYPE(COP421, cop421_cpu_device)
+DECLARE_DEVICE_TYPE(COP422, cop422_cpu_device)
+DECLARE_DEVICE_TYPE(COP404L, cop404l_cpu_device)
+DECLARE_DEVICE_TYPE(COP444L, cop444l_cpu_device)
+DECLARE_DEVICE_TYPE(COP445L, cop445l_cpu_device)
+DECLARE_DEVICE_TYPE(COP404C, cop404c_cpu_device)
+DECLARE_DEVICE_TYPE(COP424C, cop424c_cpu_device)
+DECLARE_DEVICE_TYPE(COP425C, cop425c_cpu_device)
+DECLARE_DEVICE_TYPE(COP426C, cop426c_cpu_device)
+DECLARE_DEVICE_TYPE(COP444C, cop444c_cpu_device)
+DECLARE_DEVICE_TYPE(COP445C, cop445c_cpu_device)
+DECLARE_DEVICE_TYPE(COP446C, cop446c_cpu_device)
 
-#endif  /* __COP400__ */
+#endif  // MAME_DEVICES_CPU_COP400_H

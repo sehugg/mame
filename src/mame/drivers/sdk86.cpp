@@ -41,23 +41,18 @@ ToDo:
 class sdk86_state : public driver_device
 {
 public:
-	sdk86_state(const machine_config &mconfig, device_type type, const char *tag) :
-		driver_device(mconfig, type, tag) ,
-		m_maincpu(*this, "maincpu"),
-		m_usart(*this, I8251_TAG)
-	{
-	}
-
-	required_device<cpu_device> m_maincpu;
-	required_device<i8251_device> m_usart;
+	sdk86_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag)
+		, m_maincpu(*this, "maincpu")
+	{ }
 
 	DECLARE_WRITE8_MEMBER(scanlines_w);
 	DECLARE_WRITE8_MEMBER(digit_w);
 	DECLARE_READ8_MEMBER(kbd_r);
 
-	DECLARE_WRITE_LINE_MEMBER( write_usart_clock );
-
+private:
 	uint8_t m_digit;
+	required_device<cpu_device> m_maincpu;
 };
 
 static ADDRESS_MAP_START(sdk86_mem, AS_PROGRAM, 16, sdk86_state)
@@ -131,12 +126,6 @@ READ8_MEMBER( sdk86_state::kbd_r )
 	return data;
 }
 
-WRITE_LINE_MEMBER( sdk86_state::write_usart_clock )
-{
-	m_usart->write_txc(state);
-	m_usart->write_rxc(state);
-}
-
 static DEVICE_INPUT_DEFAULTS_START( terminal )
 	DEVICE_INPUT_DEFAULTS( "RS232_TXBAUD", 0xff, RS232_BAUD_4800 )
 	DEVICE_INPUT_DEFAULTS( "RS232_RXBAUD", 0xff, RS232_BAUD_4800 )
@@ -146,7 +135,7 @@ static DEVICE_INPUT_DEFAULTS_START( terminal )
 	DEVICE_INPUT_DEFAULTS( "RS232_STOPBITS", 0xff, RS232_STOPBITS_2 )
 DEVICE_INPUT_DEFAULTS_END
 
-static MACHINE_CONFIG_START( sdk86, sdk86_state )
+static MACHINE_CONFIG_START( sdk86 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8086, XTAL_14_7456MHz/3) /* divided down by i8284 clock generator; jumper selection allows it to be slowed to 2.5MHz, hence changing divider from 3 to 6 */
 	MCFG_CPU_PROGRAM_MAP(sdk86_mem)
@@ -167,7 +156,8 @@ static MACHINE_CONFIG_START( sdk86, sdk86_state )
 	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("terminal", terminal)
 
 	MCFG_DEVICE_ADD("usart_clock", CLOCK, 307200)
-	MCFG_CLOCK_SIGNAL_HANDLER(WRITELINE(sdk86_state, write_usart_clock))
+	MCFG_CLOCK_SIGNAL_HANDLER(DEVWRITELINE(I8251_TAG, i8251_device, write_txc))
+	MCFG_DEVCB_CHAIN_OUTPUT(DEVWRITELINE(I8251_TAG, i8251_device, write_rxc))
 
 	MCFG_DEVICE_ADD("i8279", I8279, 2500000) // based on divider
 	MCFG_I8279_OUT_SL_CB(WRITE8(sdk86_state, scanlines_w))          // scan SL lines
@@ -218,5 +208,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR   NAME  PARENT  COMPAT   MACHINE    INPUT          STATE  INIT     COMPANY   FULLNAME                FLAGS */
-COMP( 1979, sdk86,      0,      0,    sdk86,   sdk86, driver_device,    0,    "Intel",  "SDK-86", MACHINE_NO_SOUND_HW)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  STATE        INIT  COMPANY   FULLNAME  FLAGS */
+COMP( 1979, sdk86,  0,      0,      sdk86,   sdk86, sdk86_state, 0,    "Intel",  "SDK-86", MACHINE_NO_SOUND_HW)

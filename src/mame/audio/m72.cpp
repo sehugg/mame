@@ -47,10 +47,10 @@ Shisensho II                            1993  Rev 3.34 M81  Yes
 #include "m72.h"
 
 
-const device_type M72 = device_creator<m72_audio_device>;
+DEFINE_DEVICE_TYPE(IREM_M72_AUDIO, m72_audio_device, "m72_audio", "Irem M72 Audio")
 
 m72_audio_device::m72_audio_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, M72, "Irem M72 Audio Custom", tag, owner, clock, "m72_audio", __FILE__)
+	: device_t(mconfig, IREM_M72_AUDIO, tag, owner, clock)
 	, device_sound_interface(mconfig, *this)
 	, m_irqvector(0)
 	, m_sample_addr(0)
@@ -125,16 +125,7 @@ WRITE_LINE_MEMBER(m72_audio_device::ym2151_irq_handler)
 	machine().scheduler().synchronize(timer_expired_delegate(FUNC(m72_audio_device::setvector_callback), this), state ? YM2151_ASSERT : YM2151_CLEAR);
 }
 
-WRITE16_MEMBER( m72_audio_device::sound_command_w )
-{
-	if (ACCESSING_BITS_0_7)
-	{
-		m_soundlatch->write(*m_space, offset, data);
-		space.machine().scheduler().synchronize(timer_expired_delegate(FUNC(m72_audio_device::setvector_callback), this), Z80_ASSERT);
-	}
-}
-
-WRITE8_MEMBER( m72_audio_device::sound_command_byte_w )
+WRITE8_MEMBER( m72_audio_device::sound_command_w )
 {
 	m_soundlatch->write(*m_space, offset, data);
 	space.machine().scheduler().synchronize(timer_expired_delegate(FUNC(m72_audio_device::setvector_callback), this), Z80_ASSERT);

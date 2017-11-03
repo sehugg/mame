@@ -12,11 +12,11 @@
  *
  */
 
+#ifndef MAME_CPU_M68000_M68KCPU_H
+#define MAME_CPU_M68000_M68KCPU_H
 
 #pragma once
 
-#ifndef __M68KCPU_H__
-#define __M68KCPU_H__
 
 class m68000_base_device;
 
@@ -375,11 +375,11 @@ class m68000_base_device;
 #define MFLAG_CLEAR 0
 
 /* Turn flag values into 1 or 0 */
-#define XFLAG_AS_1(M) (((M)->x_flag>>8)&1)
-#define NFLAG_AS_1(M) (((M)->n_flag>>7)&1)
-#define VFLAG_AS_1(M) (((M)->v_flag>>7)&1)
-#define ZFLAG_AS_1(M) (!(M)->not_z_flag)
-#define CFLAG_AS_1(M) (((M)->c_flag>>8)&1)
+#define XFLAG_1(M) (((M)->x_flag>>8)&1)
+#define NFLAG_1(M) (((M)->n_flag>>7)&1)
+#define VFLAG_1(M) (((M)->v_flag>>7)&1)
+#define ZFLAG_1(M) (!(M)->not_z_flag)
+#define CFLAG_1(M) (((M)->c_flag>>8)&1)
 
 
 /* Conditions */
@@ -1672,8 +1672,24 @@ static inline void m68ki_exception_address_error(m68000_base_device *m68k)
 	}
 	m68k->run_mode = RUN_MODE_BERR_AERR_RESET;
 
-	/* Note: This is implemented for 68000 only! */
-	m68ki_stack_frame_buserr(m68k, sr);
+	if (!CPU_TYPE_IS_010_PLUS(m68k->cpu_type))
+	{
+		/* Note: This is implemented for 68000 only! */
+		m68ki_stack_frame_buserr(m68k, sr);
+	}
+	else if (CPU_TYPE_IS_010(m68k->cpu_type))
+	{
+		/* only the 68010 throws this unique type-1000 frame */
+		m68ki_stack_frame_1000(m68k, REG_PPC(m68k), sr, EXCEPTION_BUS_ERROR);
+	}
+	else if (m68k->mmu_tmp_buserror_address == REG_PPC(m68k))
+	{
+		m68ki_stack_frame_1010(m68k, sr, EXCEPTION_BUS_ERROR, REG_PPC(m68k), m68k->mmu_tmp_buserror_address);
+	}
+	else
+	{
+		m68ki_stack_frame_1011(m68k, sr, EXCEPTION_BUS_ERROR, REG_PPC(m68k), m68k->mmu_tmp_buserror_address);
+	}
 
 	m68ki_jump_vector(m68k, EXCEPTION_ADDRESS_ERROR);
 
@@ -1701,4 +1717,4 @@ static inline void m68ki_check_interrupts(m68000_base_device *m68k)
 /* ============================== END OF FILE ============================= */
 /* ======================================================================== */
 
-#endif /* __M68KCPU_H__ */
+#endif // MAME_CPU_M68000_M68KCPU_H

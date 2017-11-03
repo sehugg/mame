@@ -67,6 +67,7 @@ Dumped by Uki
 #include "cpu/m68000/m68000.h"
 #include "machine/eepromser.h"
 #include "machine/kaneko_toybox.h"
+#include "machine/timer.h"
 #include "machine/watchdog.h"
 #include "sound/ymz280b.h"
 #include "video/kaneko_grap2.h"
@@ -501,7 +502,7 @@ static ADDRESS_MAP_START( galpani3_map, AS_PROGRAM, 16, galpani3_state )
 ADDRESS_MAP_END
 
 
-static MACHINE_CONFIG_START( galpani3, galpani3_state )
+static MACHINE_CONFIG_START( galpani3 )
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_28_63636MHz/2) // Confirmed from PCB
 	MCFG_CPU_PROGRAM_MAP(galpani3_map)
 	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", galpani3_state, galpani3_vblank, "screen", 0, 1)
@@ -646,7 +647,7 @@ ROM_END
 
 
 
-GAME( 1995, galpani3,  0,        galpani3, galpani3, driver_device, 0, ROT90, "Kaneko", "Gals Panic 3 (Euro)",  MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1995, galpani3j, galpani3, galpani3, galpani3, driver_device, 0, ROT90, "Kaneko", "Gals Panic 3 (Japan)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1995, galpani3k, galpani3, galpani3, galpani3, driver_device, 0, ROT90, "Kaneko", "Gals Panic 3 (Korea)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
-GAME( 1995, galpani3hk,galpani3, galpani3, galpani3, driver_device, 0, ROT90, "Kaneko", "Gals Panic 3 (Hong Kong)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1995, galpani3,  0,        galpani3, galpani3, galpani3_state, 0, ROT90, "Kaneko", "Gals Panic 3 (Euro)",      MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1995, galpani3j, galpani3, galpani3, galpani3, galpani3_state, 0, ROT90, "Kaneko", "Gals Panic 3 (Japan)",     MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1995, galpani3k, galpani3, galpani3, galpani3, galpani3_state, 0, ROT90, "Kaneko", "Gals Panic 3 (Korea)",     MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1995, galpani3hk,galpani3, galpani3, galpani3, galpani3_state, 0, ROT90, "Kaneko", "Gals Panic 3 (Hong Kong)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )

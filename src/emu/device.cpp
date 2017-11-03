@@ -81,31 +81,28 @@ emu::detail::device_registrar const registered_device_types;
 //  from the provided config
 //-------------------------------------------------
 
-device_t::device_t(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, u32 clock, const char *shortname, const char *source)
-	: m_type(type),
-		m_name(name),
-		m_shortname(shortname),
-		m_searchpath(shortname),
-		m_source(source),
-		m_owner(owner),
-		m_next(nullptr),
+device_t::device_t(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock)
+	: m_type(type)
+	, m_searchpath(type.shortname())
+	, m_owner(owner)
+	, m_next(nullptr)
 
-		m_configured_clock(clock),
-		m_unscaled_clock(clock),
-		m_clock(clock),
-		m_clock_scale(1.0),
-		m_attoseconds_per_clock((clock == 0) ? 0 : HZ_TO_ATTOSECONDS(clock)),
+	, m_configured_clock(clock)
+	, m_unscaled_clock(clock)
+	, m_clock(clock)
+	, m_clock_scale(1.0)
+	, m_attoseconds_per_clock((clock == 0) ? 0 : HZ_TO_ATTOSECONDS(clock))
 
-		m_machine_config(mconfig),
-		m_input_defaults(nullptr),
-		m_default_bios_tag(""),
+	, m_machine_config(mconfig)
+	, m_input_defaults(nullptr)
+	, m_default_bios_tag("")
 
-		m_machine(nullptr),
-		m_save(nullptr),
-		m_basetag(tag),
-		m_config_complete(false),
-		m_started(false),
-		m_auto_finder_list(nullptr)
+	, m_machine(nullptr)
+	, m_save(nullptr)
+	, m_basetag(tag)
+	, m_config_complete(false)
+	, m_started(false)
+	, m_auto_finder_list(nullptr)
 {
 	if (owner != nullptr)
 		m_tag.assign((owner->owner() == nullptr) ? "" : owner->tag()).append(":").append(tag);
@@ -453,10 +450,11 @@ bool device_t::findit(bool isvalidation) const
 }
 
 //-------------------------------------------------
-//  start - start a device
+//  resolve_objects - find objects referenced in
+//  configuration
 //-------------------------------------------------
 
-void device_t::start()
+void device_t::resolve_objects()
 {
 	// prepare the logerror buffer
 	if (m_machine->allow_logging())
@@ -465,6 +463,20 @@ void device_t::start()
 	// find all the registered devices
 	if (!findit(false))
 		throw emu_fatalerror("Missing some required objects, unable to proceed");
+
+	// allow implementation to do additional setup
+	device_resolve_objects();
+}
+
+//-------------------------------------------------
+//  start - start a device
+//-------------------------------------------------
+
+void device_t::start()
+{
+	// prepare the logerror buffer
+	if (m_machine->allow_logging())
+		m_string_buffer.reserve(1024);
 
 	// let the interfaces do their pre-work
 	for (device_interface &intf : interfaces())
@@ -636,15 +648,13 @@ const tiny_rom_entry *device_t::device_rom_region() const
 
 
 //-------------------------------------------------
-//  machine_config - return a pointer to a machine
-//  config constructor describing sub-devices for
-//  this device
+//  device_add_mconfig - add device-specific
+//  machine configuration
 //-------------------------------------------------
 
-machine_config_constructor device_t::device_mconfig_additions() const
+void device_t::device_add_mconfig(machine_config &config)
 {
-	// none by default
-	return nullptr;
+	// do nothing by default
 }
 
 
@@ -680,6 +690,18 @@ void device_t::device_reset()
 //-------------------------------------------------
 
 void device_t::device_reset_after_children()
+{
+	// do nothing by default
+}
+
+
+//-------------------------------------------------
+//  device_resolve_objects - resolve objects that
+//  may be needed for other devices to set
+//  initial conditions at start time
+//-------------------------------------------------
+
+void device_t::device_resolve_objects()
 {
 	// do nothing by default
 }

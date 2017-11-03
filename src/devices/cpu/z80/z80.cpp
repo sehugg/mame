@@ -394,22 +394,27 @@ static const uint8_t cc_ex[0x100] = {
 } while (0)
 
 /***************************************************************
- * Enter halt state; write 1 to fake port on first execution
+ * Enter halt state; write 1 to callback on first execution
  ***************************************************************/
 inline void z80_device::halt()
 {
 	PC--;
-	m_halt = 1;
+	if (!m_halt)
+	{
+		m_halt = 1;
+		m_halt_cb(1);
+	}
 }
 
 /***************************************************************
- * Leave halt state; write 0 to fake port
+ * Leave halt state; write 0 to callback
  ***************************************************************/
 inline void z80_device::leave_halt()
 {
 	if( m_halt )
 	{
 		m_halt = 0;
+		m_halt_cb(0);
 		PC++;
 	}
 }
@@ -3126,8 +3131,6 @@ OP(op,ff) { rst(0x38);                                                          
 
 void z80_device::take_nmi()
 {
-	PRVPC = 0xffff; // HACK: segag80r protection kludge
-
 	/* Check if processor was halted */
 	leave_halt();
 
@@ -3146,8 +3149,6 @@ void z80_device::take_nmi()
 
 void z80_device::take_interrupt()
 {
-	PRVPC = 0xffff; // HACK: segag80r protection kludge
-
 	// check if processor was halted
 	leave_halt();
 
@@ -3230,8 +3231,6 @@ void z80_device::take_interrupt()
 
 void nsc800_device::take_interrupt_nsc800()
 {
-	PRVPC = 0xffff; // HACK: segag80r protection kludge
-
 	/* Check if processor was halted */
 	leave_halt();
 
@@ -3406,7 +3405,7 @@ void z80_device::device_start()
 	m_ea = 0;
 
 	m_program = &space(AS_PROGRAM);
-	m_decrypted_opcodes = has_space(AS_DECRYPTED_OPCODES) ? &space(AS_DECRYPTED_OPCODES) : m_program;
+	m_decrypted_opcodes = has_space(AS_OPCODES) ? &space(AS_OPCODES) : m_program;
 	m_direct = &m_program->direct();
 	m_decrypted_opcodes_direct = &m_decrypted_opcodes->direct();
 	m_io = &space(AS_IO);
@@ -3458,6 +3457,7 @@ void z80_device::device_start()
 
 	m_irqack_cb.resolve_safe();
 	m_refresh_cb.resolve_safe();
+	m_halt_cb.resolve_safe();
 }
 
 void nsc800_device::device_start()
@@ -3471,6 +3471,8 @@ void nsc800_device::device_start()
  ****************************************************************************/
 void z80_device::device_reset()
 {
+	leave_halt();
+
 	PC = 0x0000;
 	m_i = 0;
 	m_r = 0;
@@ -3692,43 +3694,42 @@ void z80_device::z80_set_cycle_tables(const uint8_t *op, const uint8_t *cb, cons
 
 
 z80_device::z80_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	cpu_device(mconfig, Z80, "Z80", tag, owner, clock, "z80", __FILE__),
+	z80_device(mconfig, Z80, tag, owner, clock)
+{
+}
+
+z80_device::z80_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock) :
+	cpu_device(mconfig, type, tag, owner, clock),
 	z80_daisy_chain_interface(mconfig, *this),
 	m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0),
 	m_decrypted_opcodes_config("decrypted_opcodes", ENDIANNESS_LITTLE, 8, 16, 0),
 	m_io_config("io", ENDIANNESS_LITTLE, 8, 16, 0),
 	m_irqack_cb(*this),
-	m_refresh_cb(*this)
+	m_refresh_cb(*this),
+	m_halt_cb(*this)
 {
 }
 
-z80_device::z80_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source) :
-	cpu_device(mconfig, type, name, tag, owner, clock, shortname, source),
-	z80_daisy_chain_interface(mconfig, *this),
-	m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0),
-	m_decrypted_opcodes_config("decrypted_opcodes", ENDIANNESS_LITTLE, 8, 16, 0),
-	m_io_config("io", ENDIANNESS_LITTLE, 8, 16, 0),
-	m_irqack_cb(*this),
-	m_refresh_cb(*this)
+device_memory_interface::space_config_vector z80_device::memory_space_config() const
 {
+	if(has_configured_map(AS_OPCODES))
+		return space_config_vector {
+			std::make_pair(AS_PROGRAM, &m_program_config),
+			std::make_pair(AS_OPCODES, &m_decrypted_opcodes_config),
+			std::make_pair(AS_IO,      &m_io_config)
+		};
+	else
+		return space_config_vector {
+			std::make_pair(AS_PROGRAM, &m_program_config),
+			std::make_pair(AS_IO,      &m_io_config)
+		};
 }
 
-const address_space_config *z80_device::memory_space_config(address_spacenum spacenum) const
-{
-	switch(spacenum)
-	{
-	case AS_PROGRAM:           return &m_program_config;
-	case AS_IO:                return &m_io_config;
-	case AS_DECRYPTED_OPCODES: return has_configured_map(AS_DECRYPTED_OPCODES) ? &m_decrypted_opcodes_config : nullptr;
-	default:                   return nullptr;
-	}
-}
-
-const device_type Z80 = device_creator<z80_device>;
+DEFINE_DEVICE_TYPE(Z80, z80_device, "z80", "Z80")
 
 nsc800_device::nsc800_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: z80_device(mconfig, NSC800, "NSC800", tag, owner, clock, "nsc800", __FILE__)
+	: z80_device(mconfig, NSC800, tag, owner, clock)
 {
 }
 
-const device_type NSC800 = device_creator<nsc800_device>;
+DEFINE_DEVICE_TYPE(NSC800, nsc800_device, "nsc800", "NSC800")

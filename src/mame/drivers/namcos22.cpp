@@ -2999,7 +2999,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(namcos22_state::propcycl_pedal_update)
 		const int range = 10000;
 
 		attotime freq = attotime::from_usec(base + range * (1.0 / (double)i));
-		m_pc_pedal_interrupt->adjust(min(freq, m_pc_pedal_interrupt->time_left()), 0, freq);
+		m_pc_pedal_interrupt->adjust(std::min(freq, m_pc_pedal_interrupt->time_left()), 0, freq);
 	}
 	else
 	{
@@ -3056,7 +3056,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(namcos22_state::adillor_trackball_update)
 			if (t[axis] >  (1.0 / (double)(range)))
 			{
 				attotime freq = attotime::from_usec((base + range) - ((double)(range) * t[axis]));
-				m_ar_tb_interrupt[axis]->adjust(min(freq, m_ar_tb_interrupt[axis]->remaining()), axis, freq);
+				m_ar_tb_interrupt[axis]->adjust(std::min(freq, m_ar_tb_interrupt[axis]->remaining()), axis, freq);
 			}
 			else
 			{
@@ -3381,7 +3381,7 @@ static INPUT_PORTS_START( airco22 )
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
 
 	PORT_START("ADC.2")
-	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_MINMAX(0x00, 0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
+	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Z ) PORT_MINMAX(0x00, 0xff) PORT_SENSITIVITY(100) PORT_KEYDELTA(4) PORT_REVERSE
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( cybrcycc )
@@ -3732,7 +3732,7 @@ void namcos22_state::machine_start()
 }
 
 // System 22
-static MACHINE_CONFIG_START( namcos22, namcos22_state )
+static MACHINE_CONFIG_START( namcos22 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68020,SS22_MASTER_CLOCK/2) /* 25 MHz? */
@@ -3798,7 +3798,7 @@ static MACHINE_CONFIG_DERIVED( cybrcomm, namcos22 )
 MACHINE_CONFIG_END
 
 // Super System 22
-static MACHINE_CONFIG_START( namcos22s, namcos22_state )
+static MACHINE_CONFIG_START( namcos22s )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68EC020,SS22_MASTER_CLOCK/2)
@@ -5660,21 +5660,21 @@ GAME( 1994, cybrcomm,  0,        cybrcomm,  cybrcomm,  namcos22_state, cybrcomm,
 GAME( 1995, raveracw,  0,        namcos22,  raveracw,  namcos22_state, raveracw, ROT0, "Namco", "Rave Racer (Rev. RV2, World)"           , MACHINE_IMPERFECT_GRAPHICS ) // 07/16/95
 GAME( 1995, raveracj,  raveracw, namcos22,  raveracw,  namcos22_state, raveracw, ROT0, "Namco", "Rave Racer (Rev. RV1 Ver.B, Japan)"     , MACHINE_IMPERFECT_GRAPHICS ) // 07/16/95
 GAME( 1995, raveracja, raveracw, namcos22,  raveracw,  namcos22_state, raveracw, ROT0, "Namco", "Rave Racer (Rev. RV1, Japan)"           , MACHINE_IMPERFECT_GRAPHICS ) // 06/29/95
-GAME( 1994, acedrvrw,  0,        namcos22,  acedrvr,   namcos22_state, acedrvr,  ROT0, "Namco", "Ace Driver: Racing Evolution (Rev. AD2)", MACHINE_IMPERFECT_GRAPHICS ) // 94/10/20 16:22:25
-GAME( 1996, victlapw,  0,        namcos22,  victlap,   namcos22_state, victlap,  ROT0, "Namco", "Ace Driver: Victory Lap (Rev. ADV2)"    , MACHINE_IMPERFECT_GRAPHICS ) // 96/02/13 17:50:06
+GAME( 1994, acedrvrw,  0,        namcos22,  acedrvr,   namcos22_state, acedrvr,  ROT0, "Namco", "Ace Driver: Racing Evolution (Rev. AD2, World)", MACHINE_IMPERFECT_GRAPHICS ) // 94/10/20 16:22:25
+GAME( 1996, victlapw,  0,        namcos22,  victlap,   namcos22_state, victlap,  ROT0, "Namco", "Ace Driver: Victory Lap (Rev. ADV2, World)"    , MACHINE_IMPERFECT_GRAPHICS ) // 96/02/13 17:50:06
 
 /* Super System22 games */
-GAME( 1994, alpinerd, 0,         alpine,    alpiner,   namcos22_state, alpiner,  ROT0, "Namco", "Alpine Racer (Rev. AR2 Ver.D)"          , MACHINE_IMPERFECT_GRAPHICS )
-GAME( 1994, alpinerc, alpinerd,  alpine,    alpiner,   namcos22_state, alpiner,  ROT0, "Namco", "Alpine Racer (Rev. AR2 Ver.C)"          , MACHINE_IMPERFECT_GRAPHICS )
+GAME( 1994, alpinerd, 0,         alpine,    alpiner,   namcos22_state, alpiner,  ROT0, "Namco", "Alpine Racer (Rev. AR2 Ver.D, World)"          , MACHINE_IMPERFECT_GRAPHICS )
+GAME( 1994, alpinerc, alpinerd,  alpine,    alpiner,   namcos22_state, alpiner,  ROT0, "Namco", "Alpine Racer (Rev. AR2 Ver.C, World)"          , MACHINE_IMPERFECT_GRAPHICS )
 GAME( 1995, airco22b, 0,         airco22b,  airco22,   namcos22_state, airco22,  ROT0, "Namco", "Air Combat 22 (Rev. ACS1 Ver.B, Japan)" , MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING ) // various problems
-GAME( 1995, cybrcycc, 0,         cybrcycc,  cybrcycc,  namcos22_state, cybrcyc,  ROT0, "Namco", "Cyber Cycles (Rev. CB2 Ver.C)"          , MACHINE_IMPERFECT_GRAPHICS ) // 95/04/04
-GAME( 1995, dirtdash, 0,         dirtdash,  dirtdash,  namcos22_state, dirtdash, ROT0, "Namco", "Dirt Dash (Rev. DT2)"                   , MACHINE_IMPERFECT_GRAPHICS ) // 95/12/20 20:01:56
-GAME( 1995, timecris, 0,         timecris,  timecris,  namcos22_state, timecris, ROT0, "Namco", "Time Crisis (Rev. TS2 Ver.B)"           , MACHINE_IMPERFECT_GRAPHICS ) // 96/04/02 18:48:00
-GAME( 1995, timecrisa,timecris,  timecris,  timecris,  namcos22_state, timecris, ROT0, "Namco", "Time Crisis (Rev. TS2 Ver.A)"           , MACHINE_IMPERFECT_GRAPHICS ) // 96/01/08 18:56:09
-GAME( 1996, propcycl, 0,         propcycl,  propcycl,  namcos22_state, propcycl, ROT0, "Namco", "Prop Cycle (Rev. PR2 Ver.A)"            , MACHINE_IMPERFECT_GRAPHICS ) // 96/06/18 21:22:13
-GAME( 1996, alpinesa, 0,         alpinesa,  alpiner,   namcos22_state, alpinesa, ROT0, "Namco", "Alpine Surfer (Rev. AF2 Ver.A)"         , MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING ) // 96/07/01 15:19:23. major gfx problems, slave dsp?
-GAME( 1996, tokyowar, 0,         tokyowar,  tokyowar,  namcos22_state, tokyowar, ROT0, "Namco", "Tokyo Wars (Rev. TW2 Ver.A)"            , MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING ) // 96/09/03 14:08:47. near-invincible tanks, maybe related to timecris helicopter bug?
-GAME( 1996, aquajet,  0,         cybrcycc,  aquajet,   namcos22_state, aquajet,  ROT0, "Namco", "Aqua Jet (Rev. AJ2 Ver.B)"              , MACHINE_IMPERFECT_GRAPHICS ) // 96/09/20 14:28:30
-GAME( 1996, alpinr2b, 0,         alpine,    alpiner,   namcos22_state, alpiner2, ROT0, "Namco", "Alpine Racer 2 (Rev. ARS2 Ver.B)"       , MACHINE_IMPERFECT_GRAPHICS ) // 97/01/10 17:10:59
-GAME( 1996, alpinr2a, alpinr2b,  alpine,    alpiner,   namcos22_state, alpiner2, ROT0, "Namco", "Alpine Racer 2 (Rev. ARS2 Ver.A)"       , MACHINE_IMPERFECT_GRAPHICS ) // 96/12/06 13:45:05
-GAME( 1996, adillor,  0,         adillor,   adillor,   namcos22_state, adillor,  ROT0, "Namco", "Armadillo Racing (Rev. AM1 Ver.A)"      , MACHINE_IMPERFECT_GRAPHICS ) // 97/04/07 19:19:41
+GAME( 1995, cybrcycc, 0,         cybrcycc,  cybrcycc,  namcos22_state, cybrcyc,  ROT0, "Namco", "Cyber Cycles (Rev. CB2 Ver.C, World)"          , MACHINE_IMPERFECT_GRAPHICS ) // 95/04/04
+GAME( 1995, dirtdash, 0,         dirtdash,  dirtdash,  namcos22_state, dirtdash, ROT0, "Namco", "Dirt Dash (Rev. DT2, World)"                   , MACHINE_IMPERFECT_GRAPHICS ) // 95/12/20 20:01:56
+GAME( 1995, timecris, 0,         timecris,  timecris,  namcos22_state, timecris, ROT0, "Namco", "Time Crisis (Rev. TS2 Ver.B, World)"           , MACHINE_IMPERFECT_GRAPHICS ) // 96/04/02 18:48:00
+GAME( 1995, timecrisa,timecris,  timecris,  timecris,  namcos22_state, timecris, ROT0, "Namco", "Time Crisis (Rev. TS2 Ver.A, World)"           , MACHINE_IMPERFECT_GRAPHICS ) // 96/01/08 18:56:09
+GAME( 1996, propcycl, 0,         propcycl,  propcycl,  namcos22_state, propcycl, ROT0, "Namco", "Prop Cycle (Rev. PR2 Ver.A, World)"            , MACHINE_IMPERFECT_GRAPHICS ) // 96/06/18 21:22:13
+GAME( 1996, alpinesa, 0,         alpinesa,  alpiner,   namcos22_state, alpinesa, ROT0, "Namco", "Alpine Surfer (Rev. AF2 Ver.A, World)"         , MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING ) // 96/07/01 15:19:23. major gfx problems, slave dsp?
+GAME( 1996, tokyowar, 0,         tokyowar,  tokyowar,  namcos22_state, tokyowar, ROT0, "Namco", "Tokyo Wars (Rev. TW2 Ver.A, World)"            , MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING ) // 96/09/03 14:08:47. near-invincible tanks, maybe related to timecris helicopter bug?
+GAME( 1996, aquajet,  0,         cybrcycc,  aquajet,   namcos22_state, aquajet,  ROT0, "Namco", "Aqua Jet (Rev. AJ2 Ver.B, World)"              , MACHINE_IMPERFECT_GRAPHICS ) // 96/09/20 14:28:30
+GAME( 1996, alpinr2b, 0,         alpine,    alpiner,   namcos22_state, alpiner2, ROT0, "Namco", "Alpine Racer 2 (Rev. ARS2 Ver.B, World)"       , MACHINE_IMPERFECT_GRAPHICS ) // 97/01/10 17:10:59
+GAME( 1996, alpinr2a, alpinr2b,  alpine,    alpiner,   namcos22_state, alpiner2, ROT0, "Namco", "Alpine Racer 2 (Rev. ARS2 Ver.A, World)"       , MACHINE_IMPERFECT_GRAPHICS ) // 96/12/06 13:45:05
+GAME( 1996, adillor,  0,         adillor,   adillor,   namcos22_state, adillor,  ROT0, "Namco", "Armadillo Racing (Rev. AM1 Ver.A, Japan)"      , MACHINE_IMPERFECT_GRAPHICS ) // 97/04/07 19:19:41

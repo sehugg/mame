@@ -41,6 +41,7 @@ TODO:
 #include "machine/buffer.h"
 #include "machine/clock.h"
 #include "machine/i8251.h"
+#include "machine/timer.h"
 #include "sound/ay8910.h"
 #include "sound/wave.h"
 #include "video/mc6847.h"
@@ -74,7 +75,6 @@ public:
 	DECLARE_WRITE8_MEMBER(port60_w);
 	DECLARE_WRITE8_MEMBER(port70_w);
 	DECLARE_WRITE_LINE_MEMBER(txdata_callback);
-	DECLARE_WRITE_LINE_MEMBER(uart_clock_w);
 	DECLARE_DRIVER_INIT(fc100);
 	TIMER_DEVICE_CALLBACK_MEMBER(timer_c);
 	TIMER_DEVICE_CALLBACK_MEMBER(timer_p);
@@ -419,12 +419,6 @@ WRITE_LINE_MEMBER( fc100_state::txdata_callback )
 	m_cass_state = state;
 }
 
-WRITE_LINE_MEMBER( fc100_state::uart_clock_w )
-{
-	m_uart->write_txc(state);
-	m_uart->write_rxc(state);
-}
-
 TIMER_DEVICE_CALLBACK_MEMBER( fc100_state::timer_c )
 {
 	m_cass_data[3]++;
@@ -512,7 +506,7 @@ DRIVER_INIT_MEMBER( fc100_state, fc100 )
 	membank("bankr")->configure_entry(1, &ram[0]);
 }
 
-static MACHINE_CONFIG_START( fc100, fc100_state )
+static MACHINE_CONFIG_START( fc100 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_7_15909MHz/2)
 	MCFG_CPU_PROGRAM_MAP(fc100_mem)
@@ -522,7 +516,7 @@ static MACHINE_CONFIG_START( fc100, fc100_state )
 	MCFG_DEVICE_ADD("vdg", M5C6847P1, XTAL_7_15909MHz/3)  // Clock not verified
 	MCFG_MC6847_INPUT_CALLBACK(READ8(fc100_state, mc6847_videoram_r))
 	MCFG_MC6847_CHARROM_CALLBACK(fc100_state, get_char_rom)
-	MCFG_MC6847_FIXED_MODE(MC6847_MODE_INTEXT)
+	MCFG_MC6847_FIXED_MODE(m5c6847p1_device::MODE_INTEXT)
 	// other lines not connected
 
 	MCFG_SCREEN_MC6847_NTSC_ADD("screen", "vdg")
@@ -548,7 +542,9 @@ static MACHINE_CONFIG_START( fc100, fc100_state )
 	MCFG_DEVICE_ADD("uart", I8251, 0)
 	MCFG_I8251_TXD_HANDLER(WRITELINE(fc100_state, txdata_callback))
 	MCFG_DEVICE_ADD("uart_clock", CLOCK, XTAL_4_9152MHz/16/16) // gives 19200
-	MCFG_CLOCK_SIGNAL_HANDLER(WRITELINE(fc100_state, uart_clock_w))
+	MCFG_CLOCK_SIGNAL_HANDLER(DEVWRITELINE("uart", i8251_device, write_txc))
+	MCFG_DEVCB_CHAIN_OUTPUT(DEVWRITELINE("uart", i8251_device, write_rxc))
+
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("timer_c", fc100_state, timer_c, attotime::from_hz(4800)) // cass write
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("timer_p", fc100_state, timer_p, attotime::from_hz(40000)) // cass read
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("timer_k", fc100_state, timer_k, attotime::from_hz(300)) // keyb scan
@@ -577,5 +573,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE  INPUT   CLASS          INIT    COMPANY    FULLNAME  FLAGS */
-CONS( 1982, fc100,  0,      0,       fc100,   fc100,  fc100_state, fc100,   "Goldstar", "FC-100", MACHINE_NOT_WORKING )
+//    YEAR  NAME    PARENT  COMPAT   MACHINE  INPUT   CLASS        INIT    COMPANY     FULLNAME  FLAGS
+CONS( 1982, fc100,  0,      0,       fc100,   fc100,  fc100_state, fc100,  "Goldstar", "FC-100", MACHINE_NOT_WORKING )

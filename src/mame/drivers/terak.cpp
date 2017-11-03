@@ -90,7 +90,7 @@ uint32_t terak_state::screen_update_terak(screen_device &screen, bitmap_ind16 &b
 }
 
 
-static MACHINE_CONFIG_START( terak, terak_state )
+static MACHINE_CONFIG_START( terak )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",T11, XTAL_4MHz)
 	MCFG_T11_INITIAL_MODE(6 << 13)
@@ -114,9 +114,14 @@ MACHINE_CONFIG_END
 ROM_START( terak )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "terak.rom", 0173000, 0x0080, CRC(fd654b8e) SHA1(273a9933b68a290c5aedcd6d69faa7b1d22c0344))
+
+	ROM_REGION( 0x2000, "kbd", 0)
+	// keytronic keyboard, roms are unlabelled, type 6301-1J. CPU is 30293E-003. No crystal.
+	ROM_LOAD( "82s129.z2", 0x000000, 0x000100, CRC(a5dce419) SHA1(819197a03eb9b6ea3318f5afc37c0b436dd747a7) )
+	ROM_LOAD( "82s129.z1", 0x000000, 0x000100, CRC(f34e061f) SHA1(3cb354b2680056d4b3234c680958d4591279ac8a) )
 ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT  COMPANY   FULLNAME       FLAGS */
-COMP( ????, terak,  0,      0,       terak,     terak, driver_device,   0,    "Terak", "Terak 8510A", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT  STATE        INIT  COMPANY  FULLNAME       FLAGS
+COMP( ????, terak,  0,      0,       terak,     terak, terak_state, 0,    "Terak", "Terak 8510A", MACHINE_NOT_WORKING | MACHINE_NO_SOUND )

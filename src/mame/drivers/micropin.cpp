@@ -27,6 +27,7 @@ ToDo:
 #include "cpu/i8085/i8085.h"
 #include "cpu/m6800/m6800.h"
 #include "machine/6821pia.h"
+#include "machine/timer.h"
 #include "sound/beep.h"
 #include "speaker.h"
 
@@ -283,7 +284,7 @@ DRIVER_INIT_MEMBER( micropin_state, micropin )
 {
 }
 
-static MACHINE_CONFIG_START( micropin, micropin_state )
+static MACHINE_CONFIG_START( micropin )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("v1cpu", M6800, XTAL_2MHz / 2)
 	MCFG_CPU_PROGRAM_MAP(micropin_map)
@@ -320,7 +321,7 @@ static MACHINE_CONFIG_START( micropin, micropin_state )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("timer_a", micropin_state, timer_a, attotime::from_hz(100))
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( pentacup2, micropin_state )
+static MACHINE_CONFIG_START( pentacup2 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("v2cpu", I8085A, 2000000)
 	MCFG_CPU_PROGRAM_MAP(pentacup2_map)
