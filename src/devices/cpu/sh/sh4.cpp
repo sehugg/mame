@@ -1633,6 +1633,7 @@ void sh34_base_device::device_reset()
 	m_sh2_state->sleep_mode = 0;
 
 	m_sh4_mmu_enabled = 0;
+	m_cache_dirty = true;
 }
 
 /*-------------------------------------------------
@@ -3067,7 +3068,7 @@ bool sh34_base_device::generate_group_4_LDCSR(drcuml_block *block, compiler_stat
 	UML_CALLC(block, cfunc_LDCSR, this);
 	load_fast_iregs(block);
 
-	compiler->checkints = true; 
+	compiler->checkints = true;
 
 	return true;
 }
