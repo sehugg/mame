@@ -88,22 +88,24 @@ SEGA 1998
 #define M68K_TAG     "m3commcpu"
 
 //////// Model 3 (main CPU @ C00xxxxx) and Hikaru (MMctrl bank 0E) interface
-DEVICE_ADDRESS_MAP_START(m3_map, 32, m3comm_device)
-	AM_RANGE(0x0000000, 0x000ffff) AM_READWRITE8(m3_comm_ram_r, m3_comm_ram_w, 0xffffffff)
-	AM_RANGE(0x0010000, 0x00101ff) AM_READWRITE16(m3_ioregs_r, m3_ioregs_w, 0xffff0000)
-	AM_RANGE(0x0020000, 0x003ffff) AM_READWRITE16(m3_m68k_ram_r, m3_m68k_ram_w, 0xffff0000)
-ADDRESS_MAP_END
+void m3comm_device::m3_map(address_map &map)
+{
+	map(0x0000000, 0x000ffff).rw(FUNC(m3comm_device::m3_comm_ram_r), FUNC(m3comm_device::m3_comm_ram_w));
+	map(0x0010000, 0x00101ff).rw(FUNC(m3comm_device::m3_ioregs_r), FUNC(m3comm_device::m3_ioregs_w)).umask32(0xffff0000);
+	map(0x0020000, 0x003ffff).rw(FUNC(m3comm_device::m3_m68k_ram_r), FUNC(m3comm_device::m3_m68k_ram_w)).umask32(0xffff0000);
+}
 
 
 /*************************************
  *  M3COMM Memory Map
  *************************************/
-static ADDRESS_MAP_START( m3comm_mem, AS_PROGRAM, 16, m3comm_device )
-	AM_RANGE(0x0000000, 0x000ffff) AM_RAM AM_SHARE("m68k_ram")
-	AM_RANGE(0x0040000, 0x00400ff) AM_READWRITE(ctrl_r, ctrl_w)
-	AM_RANGE(0x0080000, 0x008ffff) AM_RAMBANK("comm_ram")
-	AM_RANGE(0x00C0000, 0x00C00ff) AM_READWRITE(ioregs_r, ioregs_w)
-ADDRESS_MAP_END
+void m3comm_device::m3comm_mem(address_map &map)
+{
+	map(0x0000000, 0x000ffff).ram().share("m68k_ram");
+	map(0x0040000, 0x00400ff).rw(FUNC(m3comm_device::ctrl_r), FUNC(m3comm_device::ctrl_w));
+	map(0x0080000, 0x008ffff).bankrw("comm_ram");
+	map(0x00C0000, 0x00C00ff).rw(FUNC(m3comm_device::ioregs_r), FUNC(m3comm_device::ioregs_w));
+}
 
 
 //**************************************************************************
@@ -116,13 +118,13 @@ DEFINE_DEVICE_TYPE(M3COMM, m3comm_device, "m3comm", "Model 3 Communication Board
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
 
-MACHINE_CONFIG_MEMBER( m3comm_device::device_add_mconfig )
-	MCFG_CPU_ADD(M68K_TAG, M68000, 10000000) // random
-	MCFG_CPU_PROGRAM_MAP(m3comm_mem)
+void m3comm_device::device_add_mconfig(machine_config &config)
+{
+	M68000(config, m_commcpu, 10000000); // random
+	m_commcpu->set_addrmap(AS_PROGRAM, &m3comm_device::m3comm_mem);
 
-	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("128K")
-MACHINE_CONFIG_END
+	RAM(config, RAM_TAG).set_default_size("128K");
+}
 
 //**************************************************************************
 //  LIVE DEVICE
@@ -203,7 +205,7 @@ void m3comm_device::device_timer(emu_timer &timer, device_timer_id id, int param
 
 ///////////// Internal MMIO
 
-READ16_MEMBER(m3comm_device::ctrl_r)
+uint16_t m3comm_device::ctrl_r(offs_t offset, uint16_t mem_mask)
 {
 	switch (offset) {
 	case 0x00 / 2:
@@ -213,7 +215,7 @@ READ16_MEMBER(m3comm_device::ctrl_r)
 		return 0;
 	}
 }
-WRITE16_MEMBER(m3comm_device::ctrl_w)
+void m3comm_device::ctrl_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	switch (offset) {
 	case 0x00 / 2:      // Communication RAM bank switch (flipped in IRQ2 and IRQ5 handlers)
@@ -235,7 +237,7 @@ WRITE16_MEMBER(m3comm_device::ctrl_w)
 	}
 }
 
-READ16_MEMBER(m3comm_device::ioregs_r)
+uint16_t m3comm_device::ioregs_r(offs_t offset, uint16_t mem_mask)
 {
 	switch (offset) {
 	case 0x00 / 2:  // UNK, Model3 host wait it to be NZ then write 0
@@ -256,7 +258,7 @@ READ16_MEMBER(m3comm_device::ioregs_r)
 		return 0;
 	}
 }
-WRITE16_MEMBER(m3comm_device::ioregs_w)
+void m3comm_device::ioregs_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	switch (offset) {
 	case 0x14 / 2:  // written 80 at data receive enable, 0 then 1 at IRQ6 handler
@@ -330,43 +332,43 @@ WRITE16_MEMBER(m3comm_device::ioregs_w)
 
 ////////////// Model3 interface
 
-READ16_MEMBER(m3comm_device::m3_m68k_ram_r)
+uint16_t m3comm_device::m3_m68k_ram_r(offs_t offset)
 {
 	uint16_t value = m68k_ram[offset];        // FIXME endian
 	return swapb16(value);
 }
-WRITE16_MEMBER(m3comm_device::m3_m68k_ram_w)
+void m3comm_device::m3_m68k_ram_w(offs_t offset, uint16_t data)
 {
 	m68k_ram[offset] = swapb16(data);       // FIXME endian
 }
-READ8_MEMBER(m3comm_device::m3_comm_ram_r)
+uint8_t m3comm_device::m3_comm_ram_r(offs_t offset)
 {
 	uint8_t *commram = (uint8_t*)membank("comm_ram")->base();
 	return commram[offset ^ 3];
 }
-WRITE8_MEMBER(m3comm_device::m3_comm_ram_w)
+void m3comm_device::m3_comm_ram_w(offs_t offset, uint8_t data)
 {
 	uint8_t *commram = (uint8_t*)membank("comm_ram")->base();
 	commram[offset ^ 3] = data;
 }
-READ16_MEMBER(m3comm_device::m3_ioregs_r)
+uint16_t m3comm_device::m3_ioregs_r(offs_t offset, uint16_t mem_mask)
 {
-	uint16_t value = ioregs_r(space, offset, swapb16(mem_mask));
+	uint16_t value = ioregs_r(offset, swapb16(mem_mask));
 	return swapb16(value);
 }
-WRITE16_MEMBER(m3comm_device::m3_ioregs_w)
+void m3comm_device::m3_ioregs_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	uint16_t value = swapb16(data);
-	ioregs_w(space, offset, value, swapb16(mem_mask));
+	ioregs_w(offset, value, swapb16(mem_mask));
 
 	// guess, can be asserted at any reg write
 	if (offset == (0x88 / 2))
 		m_commcpu->set_input_line(M68K_IRQ_2, ASSERT_LINE);
 }
 
-////////////// NAOMI inerface
+////////////// NAOMI interface
 
-READ16_MEMBER(m3comm_device::naomi_r)
+uint16_t m3comm_device::naomi_r(offs_t offset)
 {
 	switch (offset)
 	{
@@ -396,16 +398,16 @@ READ16_MEMBER(m3comm_device::naomi_r)
 		return 0;
 	}
 }
-WRITE16_MEMBER(m3comm_device::naomi_w)
+void m3comm_device::naomi_w(offs_t offset, uint16_t data)
 {
 	switch (offset)
 	{
 	case 0:         // 5F7018
 					// bit 0: access RAM is 0 - communication RAM / 1 - M68K RAM
-					// bit 1: comm RAM bank ??? (not really used)
+					// bit 1: comm RAM bank (seems R/O for SH4)
 					// bit 5: M68K Reset
 					// bit 6: ???
-					// bit 7: ???
+					// bit 7: ??? nlCbIntr reset this bit at each VBLANK-IN during game run (but not during handshake), might be M68K IRQ 5 or 2
 					// bit 14: G1 DMA bus master 0 - active / 1 - disabled
 					// bit 15: 0 - enable / 1 - disable this device ???
 //      LOG("M3COMM control write %04x\n", data);

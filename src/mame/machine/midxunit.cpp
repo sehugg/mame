@@ -2,7 +2,7 @@
 // copyright-holders:Aaron Giles
 /*************************************************************************
 
-    Driver for Williams/Midway Wolf-unit games.
+    Driver for Williams/Midway X-unit games.
 
 **************************************************************************/
 
@@ -14,23 +14,13 @@
 #include "includes/midxunit.h"
 #include "midwayic.h"
 
+#define LOG_IO      (1 << 0)
+#define LOG_UART    (1 << 1)
+#define LOG_UNKNOWN (1 << 2)
+#define LOG_SOUND   (1 << 3)
 
-/*************************************
- *
- *  State saving
- *
- *************************************/
-
-void midxunit_state::register_state_saving()
-{
-	save_item(NAME(m_cmos_write_enable));
-	save_item(NAME(m_iodata));
-	save_item(NAME(m_ioshuffle));
-	save_item(NAME(m_uart));
-	save_item(NAME(m_security_bits));
-	save_item(NAME(m_adc_int));
-}
-
+#define VERBOSE     (0)
+#include "logmacro.h"
 
 
 /*************************************
@@ -39,12 +29,12 @@ void midxunit_state::register_state_saving()
  *
  *************************************/
 
-READ16_MEMBER(midxunit_state::midxunit_cmos_r)
+uint16_t midxunit_state::midxunit_cmos_r(offs_t offset)
 {
 	return m_nvram[offset];
 }
 
-WRITE16_MEMBER(midxunit_state::midxunit_cmos_w)
+void midxunit_state::midxunit_cmos_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	COMBINE_DATA(m_nvram+offset);
 }
@@ -56,7 +46,7 @@ WRITE16_MEMBER(midxunit_state::midxunit_cmos_w)
  *
  *************************************/
 
-WRITE16_MEMBER(midxunit_state::midxunit_io_w)
+void midxunit_state::midxunit_io_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	int oldword, newword;
 
@@ -73,33 +63,32 @@ WRITE16_MEMBER(midxunit_state::midxunit_io_w)
 			break;
 
 		default:
-			/* Gun Outputs for RevX */
-			/* Note: The Gun for the Coin slot you use is supposed to rumble when you insert coins, and it doesn't for P3 */
-			/* Perhaps an Input is hooked up wrong??? */
-			output().set_value("Player1_Gun_Recoil", data & 0x1 );
-			output().set_value("Player2_Gun_Recoil", (data & 0x2) >> 1 );
-			output().set_value("Player3_Gun_Recoil", (data & 0x4) >> 2 );
-			output().set_value("Player1_Gun_LED", (~data & 0x10) >> 4 );
-			output().set_value("Player2_Gun_LED", (~data & 0x20) >> 5 );
-			output().set_value("Player3_Gun_LED", (~data & 0x40) >> 6 );
+			// Gun Outputs for RevX
+			// Note: The Gun for the Coin slot you use is supposed to rumble when you insert coins, and it doesn't for P3.
+			// Perhaps an Input is hooked up wrong.
+			m_gun_recoil[0] = BIT(data, 0);
+			m_gun_recoil[1] = BIT(data, 1);
+			m_gun_recoil[2] = BIT(data, 2);
+			m_gun_led[0] = BIT(~data, 4);
+			m_gun_led[1] = BIT(~data, 5);
+			m_gun_led[2] = BIT(~data, 6);
 
-			logerror("%08X:I/O write to %d = %04X\n", space.device().safe_pc(), offset, data);
-//          logerror("%08X:Unknown I/O write to %d = %04X\n", space.device().safe_pc(), offset, data);
+			LOGMASKED(LOG_IO, "%s: I/O write to %d = %04X\n", machine().describe_context(), offset, data);
 			break;
 	}
 	m_iodata[offset] = newword;
 }
 
 
-WRITE16_MEMBER(midxunit_state::midxunit_unknown_w)
+void midxunit_state::midxunit_unknown_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	int offs = offset / 0x40000;
 
 	if (offs == 1 && ACCESSING_BITS_0_7)
-		m_dcs->reset_w(data & 2);
+		m_dcs->reset_w(~data & 2);
 
 	if (ACCESSING_BITS_0_7 && offset % 0x40000 == 0)
-		logerror("%08X:midxunit_unknown_w @ %d = %02X\n", space.device().safe_pc(), offs, data & 0xff);
+		LOGMASKED(LOG_UNKNOWN, "%s: midxunit_unknown_w @ %d = %02X\n", machine().describe_context(), offs, data & 0xff);
 }
 
 
@@ -116,10 +105,10 @@ WRITE_LINE_MEMBER(midxunit_state::adc_int_w)
  *
  *************************************/
 
-READ16_MEMBER(midxunit_state::midxunit_status_r)
+uint16_t midxunit_state::midxunit_status_r()
 {
 	/* low bit indicates whether the ADC is done reading the current input */
-	return (m_midway_serial_pic->status_r(space,0) << 1) | (m_adc_int ? 1 : 0);
+	return (m_midway_serial_pic->status_r() << 1) | (m_adc_int ? 1 : 0);
 }
 
 
@@ -138,7 +127,7 @@ WRITE_LINE_MEMBER(midxunit_state::midxunit_dcs_output_full)
 }
 
 
-READ16_MEMBER(midxunit_state::midxunit_uart_r)
+uint16_t midxunit_state::midxunit_uart_r(offs_t offset)
 {
 	int result = 0;
 
@@ -163,7 +152,7 @@ READ16_MEMBER(midxunit_state::midxunit_uart_r)
 			/* non-loopback case: bit 0 means data ready, bit 2 means ok to send */
 			else
 			{
-				int temp = midxunit_sound_state_r(space, 0, 0xffff);
+				int temp = midxunit_sound_state_r();
 				result |= (temp & 0x800) >> 9;
 				result |= (~temp & 0x400) >> 10;
 				machine().scheduler().synchronize();
@@ -178,7 +167,7 @@ READ16_MEMBER(midxunit_state::midxunit_uart_r)
 
 			/* non-loopback case: read from the DCS system */
 			else
-				result = midxunit_sound_r(space, 0, 0xffff);
+				result = midxunit_sound_r();
 			break;
 
 		case 5: /* register 5 seems to be like 3, but with in/out swapped */
@@ -190,7 +179,7 @@ READ16_MEMBER(midxunit_state::midxunit_uart_r)
 			/* non-loopback case: bit 0 means data ready, bit 2 means ok to send */
 			else
 			{
-				int temp = midxunit_sound_state_r(space, 0, 0xffff);
+				int temp = midxunit_sound_state_r();
 				result |= (temp & 0x800) >> 11;
 				result |= (~temp & 0x400) >> 8;
 				machine().scheduler().synchronize();
@@ -202,12 +191,12 @@ READ16_MEMBER(midxunit_state::midxunit_uart_r)
 			break;
 	}
 
-/*  logerror("%08X:UART R @ %X = %02X\n", space.device().safe_pc(), offset, result);*/
+	LOGMASKED(LOG_UART, "%s: UART R @ %X = %02X\n", machine().describe_context(), offset, result);
 	return result;
 }
 
 
-WRITE16_MEMBER(midxunit_state::midxunit_uart_w)
+void midxunit_state::midxunit_uart_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	/* convert to a byte offset, ignoring MSB writes */
 	if ((offset & 1) || !ACCESSING_BITS_0_7)
@@ -226,7 +215,7 @@ WRITE16_MEMBER(midxunit_state::midxunit_uart_w)
 
 			/* non-loopback case: send to the DCS system */
 			else
-				midxunit_sound_w(space, 0, data, mem_mask);
+				midxunit_sound_w(0, data, mem_mask);
 			break;
 
 		case 5: /* register 5 write seems to reset things */
@@ -238,7 +227,7 @@ WRITE16_MEMBER(midxunit_state::midxunit_uart_w)
 			break;
 	}
 
-/*  logerror("%08X:UART W @ %X = %02X\n", space.device().safe_pc(), offset, data);*/
+	LOGMASKED(LOG_UART, "%s: UART W @ %X = %02X\n", machine().describe_context(), offset, data);
 }
 
 
@@ -253,31 +242,36 @@ WRITE16_MEMBER(midxunit_state::midxunit_uart_w)
 
 /********************** Revolution X **********************/
 
-DRIVER_INIT_MEMBER(midxunit_state,revx)
-{
-	/* register for state saving */
-	register_state_saving();
-}
-
 /*************************************
  *
  *  Machine init
  *
  *************************************/
 
-MACHINE_RESET_MEMBER(midxunit_state,midxunit)
+void midxunit_state::machine_start()
 {
-	int i;
+	m_gun_recoil.resolve();
+	m_gun_led.resolve();
 
+	save_item(NAME(m_cmos_write_enable));
+	save_item(NAME(m_iodata));
+	save_item(NAME(m_ioshuffle));
+	save_item(NAME(m_uart));
+	save_item(NAME(m_security_bits));
+	save_item(NAME(m_adc_int));
+}
+
+void midxunit_state::machine_reset()
+{
 	/* reset sound */
-	m_dcs->reset_w(1);
 	m_dcs->reset_w(0);
+	m_dcs->reset_w(1);
 
 	/* reset I/O shuffling */
-	for (i = 0; i < 16; i++)
+	for (int i = 0; i < 16; i++)
 		m_ioshuffle[i] = i % 8;
 
-	m_dcs->set_io_callbacks(write_line_delegate(FUNC(midxunit_state::midxunit_dcs_output_full),this), write_line_delegate());
+	m_dcs->set_io_callbacks(write_line_delegate(*this, FUNC(midxunit_state::midxunit_dcs_output_full)), write_line_delegate(*this));
 }
 
 
@@ -288,22 +282,22 @@ MACHINE_RESET_MEMBER(midxunit_state,midxunit)
  *
  *************************************/
 
-READ16_MEMBER(midxunit_state::midxunit_security_r)
+uint16_t midxunit_state::midxunit_security_r()
 {
-	return m_midway_serial_pic->read(space,0);
+	return m_midway_serial_pic->read();
 }
 
-WRITE16_MEMBER(midxunit_state::midxunit_security_w)
+void midxunit_state::midxunit_security_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	if (ACCESSING_BITS_0_7)
 		m_security_bits = data & 0x0f;
 }
 
 
-WRITE16_MEMBER(midxunit_state::midxunit_security_clock_w)
+void midxunit_state::midxunit_security_clock_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	if (offset == 0 && ACCESSING_BITS_0_7)
-		m_midway_serial_pic->write(space, 0, ((~data & 2) << 3) | m_security_bits);
+		m_midway_serial_pic->write(((~data & 2) << 3) | m_security_bits);
 }
 
 
@@ -314,33 +308,33 @@ WRITE16_MEMBER(midxunit_state::midxunit_security_clock_w)
  *
  *************************************/
 
-READ16_MEMBER(midxunit_state::midxunit_sound_r)
+uint16_t midxunit_state::midxunit_sound_r()
 {
-	logerror("%08X:Sound read\n", space.device().safe_pc());
+	LOGMASKED(LOG_SOUND, "%08X:Sound read\n", m_maincpu->pc());
 
 	return m_dcs->data_r() & 0xff;
 }
 
 
-READ16_MEMBER(midxunit_state::midxunit_sound_state_r)
+uint16_t midxunit_state::midxunit_sound_state_r()
 {
 	return m_dcs->control_r();
 }
 
 
-WRITE16_MEMBER(midxunit_state::midxunit_sound_w)
+void midxunit_state::midxunit_sound_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
 	/* check for out-of-bounds accesses */
 	if (offset)
 	{
-		logerror("%08X:Unexpected write to sound (hi) = %04X\n", space.device().safe_pc(), data);
+		LOGMASKED(LOG_SOUND | LOG_UNKNOWN, "%s: Unexpected write to sound (hi) = %04X\n", machine().describe_context(), data);
 		return;
 	}
 
 	/* call through based on the sound type */
 	if (ACCESSING_BITS_0_7)
 	{
-		logerror("%08X:Sound write = %04X\n", space.device().safe_pc(), data);
+		LOGMASKED(LOG_SOUND, "%s: Sound write = %04X\n", machine().describe_context(), data);
 		m_dcs->data_w(data & 0xff);
 	}
 }

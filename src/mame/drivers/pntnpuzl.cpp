@@ -11,72 +11,75 @@ Label:
 Board Num.
 90
 
-The PCB has no silkscreen or reference designators, so the numbers I am
-providing are made up.
+The PCB has no silkscreen or reference designators. All locations
+provided here are from the published schematics.
 
-U1 32 pin IC
+U1 64 pin IC
+MC68000P12
+OB26M8829
+
+U2 32 pin IC
 27C010A
 Label:
 Paint N Puzzle
 Ver. 1.09
 Odd
 
-U2 5 pin audio amp
-LM383T
-
-U3 40 pin IC
-8926S
-UM6522A
-
-U4 28 pin IC
-Mosel
-MS62256L-85PC
-8911 5D
-
-U5 18 pin IC
-PIC16C54-HS/P
-9344 CGA
-
-U6 48 pin IC
-P8798
-L3372718E
-Intel
-Label:
-MicroTouch
-5603670 REV 1.0
-
-U7 28 pin IC
-MicroTouch Systems
-c 1992
-19-507 Rev 2
-ICS1578N 9334
-
-U8 28 pin IC
-Mosel
-MS62256L-85PC
-8911 5D
-
-U9 32 pin IC
+U3 32 pin IC
 27C010A
 Label:
 Paint N Puzzle
 Ver. 1.09
 Even
 
-U10 64 pin IC
-MC68000P12
-OB26M8829
+U4 & U5 28 pin ICs
+Mosel
+MS62256L-85PC
+8911 5D
 
-The 6522 and 8798 each have a 93C46N EEPROM attached.
+U14 28 pin IC
+MicroTouch Systems
+c 1992
+19-507 Rev 2
+ICS1578N 9334 (ASIC 1578 on schematic)
 
-X1
-16.000MHz -connected to U5
+U15 48 pin IC
+P8798 (8797 on schematic)
+L3372718E
+Intel
+Label:
+MicroTouch
+5603670 REV 1.0
 
-X2
+U17 8 pin IC
+National 8538A
+93C46N
+-connected to U15
+
+U35 18 pin IC
+PIC16C54-HS/P
+9344 CGA
+
+U36 5 pin audio amp
+LM383T
+
+U37 8 pin IC
+National 8538A
+93C46N
+-connected to U41
+
+U41 40 pin IC
+8926S
+UM6522A
+
+Y1
 ECS-120
 32-1
-China -connected to U7
-Other side is unreadable
+China -connected to U14
+Other side is unreadable (schematic reads 12.000MHz?)
+
+Y2
+16.000MHz -connected to U35
 
 CN1 JAMMA
 CN2 ISA? Video card slot
@@ -84,8 +87,19 @@ CN3 Touchscreen input (12 pins)
 CN4 2 pins, unused
 
 1 blue potentiometer connected to audio amp
-There doesnt seem to be any dedicated sound chip, and sounds are just bleeps
-really.
+
+There is no dedicated sound generator, and sounds are just bleeps
+really. The sounds come from a binary-weighted DAC attached to the
+PIC's RB outputs:
+
+R34 7.5K
+R33 15.4K
+R32 30.9K
+R31 61.8K
+R30 124K
+R29 249K
+R28 499K
+R27 1M
 
 -----------------------------------------------
 Video card (has proper silk screen and designators)
@@ -135,12 +149,19 @@ CN1 standard DB15 VGA connector (15KHz)
 class pntnpuzl_state : public driver_device
 {
 public:
-	pntnpuzl_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	pntnpuzl_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_maincpu(*this,"maincpu"),
 		m_via(*this, "via")
 	{ }
 
+	void pntnpuzl(machine_config &config);
+
+	void init_pip();
+
+	DECLARE_INPUT_CHANGED_MEMBER(coin_inserted);
+
+private:
 	uint16_t m_pntpzl_200000;
 	uint16_t m_serial;
 	uint16_t m_serial_out;
@@ -148,16 +169,16 @@ public:
 	int m_touchscr[5];
 
 	required_device<cpu_device> m_maincpu;
-	DECLARE_WRITE16_MEMBER(pntnpuzl_200000_w);
-	DECLARE_WRITE16_MEMBER(pntnpuzl_280018_w);
-	DECLARE_READ16_MEMBER(pntnpuzl_280014_r);
-	DECLARE_READ16_MEMBER(pntnpuzl_28001a_r);
-	DECLARE_READ16_MEMBER(irq1_ack_r);
-	DECLARE_READ16_MEMBER(irq2_ack_r);
-	DECLARE_READ16_MEMBER(irq4_ack_r);
-	DECLARE_INPUT_CHANGED_MEMBER(coin_inserted);
-	DECLARE_DRIVER_INIT(pip);
+	void pntnpuzl_200000_w(uint16_t data);
+	void pntnpuzl_280018_w(uint16_t data);
+	uint16_t pntnpuzl_280014_r();
+	uint16_t pntnpuzl_28001a_r();
+	uint16_t irq1_ack_r();
+	uint16_t irq2_ack_r();
+	uint16_t irq4_ack_r();
 	required_device<via6522_device> m_via;
+	void mcu_map(address_map &map);
+	void pntnpuzl_map(address_map &map);
 };
 
 
@@ -184,7 +205,7 @@ write                                     read
 01 03 46 31 38 0d                    ---> 80 0c
 */
 
-WRITE16_MEMBER(pntnpuzl_state::pntnpuzl_200000_w)
+void pntnpuzl_state::pntnpuzl_200000_w(uint16_t data)
 {
 // logerror("200000: %04x\n",data);
 	// bit 12: set to 1 when going to serial output to 280018
@@ -198,30 +219,30 @@ WRITE16_MEMBER(pntnpuzl_state::pntnpuzl_200000_w)
 	m_pntpzl_200000 = data;
 }
 
-WRITE16_MEMBER(pntnpuzl_state::pntnpuzl_280018_w)
+void pntnpuzl_state::pntnpuzl_280018_w(uint16_t data)
 {
-// logerror("%04x: 280018: %04x\n",space.device().safe_pc(),data);
+// logerror("%04x: 280018: %04x\n",m_maincpu->pc(),data);
 	m_serial >>= 1;
 	if (data & 0x2000)
 		m_serial |= 0x400;
 
-	m_via->write(space, 0x18/2, data >> 8);
+	m_via->write(0x18/2, data >> 8);
 }
 
-READ16_MEMBER(pntnpuzl_state::pntnpuzl_280014_r)
+uint16_t pntnpuzl_state::pntnpuzl_280014_r()
 {
 	static const int startup[3] = { 0x80, 0x0c, 0x00 };
 	int res;
 
-	(void)m_via->read(space, 0x14/2);
+	(void)m_via->read(0x14/2);
 
 	if (m_serial_out == 0x11)
 	{
 		if (ioport("IN0")->read() & 0x10)
 		{
 			m_touchscr[0] = 0x1b;
-			m_touchscr[2] = BITSWAP8(ioport("TOUCHX")->read(),0,1,2,3,4,5,6,7);
-			m_touchscr[4] = BITSWAP8(ioport("TOUCHY")->read(),0,1,2,3,4,5,6,7);
+			m_touchscr[2] = bitswap<8>(ioport("TOUCHX")->read(),0,1,2,3,4,5,6,7);
+			m_touchscr[4] = bitswap<8>(ioport("TOUCHY")->read(),0,1,2,3,4,5,6,7);
 		}
 		else
 			m_touchscr[0] = 0;
@@ -240,60 +261,62 @@ READ16_MEMBER(pntnpuzl_state::pntnpuzl_280014_r)
 	return res << 8;
 }
 
-READ16_MEMBER(pntnpuzl_state::pntnpuzl_28001a_r)
+uint16_t pntnpuzl_state::pntnpuzl_28001a_r()
 {
 	return 0x4c00;
 }
 
-READ16_MEMBER(pntnpuzl_state::irq1_ack_r)
+uint16_t pntnpuzl_state::irq1_ack_r()
 {
 //  m_maincpu->set_input_line(1, CLEAR_LINE);
 	return 0;
 }
 
-READ16_MEMBER(pntnpuzl_state::irq2_ack_r)
+uint16_t pntnpuzl_state::irq2_ack_r()
 {
 //  m_maincpu->set_input_line(2, CLEAR_LINE);
 	return 0;
 }
 
-READ16_MEMBER(pntnpuzl_state::irq4_ack_r)
+uint16_t pntnpuzl_state::irq4_ack_r()
 {
 //  m_maincpu->set_input_line(4, CLEAR_LINE);
 	return 0;
 }
 
 
-static ADDRESS_MAP_START( pntnpuzl_map, AS_PROGRAM, 16, pntnpuzl_state )
-	AM_RANGE(0x000000, 0x07ffff) AM_ROM
-	AM_RANGE(0x080000, 0x080001) AM_READ(irq1_ack_r)
-	AM_RANGE(0x100000, 0x100001) AM_READ(irq2_ack_r)
-	AM_RANGE(0x180000, 0x180001) AM_READ(irq4_ack_r)
-	AM_RANGE(0x200000, 0x200001) AM_WRITE(pntnpuzl_200000_w)
-	AM_RANGE(0x280014, 0x280015) AM_READ(pntnpuzl_280014_r)
-	AM_RANGE(0x280018, 0x280019) AM_WRITE(pntnpuzl_280018_w)
-	AM_RANGE(0x28001a, 0x28001b) AM_READ(pntnpuzl_28001a_r)
-	AM_RANGE(0x280000, 0x28001f) AM_DEVREADWRITE8("via", via6522_device, read, write, 0xff00)
+void pntnpuzl_state::pntnpuzl_map(address_map &map)
+{
+	map(0x000000, 0x07ffff).rom();
+	map(0x080000, 0x080001).r(FUNC(pntnpuzl_state::irq1_ack_r));
+	map(0x100000, 0x100001).r(FUNC(pntnpuzl_state::irq2_ack_r));
+	map(0x180000, 0x180001).r(FUNC(pntnpuzl_state::irq4_ack_r));
+	map(0x200000, 0x200001).w(FUNC(pntnpuzl_state::pntnpuzl_200000_w));
+	map(0x280000, 0x28001f).m(m_via, FUNC(via6522_device::map)).umask16(0xff00);
+	map(0x280014, 0x280015).r(FUNC(pntnpuzl_state::pntnpuzl_280014_r));
+	map(0x280018, 0x280019).w(FUNC(pntnpuzl_state::pntnpuzl_280018_w));
+	map(0x28001a, 0x28001b).r(FUNC(pntnpuzl_state::pntnpuzl_28001a_r));
 
 	/* standard VGA */
-	AM_RANGE(0x3a0000, 0x3bffff) AM_DEVREADWRITE8("vga", vga_device, mem_r, mem_w, 0xffff)
-	AM_RANGE(0x3c03b0, 0x3c03bf) AM_DEVREADWRITE8("vga", vga_device, port_03b0_r, port_03b0_w, 0xffff)
-	AM_RANGE(0x3c03c0, 0x3c03cf) AM_DEVREADWRITE8("vga", vga_device, port_03c0_r, port_03c0_w, 0xffff)
-	AM_RANGE(0x3c03d0, 0x3c03df) AM_DEVREADWRITE8("vga", vga_device, port_03d0_r, port_03d0_w, 0xffff)
+	map(0x3a0000, 0x3bffff).rw("vga", FUNC(vga_device::mem_r), FUNC(vga_device::mem_w));
+	map(0x3c03b0, 0x3c03bf).rw("vga", FUNC(vga_device::port_03b0_r), FUNC(vga_device::port_03b0_w));
+	map(0x3c03c0, 0x3c03cf).rw("vga", FUNC(vga_device::port_03c0_r), FUNC(vga_device::port_03c0_w));
+	map(0x3c03d0, 0x3c03df).rw("vga", FUNC(vga_device::port_03d0_r), FUNC(vga_device::port_03d0_w));
 
-	AM_RANGE(0x400000, 0x407fff) AM_RAM
-ADDRESS_MAP_END
+	map(0x400000, 0x407fff).ram();
+}
 
-static ADDRESS_MAP_START( mcu_map, AS_PROGRAM, 8, pntnpuzl_state )
-	AM_RANGE(0x2000, 0x3fff) AM_ROM AM_REGION("mcu", 0)
-ADDRESS_MAP_END
+void pntnpuzl_state::mcu_map(address_map &map)
+{
+	map(0x2000, 0x3fff).rom().region("mcu", 0);
+}
 
 
 INPUT_CHANGED_MEMBER(pntnpuzl_state::coin_inserted)
 {
 	/* TODO: change this! */
 	if(newval)
-		m_maincpu->pulse_input_line((uint8_t)(uintptr_t)param, m_maincpu->minimum_quantum_time());
+		m_maincpu->pulse_input_line((uint8_t)param, m_maincpu->minimum_quantum_time());
 }
 
 static INPUT_PORTS_START( pntnpuzl )
@@ -315,7 +338,7 @@ static INPUT_PORTS_START( pntnpuzl )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_S)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_A)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, do_read)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, do_read)
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -330,25 +353,38 @@ static INPUT_PORTS_START( pntnpuzl )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_D)
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( pntnpuzl )
-	MCFG_CPU_ADD("maincpu", M68000, 12000000)//??
-	MCFG_CPU_PROGRAM_MAP(pntnpuzl_map)
+void pntnpuzl_state::pntnpuzl(machine_config &config)
+{
+	M68000(config, m_maincpu, 12_MHz_XTAL);
+	m_maincpu->set_addrmap(AS_PROGRAM, &pntnpuzl_state::pntnpuzl_map);
 
-	MCFG_EEPROM_SERIAL_93C46_ADD("eeprom")
+	EEPROM_93C46_16BIT(config, "eeprom");
 
-	MCFG_DEVICE_ADD("via", VIA6522, 1200000) // ??
-	MCFG_VIA6522_READPA_HANDLER(IOPORT("IN2"))
-	MCFG_VIA6522_READPB_HANDLER(IOPORT("IN1"))
-	MCFG_VIA6522_WRITEPB_HANDLER(DEVWRITELINE("eeprom", eeprom_serial_93cxx_device, di_write)) MCFG_DEVCB_BIT(4)
-	MCFG_DEVCB_CHAIN_OUTPUT(DEVWRITELINE("eeprom", eeprom_serial_93cxx_device, cs_write)) MCFG_DEVCB_BIT(6)
-	MCFG_DEVCB_CHAIN_OUTPUT(DEVWRITELINE("eeprom", eeprom_serial_93cxx_device, clk_write)) MCFG_DEVCB_BIT(5)
+	VIA6522(config, m_via, 12_MHz_XTAL / 10);
+	m_via->readpa_handler().set_ioport("IN2");
+	m_via->readpb_handler().set_ioport("IN1");
+	m_via->writepb_handler().set("eeprom", FUNC(eeprom_serial_93cxx_device::di_write)).bit(4);
+	m_via->writepb_handler().append("eeprom", FUNC(eeprom_serial_93cxx_device::cs_write)).bit(6);
+	m_via->writepb_handler().append("eeprom", FUNC(eeprom_serial_93cxx_device::clk_write)).bit(5);
+	// CB2 used for serial communication with 8798
 
-	MCFG_CPU_ADD("mcu", P8098, 12000000) // ??
-	MCFG_CPU_PROGRAM_MAP(mcu_map) // FIXME: this is all internal
+	i8x9x_device &mcu(P8798(config, "mcu", 12_MHz_XTAL)); // clock generated by ASIC
+	mcu.set_addrmap(AS_PROGRAM, &pntnpuzl_state::mcu_map); // FIXME: this is all internal
+	mcu.ach6_cb().set_constant(0x180); // ?
+	mcu.ach7_cb().set_constant(0x180); // ?
+	mcu.hso_cb().set("mcu_eeprom", FUNC(eeprom_serial_93cxx_device::cs_write)).bit(0);
+	mcu.hso_cb().append("mcu_eeprom", FUNC(eeprom_serial_93cxx_device::clk_write)).bit(1);
+	mcu.hso_cb().append("mcu_eeprom", FUNC(eeprom_serial_93cxx_device::di_write)).bit(5);
+
+	EEPROM_93C46_16BIT(config, "mcu_eeprom").do_callback().set_inputline("mcu", i8x9x_device::HSI3_LINE);
 
 	/* video hardware */
-	MCFG_FRAGMENT_ADD( pcvideo_vga )
-MACHINE_CONFIG_END
+	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
+	screen.set_raw(XTAL(25'174'800),900,0,640,526,0,480);
+	screen.set_screen_update("vga", FUNC(vga_device::screen_update));
+
+	VGA(config, "vga", 0).set_screen("screen");
+}
 
 ROM_START( pntnpuzl )
 	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 Code */
@@ -358,13 +394,16 @@ ROM_START( pntnpuzl )
 	ROM_REGION( 0x2000, "mcu", 0 )
 	ROM_LOAD( "pntnpzl8798.bin", 0x0000, 0x2000, CRC(3ff98e89) SHA1(c48665992cb5377b69902f2a352c9214602a0b84) )
 
+	ROM_REGION( 0x400, "pic", 0 )
+	ROM_LOAD( "16c54.bin", 0x000, 0x400, NO_DUMP )
+
 	/* for reference, probably not used in any way by the game */
 	ROM_REGION( 0x10000, "video_bios", 0 )
 	ROM_LOAD( "trident_quadtel_tvga9000_isa16.bin", 0x0000, 0x10000, BAD_DUMP CRC(ad0e7351) SHA1(eb525460a80e1c1baa34642b93d54caf2607920d) )
 ROM_END
 
 
-DRIVER_INIT_MEMBER(pntnpuzl_state,pip)
+void pntnpuzl_state::init_pip()
 {
 //  uint16_t *rom = (uint16_t *)memregion("maincpu")->base();
 //  rom[0x2696/2] = 0x4e71;
@@ -372,4 +411,4 @@ DRIVER_INIT_MEMBER(pntnpuzl_state,pip)
 
 }
 
-GAME( 199?, pntnpuzl,    0, pntnpuzl,    pntnpuzl, pntnpuzl_state,    pip, ROT90,  "Century?", "Paint & Puzzle",MACHINE_NO_SOUND|MACHINE_NOT_WORKING )
+GAME( 1993, pntnpuzl, 0, pntnpuzl, pntnpuzl, pntnpuzl_state, init_pip, ROT90, "Century Vending", "Paint 'N Puzzle", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

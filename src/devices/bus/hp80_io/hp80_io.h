@@ -13,48 +13,47 @@
 
 #pragma once
 
-#define MCFG_HP80_IO_SLOT_ADD(_tag , _idx)                              \
-	MCFG_DEVICE_ADD(_tag, HP80_IO_SLOT, 0)                              \
-	MCFG_DEVICE_SLOT_INTERFACE(hp80_io_slot_devices, nullptr, false)    \
-	hp80_io_slot_device::set_slot_no(*device , _idx);
+#define HP80_IO_SC_OFFSET   5
 
-#define MCFG_HP80_IO_IRL_CB(_devcb) \
-	devcb = &hp80_io_slot_device::set_irl_cb_func(*device , DEVCB_##_devcb);
-
-#define MCFG_HP80_IO_HALT_CB(_devcb) \
-	devcb = &hp80_io_slot_device::set_halt_cb_func(*device , DEVCB_##_devcb);
-
-#define HP80_IO_FIRST_SC  3   // Lowest SC used by I/O cards
-
-#define MCFG_HP80_IO_SC(_default_sc)              \
+#define PORT_HP80_IO_SC(_default_sc)              \
 	PORT_START("SC") \
-	PORT_CONFNAME(0xf , (_default_sc) - HP80_IO_FIRST_SC , "Select Code") \
-	PORT_CONFSETTING(0 , "3")\
-	PORT_CONFSETTING(1 , "4")\
-	PORT_CONFSETTING(2 , "5")\
-	PORT_CONFSETTING(3 , "6")\
-	PORT_CONFSETTING(4 , "7")\
-	PORT_CONFSETTING(5 , "8")\
-	PORT_CONFSETTING(6 , "9")\
-	PORT_CONFSETTING(7 , "10")
+	PORT_CONFNAME(0xf , (_default_sc) + HP80_IO_SC_OFFSET , "Select Code") \
+	PORT_CONFSETTING(8 , "3")\
+	PORT_CONFSETTING(9 , "4")\
+	PORT_CONFSETTING(10 , "5")\
+	PORT_CONFSETTING(11 , "6")\
+	PORT_CONFSETTING(12 , "7")\
+	PORT_CONFSETTING(13 , "8")\
+	PORT_CONFSETTING(14 , "9")\
+	PORT_CONFSETTING(15 , "10")
+
+void hp80_io_slot_devices(device_slot_interface &device);
+
+class device_hp80_io_interface;
 
 class hp80_io_slot_device : public device_t,
-							public device_slot_interface
+							public device_single_card_slot_interface<device_hp80_io_interface>
 {
 public:
 	// construction/destruction
+	hp80_io_slot_device(machine_config const &mconfig, char const *tag, device_t *owner)
+		: hp80_io_slot_device(mconfig, tag, owner, (uint32_t)0)
+	{
+		option_reset();
+		hp80_io_slot_devices(*this);
+		set_default_option(nullptr);
+		set_fixed(false);
+	}
+
 	hp80_io_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	virtual ~hp80_io_slot_device();
 
-	// static configuration helpers
-	static void set_slot_no(device_t &device, unsigned slot_no) { downcast<hp80_io_slot_device &>(device).m_slot_no = slot_no; }
-
-	// device-level overrides
-	virtual void device_start() override;
+	// configuration helpers
+	void set_slot_no(unsigned slot_no) { m_slot_no = slot_no; }
 
 	// Callback setups
-	template <class Object> static devcb_base &set_irl_cb_func(device_t &device, Object &&cb) { return downcast<hp80_io_slot_device &>(device).m_irl_cb_func.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_halt_cb_func(device_t &device, Object &&cb) { return downcast<hp80_io_slot_device &>(device).m_halt_cb_func.set_callback(std::forward<Object>(cb)); }
+	auto irl_cb() { return m_irl_cb_func.bind(); }
+	auto halt_cb() { return m_halt_cb_func.bind(); }
 
 	// SC getter
 	uint8_t get_sc() const;
@@ -69,16 +68,21 @@ public:
 	void inten();
 	void clear_service();
 
+protected:
+	// device-level overrides
+	virtual void device_start() override;
+
 private:
 	devcb_write8 m_irl_cb_func;
 	devcb_write8 m_halt_cb_func;
 	unsigned m_slot_no;
 };
 
-class hp80_io_card_device : public device_t,
-							public device_slot_card_interface
+class device_hp80_io_interface : public device_interface
 {
 public:
+	virtual ~device_hp80_io_interface();
+
 	// SC getter
 	uint8_t get_sc() const;
 
@@ -88,9 +92,7 @@ public:
 	virtual void clear_service();
 
 protected:
-	// construction/destruction
-	hp80_io_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
-	virtual ~hp80_io_card_device();
+	device_hp80_io_interface(const machine_config &mconfig, device_t &device);
 
 	required_ioport m_select_code_port;
 
@@ -101,7 +103,5 @@ protected:
 
 // device type definition
 DECLARE_DEVICE_TYPE(HP80_IO_SLOT, hp80_io_slot_device)
-
-SLOT_INTERFACE_EXTERN(hp80_io_slot_devices);
 
 #endif // MAME_BUS_HP80_IO_HP80_IO_H

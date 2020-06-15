@@ -21,12 +21,13 @@ DEFINE_DEVICE_TYPE(TK02_80COL, tk02_device, "tk02", "TK02 80 Column Monochrome U
 //  device_address_map
 //-------------------------------------------------
 
-DEVICE_ADDRESS_MAP_START(map, 8, tk02_device)
-//  AM_RANGE(0x00, 0x07) AM_SELECT(0xff00) AM_READWRITE(ram_r, ram_w) // no AM_SELECT (or AM_MASK) support here
-	AM_RANGE(0x08, 0x08) AM_MIRROR(0xff00) AM_DEVWRITE("crtc", mc6845_device, address_w)
-	AM_RANGE(0x09, 0x09) AM_MIRROR(0xff00) AM_DEVWRITE("crtc", mc6845_device, register_w)
-	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff00) AM_READ(status_r)
-ADDRESS_MAP_END
+void tk02_device::map(address_map &map)
+{
+//  map(0x00, 0x07).select(0xff00).rw(FUNC(tk02_device::ram_r), FUNC(tk02_device::ram_w)); // no select() (or mask()) support here
+	map(0x08, 0x08).mirror(0xff00).w(m_crtc, FUNC(mc6845_device::address_w));
+	map(0x09, 0x09).mirror(0xff00).w(m_crtc, FUNC(mc6845_device::register_w));
+	map(0x0c, 0x0c).mirror(0xff00).r(FUNC(tk02_device::status_r));
+}
 
 //-------------------------------------------------
 //  rom_region - device-specific ROM region
@@ -86,7 +87,7 @@ static const gfx_layout tk02_charlayout =
 	8*8
 };
 
-static GFXDECODE_START( tk02 )
+static GFXDECODE_START( gfx_tk02 )
 	GFXDECODE_ENTRY("gfx", 0x0000, tk02_charlayout, 0, 1)
 	GFXDECODE_ENTRY("gfx", 0x1000, tk02_charlayout, 0, 1)
 GFXDECODE_END
@@ -95,23 +96,26 @@ GFXDECODE_END
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
 
-MACHINE_CONFIG_MEMBER( tk02_device::device_add_mconfig )
-	MCFG_SCREEN_ADD_MONOCHROME("mono", RASTER, rgb_t::green())
-	MCFG_SCREEN_RAW_PARAMS(XTAL_8MHz * 2, 1024, 0, 640, 312, 0, 250)
-	MCFG_SCREEN_UPDATE_DEVICE("crtc", mc6845_device, screen_update)
+void tk02_device::device_add_mconfig(machine_config &config)
+{
+	screen_device &screen(SCREEN(config, "mono", SCREEN_TYPE_RASTER));
+	screen.set_color(rgb_t::green());
+	screen.set_raw(XTAL(8'000'000) * 2, 1024, 0, 640, 312, 0, 250);
+	screen.set_screen_update("crtc", FUNC(mc6845_device::screen_update));
 
-	MCFG_PALETTE_ADD_MONOCHROME("palette")
+	PALETTE(config, m_palette, palette_device::MONOCHROME);
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", tk02)
+	GFXDECODE(config, "gfxdecode", "palette", gfx_tk02);
 
-	MCFG_MC6845_ADD("crtc", MC6845, "mono", XTAL_8MHz / 4)
-	MCFG_MC6845_SHOW_BORDER_AREA(false)
-	MCFG_MC6845_CHAR_WIDTH(8)
-	MCFG_MC6845_UPDATE_ROW_CB(tk02_device, crtc_update_row)
-	MCFG_MC6845_OUT_DE_CB(WRITELINE(tk02_device, de_w))
+	MC6845(config, m_crtc, XTAL(8'000'000) / 4);
+	m_crtc->set_screen("mono");
+	m_crtc->set_show_border_area(false);
+	m_crtc->set_char_width(8);
+	m_crtc->set_update_row_callback(FUNC(tk02_device::crtc_update_row));
+	m_crtc->out_de_callback().set(FUNC(tk02_device::de_w));
 
-	MCFG_TATUNG_PIPE_ADD("pipe")
-MACHINE_CONFIG_END
+	TATUNG_PIPE(config, m_pipe, DERIVED_CLOCK(1, 1), tatung_pipe_cards, nullptr);
+}
 
 
 //**************************************************************************
@@ -145,7 +149,7 @@ void tk02_device::device_start()
 	memset(m_ram.get(), 0xff, 0x800);
 
 	// register for save states
-	save_pointer(NAME(m_ram.get()), 0x800);
+	save_pointer(NAME(m_ram), 0x800);
 	save_item(NAME(m_de));
 }
 
@@ -155,11 +159,8 @@ void tk02_device::device_start()
 
 void tk02_device::device_reset()
 {
-	m_pipe->set_io_space(&io_space());
-	m_pipe->set_program_space(&program_space());
-
 	io_space().install_device(0x40, 0x4f, *this, &tk02_device::map);
-	io_space().install_readwrite_handler(0x40, 0x47, 0, 0, 0xff00, read8_delegate(FUNC(tk02_device::ram_r), this), write8_delegate(FUNC(tk02_device::ram_w), this));
+	io_space().install_readwrite_handler(0x40, 0x47, 0, 0, 0xff00, read8sm_delegate(*this, FUNC(tk02_device::ram_r)), write8sm_delegate(*this, FUNC(tk02_device::ram_w)));
 }
 
 
@@ -202,17 +203,17 @@ WRITE_LINE_MEMBER( tk02_device::de_w )
 
 // lower 3 bits of address define a 256-byte "row"
 // upper 8 bits define the offset in the row
-READ8_MEMBER( tk02_device::ram_r )
+uint8_t tk02_device::ram_r(offs_t offset)
 {
 	return m_ram[((offset & 0x07) << 8) | ((offset >> 8) & 0xff)];
 }
 
-WRITE8_MEMBER( tk02_device::ram_w )
+void tk02_device::ram_w(offs_t offset, uint8_t data)
 {
 	m_ram[((offset & 0x07) << 8) | ((offset >> 8) & 0xff)] = data;
 }
 
-READ8_MEMBER( tk02_device::status_r )
+uint8_t tk02_device::status_r()
 {
 	// 7654----  unused
 	// ----3---  link M001

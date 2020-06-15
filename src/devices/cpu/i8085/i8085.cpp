@@ -109,6 +109,7 @@
 #include "emu.h"
 #include "debugger.h"
 #include "i8085.h"
+#include "8085dasm.h"
 
 #define VERBOSE 0
 #include "logmacro.h"
@@ -196,9 +197,9 @@ op_call 8085    11        +7(18)   -2(9)
 */
 
 
-DEFINE_DEVICE_TYPE(I8080,  i8080_cpu_device,  "i8080",  "8080")
-DEFINE_DEVICE_TYPE(I8080A, i8080a_cpu_device, "i8080a", "8080A")
-DEFINE_DEVICE_TYPE(I8085A, i8085a_cpu_device, "i8085a", "8085A")
+DEFINE_DEVICE_TYPE(I8080,  i8080_cpu_device,  "i8080",  "Intel 8080")
+DEFINE_DEVICE_TYPE(I8080A, i8080a_cpu_device, "i8080a", "Intel 8080A")
+DEFINE_DEVICE_TYPE(I8085A, i8085a_cpu_device, "i8085a", "Intel 8085A")
 
 
 i8085a_cpu_device::i8085a_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
@@ -211,10 +212,12 @@ i8085a_cpu_device::i8085a_cpu_device(const machine_config &mconfig, device_type 
 	, m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0)
 	, m_io_config("io", ENDIANNESS_LITTLE, 8, 8, 0)
 	, m_opcode_config("opcodes", ENDIANNESS_LITTLE, 8, 16, 0)
+	, m_in_inta_func(*this)
 	, m_out_status_func(*this)
 	, m_out_inte_func(*this)
 	, m_in_sid_func(*this)
 	, m_out_sod_func(*this)
+	, m_clk_out_func(*this)
 	, m_cputype(cputype)
 {
 }
@@ -244,7 +247,7 @@ device_memory_interface::space_config_vector i8085a_cpu_device::memory_space_con
 
 void i8085a_cpu_device::device_config_complete()
 {
-	m_clk_out_func.bind_relative_to(*owner());
+	m_clk_out_func.resolve();
 	if (!m_clk_out_func.isnull())
 		m_clk_out_func(clock() / 2);
 }
@@ -306,6 +309,7 @@ void i8085a_cpu_device::device_start()
 	m_trap_pending = 0;
 	m_trap_im_copy = 0;
 	m_sod_state = 0;
+	m_in_acknowledge = false;
 	m_ietemp = false;
 
 	init_tables();
@@ -330,18 +334,26 @@ void i8085a_cpu_device::device_start()
 		state_add(I8085_BC,     "BC",     m_BC.w.l);
 		state_add(I8085_DE,     "DE",     m_DE.w.l);
 		state_add(I8085_HL,     "HL",     m_HL.w.l);
-		state_add(I8085_STATUS, "STATUS", m_status);
-		state_add(I8085_SOD,    "SOD",    m_sod_state).mask(0x1);
-		state_add(I8085_SID,    "SID",    m_ietemp).mask(0x1).callimport().callexport();
-		state_add(I8085_INTE,   "INTE",   m_ietemp).mask(0x1).callimport().callexport();
+		if (is_8080())
+		{
+			state_add(I8085_STATUS, "STATUS", m_status);
+			state_add(I8085_INTE,   "INTE",   m_ietemp).mask(0x1).callimport().callexport();
+		}
+		if (is_8085())
+		{
+			state_add(I8085_IM,     "IM",     m_im);
+			state_add(I8085_SOD,    "SOD",    m_sod_state).mask(0x1);
+			state_add(I8085_SID,    "SID",    m_ietemp).mask(0x1).callimport().callexport();
+		}
 	}
 
-	m_program = &space(AS_PROGRAM);
-	m_direct = &m_program->direct();
-	m_opcode_direct = has_space(AS_OPCODES) ? &space(AS_OPCODES).direct() : m_direct;
-	m_io = &space(AS_IO);
+	space(AS_PROGRAM).cache(m_cprogram);
+	space(AS_PROGRAM).specific(m_program);
+	space(has_space(AS_OPCODES) ? AS_OPCODES : AS_PROGRAM).cache(m_copcodes);
+	space(AS_IO).specific(m_io);
 
 	/* resolve callbacks */
+	m_in_inta_func.resolve();
 	m_out_status_func.resolve_safe();
 	m_out_inte_func.resolve_safe();
 	m_in_sid_func.resolve_safe(0);
@@ -363,8 +375,9 @@ void i8085a_cpu_device::device_start()
 	save_item(NAME(m_trap_pending));
 	save_item(NAME(m_trap_im_copy));
 	save_item(NAME(m_sod_state));
+	save_item(NAME(m_in_acknowledge));
 
-	m_icountptr = &m_icount;
+	set_icountptr(m_icount);
 }
 
 
@@ -456,10 +469,9 @@ void i8085a_cpu_device::state_string_export(const device_state_entry &entry, std
 	}
 }
 
-offs_t i8085a_cpu_device::disasm_disassemble(std::ostream &stream, offs_t pc, const u8 *oprom, const u8 *opram, u32 options)
+std::unique_ptr<util::disasm_interface> i8085a_cpu_device::create_disassembler()
 {
-	extern CPU_DISASSEMBLE( i8085 );
-	return CPU_DISASSEMBLE_NAME(i8085)(this, stream, pc, oprom, opram, options);
+	return std::make_unique<i8085_disassembler>();
 }
 
 
@@ -471,11 +483,13 @@ void i8085a_cpu_device::execute_set_input(int irqline, int state)
 {
 	int newstate = (state != CLEAR_LINE);
 
-	/* NMI is edge-triggered */
-	if (irqline == INPUT_LINE_NMI)
+	/* TRAP is level and edge-triggered NMI */
+	if (irqline == I8085_TRAP_LINE)
 	{
 		if (!m_nmi_state && newstate)
 			m_trap_pending = true;
+		else if (!newstate)
+			m_trap_pending = false;
 		m_nmi_state = newstate;
 	}
 
@@ -503,6 +517,8 @@ void i8085a_cpu_device::break_halt_for_interrupt()
 	}
 	else
 		set_status(0x23); /* int ack */
+
+	m_in_acknowledge = true;
 }
 
 void i8085a_cpu_device::check_for_interrupts()
@@ -519,7 +535,7 @@ void i8085a_cpu_device::check_for_interrupts()
 
 		/* break out of HALT state and call the IRQ ack callback */
 		break_halt_for_interrupt();
-		standard_irq_callback(INPUT_LINE_NMI);
+		standard_irq_callback(I8085_TRAP_LINE);
 
 		/* push the PC and jump to $0024 */
 		op_push(m_PC);
@@ -576,29 +592,17 @@ void i8085a_cpu_device::check_for_interrupts()
 	/* followed by classic INTR */
 	else if (m_irq_state[I8085_INTR_LINE] && (m_im & IM_IE))
 	{
-		u32 vector;
-
 		/* break out of HALT state and call the IRQ ack callback */
+		if (!m_in_inta_func.isnull())
+			standard_irq_callback(I8085_INTR_LINE);
 		break_halt_for_interrupt();
-		vector = standard_irq_callback(I8085_INTR_LINE);
+
+		u8 vector = read_inta();
 
 		/* use the resulting vector as an opcode to execute */
 		set_inte(0);
-		switch (vector & 0xff0000)
-		{
-			case 0xcd0000:  /* CALL nnnn */
-				m_icount -= 7;
-				op_push(m_PC);
-			case 0xc30000:  /* JMP  nnnn */
-				m_icount -= 10;
-				m_PC.d = vector & 0xffff;
-				break;
-
-			default:
-				LOG("i8085 take int $%02x\n", vector);
-				execute_one(vector & 0xff);
-				break;
-		}
+		LOG("i8085 take int $%02x\n", vector);
+		execute_one(vector);
 	}
 }
 
@@ -662,48 +666,69 @@ u8 i8085a_cpu_device::get_rim_value()
 // memory access
 u8 i8085a_cpu_device::read_arg()
 {
-	return m_direct->read_byte(m_PC.w.l++);
+	set_status(0x82); // memory read
+	if (m_in_acknowledge)
+		return read_inta();
+	else
+		return m_cprogram.read_byte(m_PC.w.l++);
 }
 
 PAIR i8085a_cpu_device::read_arg16()
 {
 	PAIR p;
-	p.b.l = m_direct->read_byte(m_PC.w.l++);
-	p.b.h = m_direct->read_byte(m_PC.w.l++);
+	set_status(0x82); // memory read
+	if (m_in_acknowledge)
+	{
+		p.b.l = read_inta();
+		p.b.h = read_inta();
+	}
+	else
+	{
+		p.b.l = m_cprogram.read_byte(m_PC.w.l++);
+		p.b.h = m_cprogram.read_byte(m_PC.w.l++);
+	}
 	return p;
 }
 
 u8 i8085a_cpu_device::read_op()
 {
 	set_status(0xa2); // instruction fetch
-	return m_opcode_direct->read_byte(m_PC.w.l++);
+	return m_copcodes.read_byte(m_PC.w.l++);
+}
+
+u8 i8085a_cpu_device::read_inta()
+{
+	if (m_in_inta_func.isnull())
+		return standard_irq_callback(I8085_INTR_LINE);
+	else
+		return m_in_inta_func(m_PC.w.l);
 }
 
 u8 i8085a_cpu_device::read_mem(u32 a)
 {
 	set_status(0x82); // memory read
-	return m_program->read_byte(a);
+	return m_program.read_byte(a);
 }
 
 void i8085a_cpu_device::write_mem(u32 a, u8 v)
 {
 	set_status(0x00); // memory write
-	m_program->write_byte(a, v);
+	m_program.write_byte(a, v);
 }
 
 void i8085a_cpu_device::op_push(PAIR p)
 {
 	set_status(0x04); // stack push
-	m_program->write_byte(--m_SP.w.l, p.b.h);
-	m_program->write_byte(--m_SP.w.l, p.b.l);
+	m_program.write_byte(--m_SP.w.l, p.b.h);
+	m_program.write_byte(--m_SP.w.l, p.b.l);
 }
 
 PAIR i8085a_cpu_device::op_pop()
 {
 	PAIR p;
 	set_status(0x86); // stack pop
-	p.b.l = m_program->read_byte(m_SP.w.l++);
-	p.b.h = m_program->read_byte(m_SP.w.l++);
+	p.b.l = m_program.read_byte(m_SP.w.l++);
+	p.b.h = m_program.read_byte(m_SP.w.l++);
 	return p;
 }
 
@@ -735,7 +760,7 @@ void i8085a_cpu_device::op_ana(u8 v)
 u8 i8085a_cpu_device::op_inr(u8 v)
 {
 	u8 hc = ((v & 0x0f) == 0x0f) ? HF : 0;
-	m_AF.b.l = (m_AF.b.l & CF ) | lut_zsp[++v] | hc;
+	m_AF.b.l = (m_AF.b.l & CF) | lut_zsp[++v] | hc;
 	return v;
 }
 
@@ -847,12 +872,13 @@ void i8085a_cpu_device::execute_run()
 
 	do
 	{
-		debugger_instruction_hook(this, m_PC.d);
-
 		/* the instruction after an EI does not take an interrupt, so
 		   we cannot check immediately; handle post-EI behavior here */
 		if (m_after_ei != 0 && --m_after_ei == 0)
 			check_for_interrupts();
+
+		m_in_acknowledge = false;
+		debugger_instruction_hook(m_PC.d);
 
 		/* here we go... */
 		execute_one(read_op());
@@ -906,7 +932,7 @@ void i8085a_cpu_device::execute_one(int opcode)
 				m_HL.b.l = q;
 				q = m_HL.b.h - m_BC.b.h - (m_AF.b.l & CF);
 				m_AF.b.l = lut_zs[q & 0xff] | ((q >> 8) & CF) | VF | ((m_HL.b.h ^ q ^ m_BC.b.h) & HF) | (((m_BC.b.h ^ m_HL.b.h) & (m_HL.b.h ^ q) & SF) >> 5);
-				if (m_HL.b.l != 0 )
+				if (m_HL.b.l != 0)
 					m_AF.b.l &= ~ZF;
 			}
 			break;
@@ -1443,7 +1469,7 @@ void i8085a_cpu_device::execute_one(int opcode)
 		case 0xd3: // OUT nn
 			set_status(0x10);
 			m_WZ.d = read_arg();
-			m_io->write_byte(m_WZ.d, m_AF.b.h);
+			m_io.write_byte(m_WZ.d, m_AF.b.h);
 			break;
 		case 0xd4: // CNC nnnn
 			op_call(!(m_AF.b.l & CF));
@@ -1479,7 +1505,7 @@ void i8085a_cpu_device::execute_one(int opcode)
 		case 0xdb: // IN nn
 			set_status(0x42);
 			m_WZ.d = read_arg();
-			m_AF.b.h = m_io->read_byte(m_WZ.d);
+			m_AF.b.h = m_io.read_byte(m_WZ.d);
 			break;
 		case 0xdc: // CC nnnn
 			op_call(m_AF.b.l & CF);

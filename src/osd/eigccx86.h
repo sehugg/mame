@@ -15,7 +15,7 @@
 // Include MMX/SSE intrinsics headers
 
 #ifdef __SSE2__
-#include <stdlib.h>
+#include <cstdlib>
 #include <mmintrin.h>   // MMX
 #include <xmmintrin.h>  // SSE
 #include <emmintrin.h>  // SSE2
@@ -456,6 +456,40 @@ _recip_approx(float value)
 #endif
 
 
+/*-------------------------------------------------
+    mul_64x64 - perform a signed 64 bit x 64 bit
+    multiply and return the full 128 bit result
+-------------------------------------------------*/
+
+#ifdef __x86_64__
+#define mul_64x64 _mul_64x64
+inline int64_t ATTR_FORCE_INLINE
+_mul_64x64(int64_t a, int64_t b, int64_t *hi)
+{
+	__int128 const r(__int128(a) * b);
+	*hi = int64_t(uint64_t((unsigned __int128)r >> 64));
+	return int64_t(uint64_t((unsigned __int128)r));
+}
+#endif
+
+
+/*-------------------------------------------------
+    mulu_64x64 - perform an unsigned 64 bit x 64
+    bit multiply and return the full 128 bit result
+-------------------------------------------------*/
+
+#ifdef __x86_64__
+#define mulu_64x64 _mulu_64x64
+inline uint64_t ATTR_FORCE_INLINE
+_mulu_64x64(uint64_t a, uint64_t b, uint64_t *hi)
+{
+	unsigned __int128 const r((unsigned __int128)a * b);
+	*hi = uint64_t(r >> 64);
+	return uint64_t(r);
+}
+#endif
+
+
 
 /***************************************************************************
     INLINE BIT MANIPULATION FUNCTIONS
@@ -474,13 +508,12 @@ _count_leading_zeros(uint32_t value)
 	__asm__ (
 		" bsrl    %[value], %[result] ;"
 		" cmovzl  %[bias], %[result]  ;"
-		" xorl    $31, %[result]      ;"
 		: [result] "=&r" (result)       // result can be in any register
 		: [value]  "rm"  (value)        // 'value' can be register or memory
-		, [bias]   "rm"  (uint32_t(63)) // 'bias' can be register or memory
+		, [bias]   "rm"  (~uint32_t(0)) // 'bias' can be register or memory
 		: "cc"                          // clobbers condition codes
 	);
-	return result;
+	return 31U - result;
 }
 
 
@@ -497,13 +530,12 @@ _count_leading_ones(uint32_t value)
 	__asm__ (
 		" bsrl    %[value], %[result] ;"
 		" cmovzl  %[bias], %[result]  ;"
-		" xorl    $31, %[result]      ;"
 		: [result] "=&r" (result)       // result can be in any register
 		: [value]  "rm"  (~value)       // 'value' can be register or memory
-		, [bias]   "rm"  (uint32_t(63)) // 'bias' can be register or memory
+		, [bias]   "rm"  (~uint32_t(0)) // 'bias' can be register or memory
 		: "cc"                          // clobbers condition codes
 	);
-	return result;
+	return 31U - result;
 }
 
 #endif // MAME_OSD_EIGCCX86_H

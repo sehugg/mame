@@ -8,6 +8,10 @@
  *  This work is based on the
  *  "NEC Electronics User's Manual, April 1987"
  *
+ *   NEC called this MCU family "μCOM-87" or "87AD" (7810 and up). It is
+ *   not to be confused with the later and incompatible 78K family, though
+ *   its architectural influence is acknowledged.
+ *
  * NS20030115:
  * - fixed INRW_wa()
  * - TODO: add 7807, differences are listed below.
@@ -374,22 +378,26 @@ STOP            01001000  10111011          12  stop
 #include "debugger.h"
 
 #include "upd7810_macros.h"
+#include "upd7810_dasm.h"
 
 
-DEFINE_DEVICE_TYPE(UPD7810,  upd7810_device,  "upd7810",  "uPD7810")
-DEFINE_DEVICE_TYPE(UPD7807,  upd7807_device,  "upd7807",  "uPD7807")
-DEFINE_DEVICE_TYPE(UPD7801,  upd7801_device,  "upd7801",  "uPD7801")
-DEFINE_DEVICE_TYPE(UPD78C05, upd78c05_device, "upd78c05", "uPD78C05")
-DEFINE_DEVICE_TYPE(UPD78C06, upd78c06_device, "upd78c06", "uPD78C06")
+DEFINE_DEVICE_TYPE(UPD7810,  upd7810_device,  "upd7810",  "NEC uPD7810")
+DEFINE_DEVICE_TYPE(UPD78C10, upd78c10_device, "upd78c10", "NEC uPD78C10")
+DEFINE_DEVICE_TYPE(UPD7807,  upd7807_device,  "upd7807",  "NEC uPD7807")
+DEFINE_DEVICE_TYPE(UPD7801,  upd7801_device,  "upd7801",  "NEC uPD7801")
+DEFINE_DEVICE_TYPE(UPD78C05, upd78c05_device, "upd78c05", "NEC uPD78C05")
+DEFINE_DEVICE_TYPE(UPD78C06, upd78c06_device, "upd78c06", "NEC uPD78C06")
 
 
-static ADDRESS_MAP_START( upd_internal_128_ram_map, AS_PROGRAM, 8, upd7810_device )
-	AM_RANGE(0xff80, 0xffff) AM_RAM
-ADDRESS_MAP_END
+void upd7810_device::upd_internal_128_ram_map(address_map &map)
+{
+	map(0xff80, 0xffff).ram();
+}
 
-static ADDRESS_MAP_START( upd_internal_256_ram_map, AS_PROGRAM, 8, upd7810_device )
-	AM_RANGE(0xff00, 0xffff) AM_RAM
-ADDRESS_MAP_END
+void upd7810_device::upd_internal_256_ram_map(address_map &map)
+{
+	map(0xff00, 0xffff).ram();
+}
 
 upd7810_device::upd7810_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_constructor internal_map)
 	: cpu_device(mconfig, type, tag, owner, clock)
@@ -418,6 +426,11 @@ upd7810_device::upd7810_device(const machine_config &mconfig, device_type type, 
 	, m_pf_out_cb(*this)
 	, m_pt_in_cb(*this)
 	, m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0, internal_map)
+	, m_pa_pullups(0xff)
+	, m_pb_pullups(0xff)
+	, m_pc_pullups(0xff)
+	, m_pd_pullups(0xff)
+	, m_pf_pullups(0xff)
 {
 }
 
@@ -434,7 +447,17 @@ void upd7810_device::configure_ops()
 }
 
 upd7810_device::upd7810_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: upd7810_device(mconfig, UPD7810, tag, owner, clock, ADDRESS_MAP_NAME(upd_internal_256_ram_map))
+	: upd7810_device(mconfig, UPD7810, tag, owner, clock, address_map_constructor(FUNC(upd7810_device::upd_internal_256_ram_map), this))
+{
+}
+
+upd78c10_device::upd78c10_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_constructor internal_map)
+	: upd7810_device(mconfig, type, tag, owner, clock, internal_map)
+{
+}
+
+upd78c10_device::upd78c10_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: upd78c10_device(mconfig, UPD78C10, tag, owner, clock, address_map_constructor(FUNC(upd78c10_device::upd_internal_256_ram_map), this))
 {
 }
 
@@ -452,7 +475,7 @@ void upd7807_device::configure_ops()
 
 
 upd7807_device::upd7807_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: upd7810_device(mconfig, UPD7807, tag, owner, clock, ADDRESS_MAP_NAME(upd_internal_256_ram_map))
+	: upd7810_device(mconfig, UPD7807, tag, owner, clock, address_map_constructor(FUNC(upd7807_device::upd_internal_256_ram_map), this))
 {
 }
 
@@ -469,7 +492,7 @@ void upd7801_device::configure_ops()
 }
 
 upd7801_device::upd7801_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: upd7810_device(mconfig, UPD7801, tag, owner, clock, ADDRESS_MAP_NAME(upd_internal_128_ram_map))
+	: upd7810_device(mconfig, UPD7801, tag, owner, clock, address_map_constructor(FUNC(upd7801_device::upd_internal_128_ram_map), this))
 {
 }
 
@@ -491,7 +514,7 @@ upd78c05_device::upd78c05_device(const machine_config &mconfig, const char *tag,
 }
 
 upd78c05_device::upd78c05_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
-	: upd7810_device(mconfig, type, tag, owner, clock, ADDRESS_MAP_NAME(upd_internal_128_ram_map))
+	: upd7810_device(mconfig, type, tag, owner, clock, address_map_constructor(FUNC(upd78c05_device::upd_internal_128_ram_map), this))
 {
 }
 
@@ -519,51 +542,47 @@ device_memory_interface::space_config_vector upd7810_device::memory_space_config
 	};
 }
 
-offs_t upd7810_device::disasm_disassemble(std::ostream &stream, offs_t pc, const uint8_t *oprom, const uint8_t *opram, uint32_t options)
+std::unique_ptr<util::disasm_interface> upd7810_device::create_disassembler()
 {
-	extern CPU_DISASSEMBLE( upd7810 );
-	return CPU_DISASSEMBLE_NAME(upd7810)(this, stream, pc, oprom, opram, options);
+	return std::make_unique<upd7810_disassembler>();
 }
 
-offs_t upd7807_device::disasm_disassemble(std::ostream &stream, offs_t pc, const uint8_t *oprom, const uint8_t *opram, uint32_t options)
+std::unique_ptr<util::disasm_interface> upd7807_device::create_disassembler()
 {
-	extern CPU_DISASSEMBLE( upd7807 );
-	return CPU_DISASSEMBLE_NAME(upd7807)(this, stream, pc, oprom, opram, options);
+	return std::make_unique<upd7807_disassembler>();
 }
 
-offs_t upd7801_device::disasm_disassemble(std::ostream &stream, offs_t pc, const uint8_t *oprom, const uint8_t *opram, uint32_t options)
+std::unique_ptr<util::disasm_interface> upd7801_device::create_disassembler()
 {
-	extern CPU_DISASSEMBLE( upd7801 );
-	return CPU_DISASSEMBLE_NAME(upd7801)(this, stream, pc, oprom, opram, options);
+	return std::make_unique<upd7801_disassembler>();
 }
 
-offs_t upd78c05_device::disasm_disassemble(std::ostream &stream, offs_t pc, const uint8_t *oprom, const uint8_t *opram, uint32_t options)
+std::unique_ptr<util::disasm_interface> upd78c05_device::create_disassembler()
 {
-	extern CPU_DISASSEMBLE( upd78c05 );
-	return CPU_DISASSEMBLE_NAME(upd78c05)(this, stream, pc, oprom, opram, options);
+	return std::make_unique<upd78c05_disassembler>();
 }
 
-WRITE8_MEMBER(upd7810_device::pa_w)
+void upd7810_device::pa_w(uint8_t data, uint8_t mem_mask)
 {
 	COMBINE_DATA(&m_pa_in);
 }
 
-WRITE8_MEMBER(upd7810_device::pb_w)
+void upd7810_device::pb_w(uint8_t data, uint8_t mem_mask)
 {
 	COMBINE_DATA(&m_pb_in);
 }
 
-WRITE8_MEMBER(upd7810_device::pc_w)
+void upd7810_device::pc_w(uint8_t data, uint8_t mem_mask)
 {
 	COMBINE_DATA(&m_pc_in);
 }
 
-WRITE8_MEMBER(upd7810_device::pd_w)
+void upd7810_device::pd_w(uint8_t data, uint8_t mem_mask)
 {
 	COMBINE_DATA(&m_pd_in);
 }
 
-WRITE8_MEMBER(upd7810_device::pf_w)
+void upd7810_device::pf_w(uint8_t data, uint8_t mem_mask)
 {
 	COMBINE_DATA(&m_pf_in);
 }
@@ -656,20 +675,17 @@ void upd7810_device::WP(offs_t port, uint8_t data)
 	{
 	case UPD7810_PORTA:
 		m_pa_out = data;
-//      data = (data & ~m_ma) | (m_pa_in & m_ma);
-		data = (data & ~m_ma) | (m_ma); // NS20031401
+		data = (data & ~m_ma) | (m_pa_pullups & m_ma);
 		m_pa_out_cb(data);
 		break;
 	case UPD7810_PORTB:
 		m_pb_out = data;
-//      data = (data & ~m_mb) | (m_pb_in & m_mb);
-		data = (data & ~m_mb) | (m_mb); // NS20031401
+		data = (data & ~m_mb) | (m_pb_pullups & m_mb);
 		m_pb_out_cb(data);
 		break;
 	case UPD7810_PORTC:
 		m_pc_out = data;
-//      data = (data & ~m_mc) | (m_pc_in & m_mc);
-		data = (data & ~m_mc) | (m_mc); // NS20031401
+		data = (data & ~m_mc) | (m_pc_pullups & m_mc);
 		if (m_mcc & 0x01)   /* PC0 = TxD output */
 			data = (data & ~0x01) | (m_txd & 1 ? 0x01 : 0x00);
 		if (m_mcc & 0x02)   /* PC1 = RxD input */
@@ -693,7 +709,7 @@ void upd7810_device::WP(offs_t port, uint8_t data)
 		switch (m_mm & 0x07)
 		{
 		case 0x00:          /* PD input mode, PF port mode */
-			data = m_pd_in;
+			data = m_pd_pullups;
 			break;
 		case 0x01:          /* PD output mode, PF port mode */
 			data = m_pd_out;
@@ -705,7 +721,7 @@ void upd7810_device::WP(offs_t port, uint8_t data)
 		break;
 	case UPD7810_PORTF:
 		m_pf_out = data;
-		data = (data & ~m_mf) | (m_pf_in & m_mf);
+		data = (data & ~m_mf) | (m_pf_pullups & m_mf);
 		switch (m_mm & 0x06)
 		{
 		case 0x00:          /* PD input/output mode, PF port mode */
@@ -733,7 +749,7 @@ void upd7810_device::upd7810_take_irq()
 	int irqline = 0;
 
 	/* global interrupt disable? */
-	if (0 == IFF)
+	if (0 == IFF && !(IRR & INTNMI))
 		return;
 
 	/* check the interrupts in priority sequence */
@@ -748,21 +764,22 @@ void upd7810_device::upd7810_take_irq()
 	if ((IRR & INTFT0)  && 0 == (MKL & 0x02))
 	{
 		vector = 0x0008;
-		if (!((IRR & INTFT1)    && 0 == (MKL & 0x04)))
-		IRR&=~INTFT0;
+		if (0 != (MKL & 0x04))
+			IRR&=~INTFT0;
 	}
 	else
 	if ((IRR & INTFT1)  && 0 == (MKL & 0x04))
 	{
 		vector = 0x0008;
-		IRR&=~INTFT1;
+		if (0 != (MKL & 0x02))
+			IRR&=~INTFT1;
 	}
 	else
 	if ((IRR & INTF1)   && 0 == (MKL & 0x08))
 	{
 		irqline = UPD7810_INTF1;
 		vector = 0x0010;
-		if (!((IRR & INTF2) && 0 == (MKL & 0x10)))
+		if (0 != (MKL & 0x10))
 			IRR&=~INTF1;
 	}
 	else
@@ -770,42 +787,50 @@ void upd7810_device::upd7810_take_irq()
 	{
 		irqline = UPD7810_INTF2;
 		vector = 0x0010;
-		IRR&=~INTF2;
+		if (0 != (MKL & 0x08))
+			IRR&=~INTF2;
 	}
 	else
 	if ((IRR & INTFE0)  && 0 == (MKL & 0x20))
 	{
 		vector = 0x0018;
-		if (!((IRR & INTFE1)    && 0 == (MKL & 0x40)))
-		IRR&=~INTFE0;
+		if (0 != (MKL & 0x40))
+			IRR&=~INTFE0;
 	}
 	else
 	if ((IRR & INTFE1)  && 0 == (MKL & 0x40))
 	{
 		vector = 0x0018;
-		IRR&=~INTFE1;
+		if (0 != (MKL & 0x20))
+			IRR&=~INTFE1;
 	}
 	else
 	if ((IRR & INTFEIN) && 0 == (MKL & 0x80))
 	{
 		vector = 0x0020;
+		if (0 != (MKH & 0x01))
+			IRR&=~INTFEIN;
 	}
 	else
 	if ((IRR & INTFAD)  && 0 == (MKH & 0x01))
 	{
 		vector = 0x0020;
+		if (0 != (MKL & 0x80))
+			IRR&=~INTFAD;
 	}
 	else
 	if ((IRR & INTFSR)  && 0 == (MKH & 0x02))
 	{
 		vector = 0x0028;
-		IRR&=~INTFSR;
+		if (0 != (MKH & 0x04))
+			IRR&=~INTFSR;
 	}
 	else
 	if ((IRR & INTFST)  && 0 == (MKH & 0x04))
 	{
 		vector = 0x0028;
-		IRR&=~INTFST;
+		if (0 != (MKH & 0x02))
+			IRR&=~INTFST;
 	}
 
 	if (vector)
@@ -819,7 +844,7 @@ void upd7810_device::upd7810_take_irq()
 		WM( SP, PCH );
 		SP--;
 		WM( SP, PCL );
-		IFF = 0;
+		IFF = m_iff_pending = 0;
 		PSW &= ~(SK|L0|L1);
 		PC = vector;
 	}
@@ -880,7 +905,7 @@ void upd7801_device::upd7810_take_irq()
 		WM( SP, PCH );
 		SP--;
 		WM( SP, PCL );
-		IFF = 0;
+		IFF = m_iff_pending = 0;
 		PSW &= ~(SK|L0|L1);
 		PC = vector;
 	}
@@ -1183,6 +1208,12 @@ void upd7810_device::upd7810_sio_input()
 	{
 		if (SML & 0x03)     /* asynchronous mode ? */
 		{
+			// start bit check
+			RXD = m_rxd_func();
+			m_rxs = (m_rxs >> 1) | ((uint16_t)RXD << 15);
+			if ((m_rxs & 0xc000) != 0x4000)
+				return;
+
 			switch (SML & 0xfc)
 			{
 			case 0x48:  /* 7bits, no parity, 1 stop bit */
@@ -1303,11 +1334,11 @@ void upd7810_device::handle_timers(int cycles)
 	{
 		switch (TMM & 0x0c) /* timer 0 clock source */
 		{
-		case 0x00:  /* clock divided by 12 */
-			upd7810_handle_timer0(cycles, 12);
+		case 0x00:  /* clock divided by 12 (machine cycles divided by 4) */
+			upd7810_handle_timer0(cycles, 4);
 			break;
-		case 0x04:  /* clock divided by 384 */
-			upd7810_handle_timer0(cycles, 384);
+		case 0x04:  /* clock divided by 384 (machine cycles divided by 128) */
+			upd7810_handle_timer0(cycles, 128);
 			break;
 		case 0x08:  /* external signal at TI */
 			break;
@@ -1323,11 +1354,11 @@ void upd7810_device::handle_timers(int cycles)
 	{
 		switch (TMM & 0x60) /* timer 1 clock source */
 		{
-		case 0x00:  /* clock divided by 12 */
-			upd7810_handle_timer1(cycles, 12);
+		case 0x00:  /* clock divided by 12 (machine cycles divided by 4) */
+			upd7810_handle_timer1(cycles, 4);
 			break;
-		case 0x20:  /* clock divided by 384 */
-			upd7810_handle_timer1(cycles, 384);
+		case 0x20:  /* clock divided by 384 (machine cycles divided by 128) */
+			upd7810_handle_timer1(cycles, 128);
 			break;
 		case 0x40:  /* external signal at TI */
 			break;
@@ -1341,11 +1372,11 @@ void upd7810_device::handle_timers(int cycles)
 	if (0x02 == (TMM & 0x03))
 	{
 		OVCF += cycles;
-		while (OVCF >= 3)
+		while (OVCF >= 1)
 		{
 			TO ^= 1;
 			m_to_func(TO);
-			OVCF -= 3;
+			OVCF -= 1;
 		}
 	}
 
@@ -1358,9 +1389,9 @@ void upd7810_device::handle_timers(int cycles)
 	{
 		OVCE += cycles;
 		/* clock divided by 12 */
-		while (OVCE >= 12)
+		while (OVCE >= 12/3)
 		{
-			OVCE -= 12;
+			OVCE -= 12/3;
 			ECNT++;
 			/* Interrupt Control Circuit */
 			if (ETM0 == ECNT)
@@ -1409,9 +1440,9 @@ void upd7810_device::handle_timers(int cycles)
 		break;
 	case 0x01:      /* internal clock divided by 384 */
 		OVCS += cycles;
-		while (OVCS >= 384)
+		while (OVCS >= 384/3)
 		{
-			OVCS -= 384;
+			OVCS -= 384/3;
 			if (0 == (EDGES ^= 1))
 				upd7810_sio_input();
 			else
@@ -1420,9 +1451,9 @@ void upd7810_device::handle_timers(int cycles)
 		break;
 	case 0x02:      /* internal clock divided by 24 */
 		OVCS += cycles;
-		while (OVCS >= 24)
+		while (OVCS >= 24/3)
 		{
-			OVCS -= 24;
+			OVCS -= 24/3;
 			if (0 == (EDGES ^= 1))
 				upd7810_sio_input();
 			else
@@ -1479,10 +1510,11 @@ void upd7810_device::handle_timers(int cycles)
 			m_adcnt -= m_adtot;
 			switch (m_adout)
 			{
-				case 0: CR0 = m_tmpcr; break;
-				case 1: CR1 = m_tmpcr; break;
-				case 2: CR2 = m_tmpcr; break;
-				case 3: CR3 = m_tmpcr; break;
+				// volfied code checks bit 0x80, old code set bit 0x01, TODO: verify which bits are set on real hw
+				case 0: CR0 = m_tmpcr ? 0xff:0x00; break;
+				case 1: CR1 = m_tmpcr ? 0xff:0x00; break;
+				case 2: CR2 = m_tmpcr ? 0xff:0x00; break;
+				case 3: CR3 = m_tmpcr ? 0xff:0x00; break;
 			}
 			m_adout = (m_adout + 1) & 0x03;
 			if (m_adout == 0)
@@ -1513,10 +1545,10 @@ void upd7810_device::handle_timers(int cycles)
 			m_adcnt -= m_adtot;
 			switch (m_adout)
 			{
-				case 0: CR0 = m_tmpcr; break;
-				case 1: CR1 = m_tmpcr; break;
-				case 2: CR2 = m_tmpcr; break;
-				case 3: CR3 = m_tmpcr; break;
+				case 0: CR0 = m_tmpcr ? 0xff:0x00; break;
+				case 1: CR1 = m_tmpcr ? 0xff:0x00; break;
+				case 2: CR2 = m_tmpcr ? 0xff:0x00; break;
+				case 3: CR3 = m_tmpcr ? 0xff:0x00; break;
 			}
 			m_adin  = (m_adin  + 1) & 0x07;
 			m_adout = (m_adout + 1) & 0x03;
@@ -1544,7 +1576,7 @@ void upd7801_device::handle_timers(int cycles)
 			m_to_func(TO);
 
 			/* Reload the timer */
-			m_ovc0 = 16 * ( TM0 + ( ( TM1 & 0x0f ) << 8 ) );
+			m_ovc0 = 8 * ( TM0 + ( ( TM1 & 0x0f ) << 8 ) );
 		}
 	}
 }
@@ -1570,14 +1602,14 @@ void upd78c05_device::handle_timers(int cycles)
 
 void upd7810_device::base_device_start()
 {
-	m_program = &space(AS_PROGRAM);
-	m_direct = &m_program->direct();
+	space(AS_PROGRAM).specific(m_program);
+	space(AS_PROGRAM).cache(m_opcodes);
 
 	m_to_func.resolve_safe();
 	m_co0_func.resolve_safe();
 	m_co1_func.resolve_safe();
 	m_txd_func.resolve_safe();
-	m_rxd_func.resolve_safe(0);
+	m_rxd_func.resolve_safe(1);
 	m_an0_func.resolve_safe(0);
 	m_an1_func.resolve_safe(0);
 	m_an2_func.resolve_safe(0);
@@ -1610,6 +1642,7 @@ void upd7810_device::base_device_start()
 	save_item(NAME(m_op));
 	save_item(NAME(m_op2));
 	save_item(NAME(m_iff));
+	save_item(NAME(m_iff_pending));
 	save_item(NAME(m_ea.w.l));
 	save_item(NAME(m_va.w.l));
 	save_item(NAME(m_bc.w.l));
@@ -1630,6 +1663,7 @@ void upd7810_device::base_device_start()
 	save_item(NAME(m_mc));
 	save_item(NAME(m_mm));
 	save_item(NAME(m_mf));
+	save_item(NAME(m_mt)); // TODO: uPD7807 only
 	save_item(NAME(m_tmm));
 	save_item(NAME(m_etmm));
 	save_item(NAME(m_eom));
@@ -1671,7 +1705,7 @@ void upd7810_device::base_device_start()
 	save_item(NAME(m_int1));
 	save_item(NAME(m_int2));
 
-	m_icountptr = &m_icount;
+	set_icountptr(m_icount);
 }
 
 void upd7810_device::device_start()
@@ -1795,6 +1829,7 @@ void upd7810_device::device_reset()
 	m_op = 0;
 	m_op2 = 0;
 	m_iff = 0;
+	m_iff_pending = 0;
 	m_psw = 0;
 	m_ea.d = 0;
 	m_va.d = 0;
@@ -1884,6 +1919,7 @@ void upd7801_device::device_reset()
 	upd7810_device::device_reset();
 	MA = 0;     /* Port A is output port on the uPD7801 */
 	m_ovc0 = 0;
+	m_int2 = 0;
 }
 
 void upd78c05_device::device_reset()
@@ -1902,9 +1938,9 @@ void upd7810_device::execute_run()
 	{
 		int cc;
 
-		debugger_instruction_hook(this, PC);
-
 		PPC = PC;
+		debugger_instruction_hook(PC);
+
 		RDOP(OP);
 
 		/*
@@ -1970,7 +2006,7 @@ void upd7810_device::execute_run()
 		}
 		m_icount -= cc;
 		upd7810_take_irq();
-
+		m_iff = m_iff_pending;
 	} while (m_icount > 0);
 }
 

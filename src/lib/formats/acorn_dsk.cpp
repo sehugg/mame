@@ -1,4 +1,4 @@
-// license:GPL-2.0+
+// license:BSD-3-Clause
 // copyright-holders:Dirk Best, Nigel Barnes
 /***************************************************************************
 
@@ -43,6 +43,11 @@ int acorn_ssd_format::find_size(io_generic *io, uint32_t form_factor)
 		// test for Torch CPN - test pattern at sector &0018
 		io_generic_read(io, cat, 0x32800, 8);
 		if (memcmp(cat, "\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd", 4) == 0 && size == (uint64_t)compute_track_size(f) * f.track_count * f.head_count)
+			return i;
+
+		// test for HADFS - test pattern at sector 70
+		io_generic_read(io, cat, 0x04610, 8);
+		if (memcmp(cat, "\x00\x28\x43\x29\x4a\x47\x48\x00", 4) == 0 && size == (uint64_t)compute_track_size(f) * f.track_count * f.head_count)
 			return i;
 
 		// read sector count from side 0 catalogue
@@ -111,6 +116,26 @@ const acorn_ssd_format::format acorn_ssd_format::formats[] =
 		floppy_image::FF_525, floppy_image::DSQD, floppy_image::FM,
 		4000, 10, 80, 2, 256, {}, 0, {}, 40, 10, 10
 	},
+	{ // 100k 40 track single sided single density
+		floppy_image::FF_35, floppy_image::SSSD, floppy_image::FM,
+		4000, 10, 40, 1, 256,{}, 0,{}, 40, 10, 10
+	},
+	{ // 200k 80 track single sided single density
+		floppy_image::FF_35, floppy_image::SSDD, floppy_image::FM,
+		4000, 10, 80, 1, 256,{}, 0,{}, 40, 10, 10
+	},
+	{ // 200k 40 track double sided single density
+		floppy_image::FF_35, floppy_image::DSSD, floppy_image::FM,
+		4000, 10, 40, 2, 256,{}, 0,{}, 40, 10, 10
+	},
+	{ // 400k 80 track double sided single density
+		floppy_image::FF_35, floppy_image::DSDD, floppy_image::FM,
+		4000, 10, 80, 2, 256,{}, 0,{}, 40, 10, 10
+	},
+	{ // 100k 40 track single sided single density
+		floppy_image::FF_3, floppy_image::SSSD, floppy_image::FM,
+		4000, 10, 40, 1, 256,{}, 0,{}, 40, 10, 10
+	},
 	{}
 };
 
@@ -148,6 +173,11 @@ int acorn_dsd_format::find_size(io_generic *io, uint32_t form_factor)
 		// test for Torch CPN - test pattern at sector &0018
 		io_generic_read(io, cat, 0x1200, 8);
 		if (memcmp(cat, "\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd", 4) == 0 && size == (uint64_t)compute_track_size(f) * f.track_count * f.head_count)
+			return i;
+
+		// test for HADFS - test pattern at sector 70
+		io_generic_read(io, cat, 0x08c10, 8);
+		if (memcmp(cat, "\x00\x28\x43\x29\x4a\x47\x48\x00", 4) == 0 && size == (uint64_t)compute_track_size(f) * f.track_count * f.head_count)
 			return i;
 
 		// read sector count from side 0 catalogue
@@ -200,6 +230,14 @@ const acorn_dsd_format::format acorn_dsd_format::formats[] =
 	{ // 200k 40 track double sided single density (interleaved)
 		floppy_image::FF_525, floppy_image::DSSD, floppy_image::FM,
 		4000, 10, 40, 2, 256, {}, -1, { 0,1,2,3,4,5,6,7,8,9 }, 40, 10, 10
+	},
+	{ // 400k 80 track double sided single density (interleaved)
+		floppy_image::FF_35, floppy_image::DSDD, floppy_image::FM,
+		4000, 10, 80, 2, 256,{}, -1,{ 0,1,2,3,4,5,6,7,8,9 }, 40, 10, 10
+	},
+	{ // 200k 40 track double sided single density (interleaved)
+		floppy_image::FF_35, floppy_image::DSSD, floppy_image::FM,
+		4000, 10, 40, 2, 256,{}, -1,{ 0,1,2,3,4,5,6,7,8,9 }, 40, 10, 10
 	},
 	{}
 };

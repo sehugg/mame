@@ -67,6 +67,7 @@
 #define MC      m_mc
 #define MM      m_mm
 #define MF      m_mf
+#define MT      m_mt
 #define TMM     m_tmm
 #define ETMM    m_etmm
 #define EOM     m_eom
@@ -104,10 +105,10 @@
 //  MEMORY/OPCODE READ/WRITE
 //**************************************************************************
 
-#define RDOP(O)     O = m_direct->read_byte(PCD); PC++
-#define RDOPARG(A)  A = m_direct->read_byte(PCD); PC++
-#define RM(A)       m_program->read_byte(A)
-#define WM(A,V)     m_program->write_byte(A,V)
+#define RDOP(O)     O = m_opcodes.read_byte(PCD); PC++
+#define RDOPARG(A)  A = m_opcodes.read_byte(PCD); PC++
+#define RM(A)       m_program.read_byte(A)
+#define WM(A,V)     m_program.write_byte(A,V)
 
 
 //**************************************************************************

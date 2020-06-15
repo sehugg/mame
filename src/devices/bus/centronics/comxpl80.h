@@ -11,7 +11,6 @@
 
 #pragma once
 
-#include "cpu/m6805/m6805.h"
 #include "bus/centronics/ctronics.h"
 
 
@@ -28,12 +27,6 @@ class comx_pl80_device :  public device_t,
 public:
 	// construction/destruction
 	comx_pl80_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	// not really public
-	DECLARE_WRITE8_MEMBER( pa_w );
-	DECLARE_WRITE8_MEMBER( pb_w );
-	DECLARE_WRITE8_MEMBER( pc_w );
-	DECLARE_READ8_MEMBER( pd_r );
 
 protected:
 	// device-level overrides
@@ -69,6 +62,11 @@ private:
 	int m_plotter_online;       // online LED
 
 	uint8_t m_data;
+
+	DECLARE_WRITE8_MEMBER( pa_w );
+	DECLARE_WRITE8_MEMBER( pb_w );
+	DECLARE_WRITE8_MEMBER( pc_w );
+	DECLARE_READ8_MEMBER( pd_r );
 };
 
 

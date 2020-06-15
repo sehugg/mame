@@ -34,9 +34,6 @@ void taitosj_state::machine_reset()
 	/* never write to the bank selector register) */
 	taitosj_bankswitch_w(space, 0, 0);
 
-	if (m_mcu)
-		m_mcu->reset_w(PULSE_LINE);
-
 	m_spacecr_prot_value = 0;
 }
 
@@ -79,28 +76,28 @@ WRITE8_MEMBER(taitosj_state::taitosj_bankswitch_w)
 ***************************************************************************/
 READ8_MEMBER(taitosj_state::taitosj_fake_data_r)
 {
-	LOG(("%04x: protection read\n",space.device().safe_pc()));
+	LOG(("%04x: protection read\n",m_maincpu->pc()));
 	return 0;
 }
 
 WRITE8_MEMBER(taitosj_state::taitosj_fake_data_w)
 {
-	LOG(("%04x: protection write %02x\n",space.device().safe_pc(),data));
+	LOG(("%04x: protection write %02x\n",m_maincpu->pc(),data));
 }
 
 READ8_MEMBER(taitosj_state::taitosj_fake_status_r)
 {
-	LOG(("%04x: protection status read\n",space.device().safe_pc()));
+	LOG(("%04x: protection status read\n",m_maincpu->pc()));
 	return 0xff;
 }
 
 
-READ8_MEMBER(taitosj_state::mcu_mem_r)
+uint8_t taitosj_state::mcu_mem_r(offs_t offset)
 {
 	return m_maincpu->space(AS_PROGRAM).read_byte(offset);
 }
 
-WRITE8_MEMBER(taitosj_state::mcu_mem_w)
+void taitosj_state::mcu_mem_w(offs_t offset, uint8_t data)
 {
 	m_maincpu->space(AS_PROGRAM).write_byte(offset, data);
 }
@@ -124,7 +121,7 @@ WRITE_LINE_MEMBER(taitosj_state::mcu_busrq_w)
 
 READ8_MEMBER(taitosj_state::spacecr_prot_r)
 {
-	int pc = space.device().safe_pc();
+	int pc = m_maincpu->pc();
 
 	if( pc != 0x368A && pc != 0x36A6 )
 		logerror("Read protection from an unknown location: %04X\n",pc);

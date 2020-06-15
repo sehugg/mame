@@ -2,8 +2,7 @@
 // copyright-holders:Patrick Mackinlay
 
 /*
- * An initial very primitive emulation of the SR bus for the Intergraph
- * InterPro.
+ * Shared Resource (SR) Bus emulation for Intergraph InterPro systems.
  *
  * The bus is referred to by several different names at different places
  * in the system code, such as SR, SR bus, SRX, SRX/C bus, CBUS and some
@@ -260,104 +259,95 @@
 #define VERBOSE 0
 #include "logmacro.h"
 
-DEFINE_DEVICE_TYPE(SR_SLOT, sr_slot_device, "sr_slot", "InterPro SR bus slot")
+DEFINE_DEVICE_TYPE(CBUS_BUS, cbus_bus_device, "cbus_bus", "InterPro CBUS bus")
+DEFINE_DEVICE_TYPE(CBUS_SLOT, cbus_slot_device, "cbus_slot", "InterPro CBUS slot")
 
-sr_slot_device::sr_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: device_t(mconfig, SR_SLOT, tag, owner, clock)
-	, device_slot_interface(mconfig, *this)
-	, m_sr_tag(nullptr)
-	, m_sr_slottag(nullptr)
+DEFINE_DEVICE_TYPE(SRX_BUS, srx_bus_device, "srx_bus", "InterPro SRX bus")
+DEFINE_DEVICE_TYPE(SRX_SLOT, srx_slot_device, "srx_slot", "InterPro SRX slot")
+
+void interpro_bus_device::device_resolve_objects()
 {
-}
-
-void sr_slot_device::static_set_sr_slot(device_t &device, const char *tag, const char *slottag)
-{
-	sr_slot_device &sr_card = dynamic_cast<sr_slot_device &>(device);
-
-	sr_card.m_sr_tag = tag;
-	sr_card.m_sr_slottag = slottag;
-}
-
-void sr_slot_device::device_start()
-{
-	device_sr_card_interface *dev = dynamic_cast<device_sr_card_interface *>(get_card_device());
-
-	if (dev)
-		device_sr_card_interface::static_set_sr_tag(*dev, m_sr_tag, m_sr_slottag);
-}
-
-DEFINE_DEVICE_TYPE(SR, sr_device, "sr", "InterPro SR bus")
-
-sr_device::sr_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: device_t(mconfig, SR, tag, owner, clock)
-	, m_data_space(nullptr)
-	, m_io_space(nullptr)
-	, m_out_irq0_cb(*this)
-	, m_out_irq1_cb(*this)
-	, m_out_irq2_cb(*this)
-{
-}
-
-void sr_device::device_start()
-{
-	// grab the main memory space from the mmu
-	device_memory_interface *mmu;
-	siblingdevice("mmu")->interface(mmu);
-	m_data_space = &mmu->space(0);
-	m_io_space = &mmu->space(1);
-
 	// resolve callbacks
 	m_out_irq0_cb.resolve_safe();
 	m_out_irq1_cb.resolve_safe();
 	m_out_irq2_cb.resolve_safe();
-
-	// empty the slots
-	m_slot_count = 0;
-	for (device_sr_card_interface *&slot : m_slot)
-		slot = nullptr;
+	m_out_irq3_cb.resolve_safe();
 }
 
-void sr_device::device_reset()
+cbus_bus_device::cbus_bus_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
+	: interpro_bus_device(mconfig, CBUS_BUS, tag, owner, clock)
+	, m_slot_count(0)
+{
+	std::fill(std::begin(m_slot), std::end(m_slot), nullptr);
+}
+
+void cbus_bus_device::device_start()
 {
 }
 
-device_sr_card_interface::device_sr_card_interface(const machine_config &mconfig, device_t &device)
-	: device_slot_card_interface(mconfig, device)
-	, m_sr(nullptr)
-	, m_sr_tag(nullptr)
-	, m_sr_slottag(nullptr)
+cbus_slot_device::cbus_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
+	: device_t(mconfig, CBUS_SLOT, tag, owner, clock)
+	, device_slot_interface(mconfig, *this)
+	, m_bus(*this, finder_base::DUMMY_TAG)
 {
 }
 
-device_sr_card_interface::~device_sr_card_interface()
+void cbus_slot_device::device_resolve_objects()
+{
+	device_cbus_card_interface *const card(dynamic_cast<device_cbus_card_interface *>(get_card_device()));
+
+	if (card)
+		card->set_bus_device(*m_bus);
+}
+
+void cbus_slot_device::device_start()
 {
 }
 
-void device_sr_card_interface::static_set_sr_tag(device_t &device, const char *tag, const char *slottag)
+void device_cbus_card_interface::set_bus_device(cbus_bus_device &bus_device)
 {
-	device_sr_card_interface &sr_card = dynamic_cast<device_sr_card_interface &>(device);
-
-	sr_card.m_sr_tag = tag;
-	sr_card.m_sr_slottag = slottag;
-}
-
-void device_sr_card_interface::set_sr_device()
-{
-	// get a reference to the bus
-	m_sr = dynamic_cast<sr_device *>(device().machine().device(m_sr_tag));
+	// keep a reference to the bus
+	m_bus = &bus_device;
 
 	// install the card in the next available slot
-	m_sr->install_card(*this, &device_sr_card_interface::map);
+	m_bus->install_card(*this, device().memregion(m_idprom_region), &device_cbus_card_interface::map);
 }
 
-sr_card_device_base::sr_card_device_base(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, const char *idprom_region)
-	: device_t(mconfig, type, tag, owner, clock)
-	, device_sr_card_interface(mconfig, *this)
-	, m_idprom_region(idprom_region)
+srx_bus_device::srx_bus_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
+	: interpro_bus_device(mconfig, SRX_BUS, tag, owner, clock)
+	, m_slot_count(1) // first slot is used by the system board
+{
+	std::fill(std::begin(m_slot), std::end(m_slot), nullptr);
+}
+
+void srx_bus_device::device_start()
 {
 }
 
-void sr_card_device_base::device_start()
+srx_slot_device::srx_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
+	: device_t(mconfig, SRX_SLOT, tag, owner, clock)
+	, device_slot_interface(mconfig, *this)
+	, m_bus(*this, finder_base::DUMMY_TAG)
 {
-	set_sr_device();
+}
+
+void srx_slot_device::device_resolve_objects()
+{
+	device_srx_card_interface *const card(dynamic_cast<device_srx_card_interface *>(get_card_device()));
+
+	if (card)
+		card->set_bus_device(*m_bus);
+}
+
+void srx_slot_device::device_start()
+{
+}
+
+void device_srx_card_interface::set_bus_device(srx_bus_device &bus_device)
+{
+	// keep a reference to the bus
+	m_bus = &bus_device;
+
+	// install the card in the next available slot
+	m_bus->install_card(*this, device().memregion(m_idprom_region), &device_srx_card_interface::map);
 }

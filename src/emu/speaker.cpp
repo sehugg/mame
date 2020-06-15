@@ -14,16 +14,6 @@
 
 
 //**************************************************************************
-//  DEBUGGING
-//**************************************************************************
-
-#define VERBOSE         (0)
-
-#define VPRINTF(x)      do { if (VERBOSE) osd_printf_debug x; } while (0)
-
-
-
-//**************************************************************************
 //  GLOBAL VARIABLES
 //**************************************************************************
 
@@ -70,20 +60,6 @@ speaker_device::~speaker_device()
 
 
 //-------------------------------------------------
-//  static_set_position - configuration helper to
-//  set the speaker position
-//-------------------------------------------------
-
-void speaker_device::static_set_position(device_t &device, double x, double y, double z)
-{
-	speaker_device &speaker = downcast<speaker_device &>(device);
-	speaker.m_x = x;
-	speaker.m_y = y;
-	speaker.m_z = z;
-}
-
-
-//-------------------------------------------------
 //  mix - mix in samples from the speaker's stream
 //-------------------------------------------------
 
@@ -103,8 +79,8 @@ void speaker_device::mix(s32 *leftmix, s32 *rightmix, int &samples_this_update, 
 		samples_this_update = numsamples;
 
 		// reset the mixing streams
-		memset(leftmix, 0, samples_this_update * sizeof(*leftmix));
-		memset(rightmix, 0, samples_this_update * sizeof(*rightmix));
+		std::fill_n(leftmix, samples_this_update, 0);
+		std::fill_n(rightmix, samples_this_update, 0);
 	}
 	assert(samples_this_update == numsamples);
 

@@ -16,29 +16,6 @@
 #define I8085_TRAP_LINE     INPUT_LINE_NMI
 
 
-// STATUS changed callback
-#define MCFG_I8085A_STATUS(_devcb) \
-	devcb = &i8085a_cpu_device::set_out_status_func(*device, DEVCB_##_devcb);
-
-// INTE changed callback
-#define MCFG_I8085A_INTE(_devcb) \
-	devcb = &i8085a_cpu_device::set_out_inte_func(*device, DEVCB_##_devcb);
-
-// SID changed callback (8085A only)
-#define MCFG_I8085A_SID(_devcb) \
-	devcb = &i8085a_cpu_device::set_in_sid_func(*device, DEVCB_##_devcb);
-
-// SOD changed callback (8085A only)
-#define MCFG_I8085A_SOD(_devcb) \
-	devcb = &i8085a_cpu_device::set_out_sod_func(*device, DEVCB_##_devcb);
-
-// CLK rate callback (8085A only)
-#define MCFG_I8085A_CLK_OUT_DEVICE(_tag) \
-	i8085a_cpu_device::static_set_clk_out(*device, clock_update_delegate(FUNC(device_t::set_unscaled_clock), _tag, (device_t *)nullptr));
-#define MCFG_I8085A_CLK_OUT_CUSTOM(_class, _func) \
-	i8085a_cpu_device::static_set_clk_out(*device, clock_update_delegate(&_class::_func, #_class "::" _func, owner));
-
-
 class i8085a_cpu_device : public cpu_device
 {
 public:
@@ -65,12 +42,23 @@ public:
 	// construction/destruction
 	i8085a_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
 
-	// static configuration helpers
-	template <class Object> static devcb_base &set_out_status_func(device_t &device, Object &&cb) { return downcast<i8085a_cpu_device &>(device).m_out_status_func.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_out_inte_func(device_t &device, Object &&cb) { return downcast<i8085a_cpu_device &>(device).m_out_inte_func.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_in_sid_func(device_t &device, Object &&cb) { return downcast<i8085a_cpu_device &>(device).m_in_sid_func.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_out_sod_func(device_t &device, Object &&cb) { return downcast<i8085a_cpu_device &>(device).m_out_sod_func.set_callback(std::forward<Object>(cb)); }
-	static void static_set_clk_out(device_t &device, clock_update_delegate &&clk_out) { downcast<i8085a_cpu_device &>(device).m_clk_out_func = std::move(clk_out); }
+	// CLK rate callback (8085A only)
+	template <typename... T> void set_clk_out(T &&... args) { m_clk_out_func.set(std::forward<T>(args)...); }
+
+	// INTA vector fetch callback
+	auto in_inta_func() { return m_in_inta_func.bind(); }
+
+	// STATUS changed callback
+	auto out_status_func() { return m_out_status_func.bind(); }
+
+	// INTE changed callback
+	auto out_inte_func() { return m_out_inte_func.bind(); }
+
+	// SID changed callback (8085A only)
+	auto in_sid_func() { return m_in_sid_func.bind(); }
+
+	// SOD changed callback (8085A only)
+	auto out_sod_func() { return m_out_sod_func.bind(); }
 
 protected:
 	i8085a_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, int cputype);
@@ -82,14 +70,15 @@ protected:
 	virtual void device_reset() override;
 
 	// device_execute_interface overrides
-	virtual u32 execute_min_cycles() const override { return 4; }
-	virtual u32 execute_max_cycles() const override { return 16; }
-	virtual u32 execute_input_lines() const override { return 4; }
-	virtual u32 execute_default_irq_vector() const override { return 0xff; }
+	virtual u32 execute_min_cycles() const noexcept override { return 4; }
+	virtual u32 execute_max_cycles() const noexcept override { return 16; }
+	virtual u32 execute_input_lines() const noexcept override { return 4; }
+	virtual uint32_t execute_default_irq_vector(int inputnum) const noexcept override { return 0xff; }
+	virtual bool execute_input_edge_triggered(int inputnum) const noexcept override { return inputnum == I8085_RST75_LINE; }
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
-	virtual u64 execute_clocks_to_cycles(u64 clocks) const override { return (clocks + 2 - 1) / 2; }
-	virtual u64 execute_cycles_to_clocks(u64 cycles) const override { return (cycles * 2); }
+	virtual u64 execute_clocks_to_cycles(u64 clocks) const noexcept override { return (clocks + 2 - 1) / 2; }
+	virtual u64 execute_cycles_to_clocks(u64 cycles) const noexcept override { return (cycles * 2); }
 
 	// device_memory_interface overrides
 	virtual space_config_vector memory_space_config() const override;
@@ -100,9 +89,7 @@ protected:
 	virtual void state_import(const device_state_entry &entry) override;
 
 	// device_disasm_interface overrides
-	virtual u32 disasm_min_opcode_bytes() const override { return 1; }
-	virtual u32 disasm_max_opcode_bytes() const override { return 3; }
-	virtual offs_t disasm_disassemble(std::ostream &stream, offs_t pc, const u8 *oprom, const u8 *opram, u32 options) override;
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
 	enum
 	{
@@ -116,6 +103,7 @@ private:
 	address_space_config m_io_config;
 	address_space_config m_opcode_config;
 
+	devcb_read8 m_in_inta_func;
 	devcb_write8 m_out_status_func;
 	devcb_write_line m_out_inte_func;
 	devcb_read_line m_in_sid_func;
@@ -137,13 +125,13 @@ private:
 	u8 m_trap_pending;   /* TRAP interrupt latched? */
 	u8 m_trap_im_copy;   /* copy of IM register when TRAP was taken */
 	u8 m_sod_state;      /* state of the SOD line */
+	bool m_in_acknowledge;
 
 	bool m_ietemp;       /* import/export temp space */
 
-	address_space *m_program;
-	direct_read_data *m_direct;
-	direct_read_data *m_opcode_direct;
-	address_space *m_io;
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::cache m_cprogram, m_copcodes;
+	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::specific m_program;
+	memory_access< 8, 0, 0, ENDIANNESS_LITTLE>::specific m_io;
 	int m_icount;
 
 	/* cycles lookup */
@@ -160,6 +148,7 @@ private:
 	u8 get_rim_value();
 	void break_halt_for_interrupt();
 	u8 read_op();
+	u8 read_inta();
 	u8 read_arg();
 	PAIR read_arg16();
 	u8 read_mem(u32 a);
@@ -195,9 +184,9 @@ public:
 	i8080_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
 
 protected:
-	virtual u32 execute_input_lines() const override { return 1; }
-	virtual u64 execute_clocks_to_cycles(u64 clocks) const override { return clocks; }
-	virtual u64 execute_cycles_to_clocks(u64 cycles) const override { return cycles; }
+	virtual u32 execute_input_lines() const noexcept override { return 1; }
+	virtual u64 execute_clocks_to_cycles(u64 clocks) const noexcept override { return clocks; }
+	virtual u64 execute_cycles_to_clocks(u64 cycles) const noexcept override { return cycles; }
 };
 
 
@@ -208,9 +197,9 @@ public:
 	i8080a_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
 
 protected:
-	virtual u32 execute_input_lines() const override { return 1; }
-	virtual u64 execute_clocks_to_cycles(u64 clocks) const override { return clocks; }
-	virtual u64 execute_cycles_to_clocks(u64 cycles) const override { return cycles; }
+	virtual u32 execute_input_lines() const noexcept override { return 1; }
+	virtual u64 execute_clocks_to_cycles(u64 clocks) const noexcept override { return clocks; }
+	virtual u64 execute_cycles_to_clocks(u64 cycles) const noexcept override { return cycles; }
 };
 
 

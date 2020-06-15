@@ -11,6 +11,7 @@
 #include "emu.h"
 #include "image.h"
 #include "drivenum.h"
+#include "tilemap.h"
 
 
 //**************************************************************************
@@ -22,11 +23,20 @@
 //-------------------------------------------------
 
 driver_device::driver_device(const machine_config &mconfig, device_type type, const char *tag)
-	: device_t(mconfig, type, tag, nullptr, 0),
-		m_system(nullptr),
-		m_flip_screen_x(0),
-		m_flip_screen_y(0)
+	: device_t(mconfig, type, tag, nullptr, 0)
+	, m_system(mconfig.gamedrv())
+	, m_flip_screen_x(0)
+	, m_flip_screen_y(0)
 {
+	// set the search path to include all parents and cache it because devices search system paths
+	m_searchpath.emplace_back(m_system.name);
+	std::set<game_driver const *> seen;
+	for (int ancestor = driver_list::clone(m_system); 0 <= ancestor; ancestor = driver_list::clone(ancestor))
+	{
+		if (!seen.insert(&driver_list::driver(ancestor)).second)
+			throw emu_fatalerror("driver_device(%s): parent/clone relationships form a loop", m_system.name);
+		m_searchpath.emplace_back(driver_list::driver(ancestor).name);
+	}
 }
 
 
@@ -40,37 +50,44 @@ driver_device::~driver_device()
 
 
 //-------------------------------------------------
-//  set_game_driver - set the game in the device
-//  configuration
-//-------------------------------------------------
-
-void driver_device::set_game_driver(const game_driver &game)
-{
-	assert(!m_system);
-
-	// set the system
-	m_system = &game;
-
-	// and set the search path to include all parents
-	m_searchpath = game.name;
-	std::set<game_driver const *> seen;
-	for (int parent = driver_list::clone(game); parent != -1; parent = driver_list::clone(parent))
-	{
-		if (!seen.insert(&driver_list::driver(parent)).second)
-			throw emu_fatalerror("driver_device::set_game_driver(%s): parent/clone relationships form a loop", game.name);
-		m_searchpath.append(";").append(driver_list::driver(parent).name);
-	}
-}
-
-
-//-------------------------------------------------
 //  static_set_callback - set the a callback in
 //  the device configuration
 //-------------------------------------------------
 
 void driver_device::static_set_callback(device_t &device, callback_type type, driver_callback_delegate callback)
 {
-	downcast<driver_device &>(device).m_callbacks[type] = callback;
+	downcast<driver_device &>(device).m_callbacks[type] = std::move(callback);
+}
+
+
+//-------------------------------------------------
+//  empty_init - default implementation which
+//  calls driver init
+//-------------------------------------------------
+
+void driver_device::empty_init()
+{
+	driver_init();
+}
+
+
+//-------------------------------------------------
+//  searchpath - return cached search path
+//-------------------------------------------------
+
+std::vector<std::string> driver_device::searchpath() const
+{
+	return m_searchpath;
+}
+
+
+//-------------------------------------------------
+//  driver_init - default implementation which
+//  does nothing
+//-------------------------------------------------
+
+void driver_device::driver_init()
+{
 }
 
 
@@ -161,8 +178,7 @@ void driver_device::video_reset()
 
 const tiny_rom_entry *driver_device::device_rom_region() const
 {
-	assert(m_system);
-	return m_system->rom;
+	return m_system.rom;
 }
 
 
@@ -172,8 +188,7 @@ const tiny_rom_entry *driver_device::device_rom_region() const
 
 void driver_device::device_add_mconfig(machine_config &config)
 {
-	assert(m_system);
-	m_system->machine_config(config, this, nullptr);
+	m_system.machine_creator(config, *this);
 }
 
 
@@ -184,7 +199,7 @@ void driver_device::device_add_mconfig(machine_config &config)
 
 ioport_constructor driver_device::device_input_ports() const
 {
-	return m_system->ipt;
+	return m_system.ipt;
 }
 
 
@@ -201,7 +216,7 @@ void driver_device::device_start()
 			throw device_missing_dependencies();
 
 	// call the game-specific init
-	m_system->driver_init(machine());
+	m_system.driver_init(*this);
 
 	// finish image devices init process
 	machine().image().postdevice_init();
@@ -214,10 +229,7 @@ void driver_device::device_start()
 	else
 		machine_start();
 
-	if (!m_callbacks[CB_SOUND_START].isnull())
-		m_callbacks[CB_SOUND_START]();
-	else
-		sound_start();
+	sound_start();
 
 	if (!m_callbacks[CB_VIDEO_START].isnull())
 		m_callbacks[CB_VIDEO_START]();
@@ -246,10 +258,7 @@ void driver_device::device_reset_after_children()
 	else
 		machine_reset();
 
-	if (!m_callbacks[CB_SOUND_RESET].isnull())
-		m_callbacks[CB_SOUND_RESET]();
-	else
-		sound_reset();
+	sound_reset();
 
 	if (!m_callbacks[CB_VIDEO_RESET].isnull())
 		m_callbacks[CB_VIDEO_RESET]();
@@ -267,7 +276,7 @@ void driver_device::device_reset_after_children()
 //  NMI callbacks
 //-------------------------------------------------
 
-INTERRUPT_GEN_MEMBER( driver_device::nmi_line_pulse )   { device.execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE); }
+INTERRUPT_GEN_MEMBER( driver_device::nmi_line_pulse )   { device.execute().pulse_input_line(INPUT_LINE_NMI, attotime::zero); }
 INTERRUPT_GEN_MEMBER( driver_device::nmi_line_assert )  { device.execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE); }
 
 
@@ -335,23 +344,6 @@ void driver_device::flip_screen_set(u32 on)
 
 
 //-------------------------------------------------
-//  flip_screen_set_no_update - set global flip
-//  do not call updateflip.
-//-------------------------------------------------
-
-void driver_device::flip_screen_set_no_update(u32 on)
-{
-	// flip_screen_y is not updated on purpose
-	// this function is for drivers which
-	// were writing to flip_screen_x to
-	// bypass updateflip
-	if (on)
-		on = ~0;
-	m_flip_screen_x = on;
-}
-
-
-//-------------------------------------------------
 //  flip_screen_x_set - set global horizontal flip
 //-------------------------------------------------
 
@@ -386,22 +378,4 @@ void driver_device::flip_screen_y_set(u32 on)
 		m_flip_screen_y = on;
 		updateflip();
 	}
-}
-
-
-/***************************************************************************
-PORT READING HELPERS
-***************************************************************************/
-
-/*-------------------------------------------------
-custom_port_read - act like input_port_read
-but it is a custom port, it is useful for
-e.g. input ports which expect the same port
-repeated both in the upper and lower half
--------------------------------------------------*/
-
-CUSTOM_INPUT_MEMBER(driver_device::custom_port_read)
-{
-	const char *tag = (const char *)param;
-	return ioport(tag)->read();
 }

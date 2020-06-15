@@ -12,46 +12,8 @@
 #pragma once
 
 #include "s3c24xx.h"
+#include "emupal.h"
 
-
-/*******************************************************************************
-    MACROS / CONSTANTS
-*******************************************************************************/
-
-#define S3C2400_TAG "s3c2400"
-
-#define MCFG_S3C2400_PALETTE(palette_tag) \
-		s3c2400_device::static_set_palette_tag(*device, ("^" palette_tag));
-
-#define MCFG_S3C2400_CORE_PIN_R_CB(cb) \
-		devcb = &s3c2400_device::set_core_pin_r_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_CORE_PIN_W_CB(cb) \
-		devcb = &s3c2400_device::set_core_pin_w_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_GPIO_PORT_R_CB(cb) \
-		devcb = &s3c2400_device::set_gpio_port_r_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_GPIO_PORT_W_CB(cb) \
-		devcb = &s3c2400_device::set_gpio_port_w_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_I2C_SCL_W_CB(cb) \
-		devcb = &s3c2400_device::set_i2c_scl_w_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_I2C_SDA_R_CB(cb) \
-		devcb = &s3c2400_device::set_i2c_sda_r_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_I2C_SDA_W_CB(cb) \
-		devcb = &s3c2400_device::set_i2c_sda_w_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_ADC_DATA_R_CB(cb) \
-		devcb = &s3c2400_device::set_adc_data_r_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_I2S_DATA_W_CB(cb) \
-		devcb = &s3c2400_device::set_i2s_data_w_callback(*device, DEVCB_##cb);
-
-#define MCFG_S3C2400_LCD_FLAGS(flags) \
-		s3c2400_device::set_lcd_flags(*device, (flags));
 
 enum
 {
@@ -157,18 +119,19 @@ public:
 	s3c2400_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	~s3c2400_device();
 
-	// static configuration
-	static void static_set_palette_tag(device_t &device, const char *tag);
-	template <class Object> static devcb_base &set_core_pin_r_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_pin_r_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_core_pin_w_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_pin_w_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_gpio_port_r_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_port_r_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_gpio_port_w_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_port_w_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_i2c_scl_w_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_scl_w_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_i2c_sda_r_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_sda_r_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_i2c_sda_w_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_sda_w_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_adc_data_r_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_data_r_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_i2s_data_w_callback(device_t &device, Object &&cb) { return downcast<s3c2400_device &>(device).m_data_w_cb.set_callback(std::forward<Object>(cb)); }
-	static void set_lcd_flags(device_t &device, int flags) { downcast<s3c2400_device &>(device).m_flags = flags; }
+	// configuration
+	template <typename T> void set_palette_tag(T &&tag) { m_palette.set_tag(std::forward<T>(tag)); }
+	template <typename T> void set_screen_tag(T &&tag) { m_screen.set_tag(std::forward<T>(tag)); }
+	auto core_pin_r_callback() { return m_pin_r_cb.bind(); }
+	auto core_pin_w_callback() { return m_pin_w_cb.bind(); }
+	auto gpio_port_r_callback() { return m_port_r_cb.bind(); }
+	auto gpio_port_w_callback() { return m_port_w_cb.bind(); }
+	auto i2c_scl_w_callback() { return m_scl_w_cb.bind(); }
+	auto i2c_sda_r_callback() { return m_sda_r_cb.bind(); }
+	auto i2c_sda_w_callback() { return m_sda_w_cb.bind(); }
+	auto adc_data_r_callback() { return m_data_r_cb.bind(); }
+	auto i2s_data_w_callback() { return m_data_w_cb.bind(); }
+	void set_lcd_flags(int flags) { m_flags = flags; }
 
 protected:
 	// device-level overrides
@@ -209,14 +172,14 @@ protected:
 	void s3c24xx_video_start();
 	void bitmap_blend( bitmap_rgb32 &bitmap_dst, bitmap_rgb32 &bitmap_src_1, bitmap_rgb32 &bitmap_src_2);
 	uint32_t s3c24xx_video_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	READ32_MEMBER( s3c24xx_lcd_r );
+	uint32_t s3c24xx_lcd_r(offs_t offset, uint32_t mem_mask = ~0);
 	int s3c24xx_lcd_configure_tft();
 	int s3c24xx_lcd_configure_stn();
 	int s3c24xx_lcd_configure();
 	void s3c24xx_lcd_start();
 	void s3c24xx_lcd_stop();
 	void s3c24xx_lcd_recalc();
-	WRITE32_MEMBER( s3c24xx_lcd_w );
+	void s3c24xx_lcd_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
 	READ32_MEMBER( s3c24xx_lcd_palette_r );
 	WRITE32_MEMBER( s3c24xx_lcd_palette_w );
 	void s3c24xx_clkpow_reset();
@@ -488,7 +451,10 @@ private:
 	};
 
 	// internal state
+	required_device<arm7_cpu_device> m_cpu;
 	required_device<palette_device> m_palette;
+	required_device<screen_device> m_screen;
+	memory_access<24, 2, 0, ENDIANNESS_LITTLE>::cache m_cache;
 
 	memcon_t m_memcon;
 	usbhost_t m_usbhost;
@@ -507,8 +473,6 @@ private:
 	rtc_t m_rtc;
 	adc_t m_adc;
 	spi_t m_spi[SPI_COUNT];
-	mmc_t m_mmc;
-	required_device<device_t> m_cpu;
 	devcb_read32 m_pin_r_cb;
 	devcb_write32 m_pin_w_cb;
 	devcb_read32 m_port_r_cb;
@@ -519,6 +483,8 @@ private:
 	devcb_read32 m_data_r_cb;
 	devcb_write16 m_data_w_cb;
 	int m_flags;
+
+	mmc_t m_mmc;
 };
 
 DECLARE_DEVICE_TYPE(S3C2400, s3c2400_device)

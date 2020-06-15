@@ -2,7 +2,7 @@
 // copyright-holders:Juergen Buchmueller
 /*****************************************************************************
  *
- *   z80.c
+ *   z80.cpp
  *   Portable Z80 emulator V3.9
  *
  *   TODO:
@@ -17,8 +17,9 @@
  *       - OUT (C),0 outputs 0 on NMOS Z80, $FF on CMOS Z80
  *       - SCF/CCF X/Y flags is ((flags | A) & 0x28) on SGS/SHARP/ZiLOG NMOS Z80,
  *         (flags & A & 0x28) on NEC NMOS Z80, other models unknown.
- *         However, people from the Speccy scene mention that SCF/CCF X/Y results
- *         are inconsistant and may be influenced by I and R registers.
+ *         However, recent findings say that SCF/CCF X/Y results depend on whether
+ *         or not the previous instruction touched the flag register. And the exact
+ *         behaviour on NEC Z80 is still unknown.
  *      This Z80 emulator assumes a ZiLOG NMOS model.
  *
  *   Changes in 3.9:
@@ -110,6 +111,7 @@
 #include "emu.h"
 #include "debugger.h"
 #include "z80.h"
+#include "z80dasm.h"
 
 #define VERBOSE             0
 
@@ -424,7 +426,7 @@ inline void z80_device::leave_halt()
  ***************************************************************/
 inline uint8_t z80_device::in(uint16_t port)
 {
-	return m_io->read_byte(port);
+	return m_io.read_byte(port);
 }
 
 /***************************************************************
@@ -432,7 +434,7 @@ inline uint8_t z80_device::in(uint16_t port)
  ***************************************************************/
 inline void z80_device::out(uint16_t port, uint8_t value)
 {
-	m_io->write_byte(port, value);
+	m_io.write_byte(port, value);
 }
 
 /***************************************************************
@@ -440,7 +442,7 @@ inline void z80_device::out(uint16_t port, uint8_t value)
  ***************************************************************/
 inline uint8_t z80_device::rm(uint16_t addr)
 {
-	return m_program->read_byte(addr);
+	return m_data.read_byte(addr);
 }
 
 /***************************************************************
@@ -457,7 +459,7 @@ inline void z80_device::rm16(uint16_t addr, PAIR &r)
  ***************************************************************/
 inline void z80_device::wm(uint16_t addr, uint8_t value)
 {
-	m_program->write_byte(addr, value);
+	m_data.write_byte(addr, value);
 }
 
 /***************************************************************
@@ -478,9 +480,9 @@ inline uint8_t z80_device::rop()
 {
 	unsigned pc = PCD;
 	PC++;
-	uint8_t res = m_decrypted_opcodes_direct->read_byte(pc);
+	uint8_t res = m_opcodes.read_byte(pc);
 	m_icount -= 2;
-	m_refresh_cb((m_i << 8) | (m_r2 & 0x80) | ((m_r-1) & 0x7f));
+	m_refresh_cb((m_i << 8) | (m_r2 & 0x80) | ((m_r-1) & 0x7f), 0x00, 0xff);
 	m_icount += 2;
 	return res;
 }
@@ -495,14 +497,14 @@ inline uint8_t z80_device::arg()
 {
 	unsigned pc = PCD;
 	PC++;
-	return m_direct->read_byte(pc);
+	return m_args.read_byte(pc);
 }
 
 inline uint16_t z80_device::arg16()
 {
 	unsigned pc = PCD;
 	PC += 2;
-	return m_direct->read_byte(pc) | (m_direct->read_byte((pc+1)&0xffff) << 8);
+	return m_args.read_word(pc);
 }
 
 /***************************************************************
@@ -1954,7 +1956,7 @@ OP(xycb,ff) { A = set(7, rm(m_ea)); wm(m_ea, A); } /* SET  7,A=(XY+o)  */
 
 OP(illegal,1) {
 	logerror("Z80 ill. opcode $%02x $%02x ($%04x)\n",
-			m_decrypted_opcodes_direct->read_byte((PCD-1)&0xffff), m_decrypted_opcodes_direct->read_byte(PCD), PCD-1);
+			m_opcodes.read_byte((PCD-1)&0xffff), m_opcodes.read_byte(PCD), PCD-1);
 }
 
 /**********************************************************
@@ -2542,7 +2544,7 @@ OP(fd,ff) { illegal_1(); op_ff();                            } /* DB   FD       
 OP(illegal,2)
 {
 	logerror("Z80 ill. opcode $ed $%02x\n",
-			m_decrypted_opcodes_direct->read_byte((PCD-1)&0xffff));
+			m_opcodes.read_byte((PCD-1)&0xffff));
 }
 
 /**********************************************************
@@ -3404,11 +3406,10 @@ void z80_device::device_start()
 	m_after_ldair = 0;
 	m_ea = 0;
 
-	m_program = &space(AS_PROGRAM);
-	m_decrypted_opcodes = has_space(AS_OPCODES) ? &space(AS_OPCODES) : m_program;
-	m_direct = &m_program->direct();
-	m_decrypted_opcodes_direct = &m_decrypted_opcodes->direct();
-	m_io = &space(AS_IO);
+	space(AS_PROGRAM).cache(m_args);
+	space(has_space(AS_OPCODES) ? AS_OPCODES : AS_PROGRAM).cache(m_opcodes);
+	space(AS_PROGRAM).specific(m_data);
+	space(AS_IO).specific(m_io);
 
 	IX = IY = 0xffff; /* IX and IY are FFFF after a reset! */
 	F = ZF;           /* Zero flag is set */
@@ -3445,7 +3446,7 @@ void z80_device::device_start()
 	state_add(Z80_HALT,        "HALT",      m_halt).mask(0x1);
 
 	// set our instruction counter
-	m_icountptr = &m_icount;
+	set_icountptr(m_icount);
 
 	/* setup cycle tables */
 	m_cc_op = cc_op;
@@ -3516,7 +3517,7 @@ void z80_device::execute_run()
 		m_after_ldair = false;
 
 		PRVPC = PCD;
-		debugger_instruction_hook(this, PCD);
+		debugger_instruction_hook(PCD);
 		m_r++;
 		EXEC(op,rop());
 	} while (m_icount > 0);
@@ -3545,7 +3546,7 @@ void nsc800_device::execute_run()
 		m_after_ldair = false;
 
 		PRVPC = PCD;
-		debugger_instruction_hook(this, PCD);
+		debugger_instruction_hook(PCD);
 		m_r++;
 		EXEC(op,rop());
 	} while (m_icount > 0);
@@ -3667,14 +3668,13 @@ void z80_device::state_string_export(const device_state_entry &entry, std::strin
 }
 
 //-------------------------------------------------
-//  disasm_disassemble - call the disassembly
+//  disassemble - call the disassembly
 //  helper function
 //-------------------------------------------------
 
-offs_t z80_device::disasm_disassemble( std::ostream &stream, offs_t pc, const uint8_t *oprom, const uint8_t *opram, uint32_t options )
+std::unique_ptr<util::disasm_interface> z80_device::create_disassembler()
 {
-	extern CPU_DISASSEMBLE( z80 );
-	return CPU_DISASSEMBLE_NAME(z80)(this, stream, pc, oprom, opram, options);
+	return std::make_unique<z80_disassembler>();
 }
 
 
@@ -3702,7 +3702,7 @@ z80_device::z80_device(const machine_config &mconfig, device_type type, const ch
 	cpu_device(mconfig, type, tag, owner, clock),
 	z80_daisy_chain_interface(mconfig, *this),
 	m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0),
-	m_decrypted_opcodes_config("decrypted_opcodes", ENDIANNESS_LITTLE, 8, 16, 0),
+	m_opcodes_config("opcodes", ENDIANNESS_LITTLE, 8, 16, 0),
 	m_io_config("io", ENDIANNESS_LITTLE, 8, 16, 0),
 	m_irqack_cb(*this),
 	m_refresh_cb(*this),
@@ -3715,7 +3715,7 @@ device_memory_interface::space_config_vector z80_device::memory_space_config() c
 	if(has_configured_map(AS_OPCODES))
 		return space_config_vector {
 			std::make_pair(AS_PROGRAM, &m_program_config),
-			std::make_pair(AS_OPCODES, &m_decrypted_opcodes_config),
+			std::make_pair(AS_OPCODES, &m_opcodes_config),
 			std::make_pair(AS_IO,      &m_io_config)
 		};
 	else
@@ -3725,11 +3725,11 @@ device_memory_interface::space_config_vector z80_device::memory_space_config() c
 		};
 }
 
-DEFINE_DEVICE_TYPE(Z80, z80_device, "z80", "Z80")
+DEFINE_DEVICE_TYPE(Z80, z80_device, "z80", "Zilog Z80")
 
 nsc800_device::nsc800_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: z80_device(mconfig, NSC800, tag, owner, clock)
 {
 }
 
-DEFINE_DEVICE_TYPE(NSC800, nsc800_device, "nsc800", "NSC800")
+DEFINE_DEVICE_TYPE(NSC800, nsc800_device, "nsc800", "National Semiconductor NSC800")

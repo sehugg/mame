@@ -22,7 +22,7 @@
 #include "speaker.h"
 
 
-static GFXDECODE_START( galeb )
+static GFXDECODE_START( gfx_galeb )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, galeb_charlayout, 0, 1 )
 GFXDECODE_END
 
@@ -33,18 +33,18 @@ void galeb_state::machine_start()
 	m_dac->write(m_dac_state);
 }
 
-WRITE8_MEMBER(galeb_state::dac_w)
+void galeb_state::dac_w(uint8_t data)
 {
 	m_dac_state = !m_dac_state;
 	m_dac->write(m_dac_state);
 }
 
-READ8_MEMBER(galeb_state::keyboard_r)
+uint8_t galeb_state::keyboard_r(offs_t offset)
 {
 	return m_keyboard[offset]->read();
 }
 
-READ8_MEMBER(galeb_state::tape_status_r)
+uint8_t galeb_state::tape_status_r()
 {
 	int status = 0;
 	status |= 2; /// send ready
@@ -52,32 +52,33 @@ READ8_MEMBER(galeb_state::tape_status_r)
 	return status;
 }
 
-WRITE8_MEMBER(galeb_state::tape_data_w)
+void galeb_state::tape_data_w(uint8_t data)
 {
 	logerror("tape_data_w %02x\n", data);
 }
 
-READ8_MEMBER(galeb_state::tape_data_r)
+uint8_t galeb_state::tape_data_r()
 {
 	logerror("tape_data_r (press escape to cancel load)\n");
 	return 0x00;
 }
 
 /* Address maps */
-static ADDRESS_MAP_START(galeb_mem, AS_PROGRAM, 8, galeb_state )
-	AM_RANGE( 0x0000, 0x1fff ) AM_RAM  // RAM
-	AM_RANGE( 0xbfe0, 0xbfe7 ) AM_READ(keyboard_r )
-	AM_RANGE( 0xbfe0, 0xbfe0 ) AM_WRITE(dac_w)
-	AM_RANGE( 0xbffe, 0xbffe ) AM_READ(tape_status_r)
-	AM_RANGE( 0xbfff, 0xbfff ) AM_READWRITE(tape_data_r, tape_data_w)
-	AM_RANGE( 0xb000, 0xb3ff ) AM_RAM  AM_SHARE("video_ram") // video ram
-	AM_RANGE( 0xc000, 0xc7ff ) AM_ROM  // BASIC 01 ROM
-	AM_RANGE( 0xc800, 0xcfff ) AM_ROM  // BASIC 02 ROM
-	AM_RANGE( 0xd000, 0xd7ff ) AM_ROM  // BASIC 03 ROM
-	AM_RANGE( 0xd800, 0xdfff ) AM_ROM  // BASIC 04 ROM
-	AM_RANGE( 0xf000, 0xf7ff ) AM_ROM  // Monitor ROM
-	AM_RANGE( 0xf800, 0xffff ) AM_ROM  // System ROM
-ADDRESS_MAP_END
+void galeb_state::galeb_mem(address_map &map)
+{
+	map(0x0000, 0x1fff).ram();  // RAM
+	map(0xbfe0, 0xbfe7).r(FUNC(galeb_state::keyboard_r));
+	map(0xbfe0, 0xbfe0).w(FUNC(galeb_state::dac_w));
+	map(0xbffe, 0xbffe).r(FUNC(galeb_state::tape_status_r));
+	map(0xbfff, 0xbfff).rw(FUNC(galeb_state::tape_data_r), FUNC(galeb_state::tape_data_w));
+	map(0xb000, 0xb3ff).ram().share("video_ram"); // video ram
+	map(0xc000, 0xc7ff).rom();  // BASIC 01 ROM
+	map(0xc800, 0xcfff).rom();  // BASIC 02 ROM
+	map(0xd000, 0xd7ff).rom();  // BASIC 03 ROM
+	map(0xd800, 0xdfff).rom();  // BASIC 04 ROM
+	map(0xf000, 0xf7ff).rom();  // Monitor ROM
+	map(0xf800, 0xffff).rom();  // System ROM
+}
 
 /* Input ports */
 static INPUT_PORTS_START( galeb )
@@ -163,31 +164,31 @@ static INPUT_PORTS_START( galeb )
 INPUT_PORTS_END
 
 /* Machine driver */
-static MACHINE_CONFIG_START( galeb )
+void galeb_state::galeb(machine_config &config)
+{
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", M6502, 1000000)
-	MCFG_CPU_PROGRAM_MAP(galeb_mem)
+	M6502(config, m_maincpu, 1000000);
+	m_maincpu->set_addrmap(AS_PROGRAM, &galeb_state::galeb_mem);
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_SIZE(48*8, 16*8)
-	MCFG_SCREEN_VISIBLE_AREA(0, 48*8-1, 0, 16*8-1)
-	MCFG_SCREEN_UPDATE_DRIVER(galeb_state, screen_update_galeb)
-	MCFG_SCREEN_PALETTE("palette")
+	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
+	screen.set_refresh_hz(50);
+	screen.set_vblank_time(ATTOSECONDS_IN_USEC(2500)); /* not accurate */
+	screen.set_size(48*8, 16*8);
+	screen.set_visarea(0, 48*8-1, 0, 16*8-1);
+	screen.set_screen_update(FUNC(galeb_state::screen_update_galeb));
+	screen.set_palette(m_palette);
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", galeb )
+	GFXDECODE(config, m_gfxdecode, m_palette, gfx_galeb);
 
-	MCFG_PALETTE_ADD_MONOCHROME("palette")
-
+	PALETTE(config, m_palette, palette_device::MONOCHROME);
 
 	/* audio hardware */
-	MCFG_SPEAKER_STANDARD_MONO("speaker")
-	MCFG_SOUND_ADD("dac", DAC_1BIT, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "speaker", 0.0625) // unknown DAC
-	MCFG_DEVICE_ADD("vref", VOLTAGE_REGULATOR, 0) MCFG_VOLTAGE_REGULATOR_OUTPUT(5.0)
-	MCFG_SOUND_ROUTE_EX(0, "dac", 1.0, DAC_VREF_POS_INPUT)
-MACHINE_CONFIG_END
+	SPEAKER(config, "speaker").front_center();
+	DAC_1BIT(config, m_dac, 0).add_route(ALL_OUTPUTS, "speaker", 0.0625); // unknown DAC
+	voltage_regulator_device &vref(VOLTAGE_REGULATOR(config, "vref", 0));
+	vref.add_route(0, "dac", 1.0, DAC_VREF_POS_INPUT);
+}
 
 /* ROM definition */
 ROM_START( galeb )
@@ -204,5 +205,5 @@ ROM_END
 
 /* Driver */
 
-//    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  STATE         INIT  COMPANY         FULLNAME   FLAGS
-COMP( 1981, galeb, 0,      0,      galeb,   galeb, galeb_state,  0,    "PEL Varazdin", "Galeb",   0 )
+//    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  CLASS        INIT        COMPANY         FULLNAME  FLAGS
+COMP( 1981, galeb, 0,      0,      galeb,   galeb, galeb_state, empty_init, "PEL Varazdin", "Galeb",  0 )

@@ -15,12 +15,12 @@
 
 
 /* Driver initialization */
-DRIVER_INIT_MEMBER(orao_state,orao)
+void orao_state::init_orao()
 {
 	memset(m_memory,0xff,0x6000);
 }
 
-DRIVER_INIT_MEMBER(orao_state,orao103)
+void orao_state::init_orao103()
 {
 	memset(m_memory,0xff,0x6000);
 }
@@ -29,7 +29,7 @@ void orao_state::machine_reset()
 {
 }
 
-READ8_MEMBER(orao_state::orao_io_r)
+uint8_t orao_state::orao_io_r(offs_t offset)
 {
 	double level;
 
@@ -69,11 +69,12 @@ READ8_MEMBER(orao_state::orao_io_r)
 }
 
 
-WRITE8_MEMBER(orao_state::orao_io_w)
+void orao_state::orao_io_w(offs_t offset, uint8_t data)
 {
 	if (offset == 0x0800)
 	{
 		m_speaker->level_w(m_beep);
+		m_cassette->output(m_beep ? 1.0 : -1.0);
 		m_beep ^= 1;
 	}
 }

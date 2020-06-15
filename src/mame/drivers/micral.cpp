@@ -47,15 +47,23 @@ Other things...
 - keyboard
 - unknown ports
 
+--------------------
+Honeywell Bull Questar/M
+
+http://www.histoireinform.com/Histoire/+infos6/chr6inf3.htm
+https://www.esocop.org/docs/Questar.pdf
+
 *********************************************************************************/
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "video/tms9927.h"
 //#include "sound/beep.h"
+#include "emupal.h"
 #include "screen.h"
 #include "speaker.h"
 #include "machine/ay31015.h"
+#include "machine/clock.h"
 #include "bus/rs232/rs232.h"
 
 
@@ -65,61 +73,71 @@ public:
 	micral_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
+		, m_rom(*this, "maincpu")
+		, m_ram(*this, "mainram")
 		//, m_beep(*this, "beeper")
-		, m_p_videoram(*this, "vram")
 		, m_p_chargen(*this, "chargen")
 		, m_uart(*this, "uart")
 		, m_crtc(*this, "crtc")
 	{ }
 
-	DECLARE_DRIVER_INIT(micral);
-	DECLARE_MACHINE_RESET(micral);
-	DECLARE_READ8_MEMBER(keyin_r);
-	DECLARE_READ8_MEMBER(status_r);
-	DECLARE_READ8_MEMBER(unk_r);
-	DECLARE_READ8_MEMBER(video_r);
-	DECLARE_WRITE8_MEMBER(video_w);
-	u32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void micral(machine_config &config);
 
 private:
+	virtual void machine_reset() override;
+	virtual void machine_start() override;
+	u8 keyin_r();
+	u8 status_r();
+	u8 unk_r();
+	u8 video_r(offs_t offset);
+	void video_w(offs_t offset, u8 data);
+	u32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+
+	void io_kbd(address_map &map);
+	void mem_kbd(address_map &map);
+	void mem_map(address_map &map);
+
 	u16 s_curpos;
 	u8 s_command;
 	u8 s_data;
+	std::unique_ptr<u8[]> m_vram;
+	memory_passthrough_handler *m_rom_shadow_tap;
 	required_device<cpu_device> m_maincpu;
+	required_region_ptr<u8> m_rom;
+	required_shared_ptr<u8> m_ram;
 	//required_device<beep_device> m_beep;
-	required_region_ptr<u8> m_p_videoram;
 	required_region_ptr<u8> m_p_chargen;
 	required_device<ay31015_device> m_uart;
 	required_device<crt5037_device> m_crtc;
 };
 
-READ8_MEMBER( micral_state::status_r )
+u8 micral_state::status_r()
 {
-	return m_uart->get_output_pin(AY31015_DAV) | 4;
+	return m_uart->dav_r() | 4;
 }
 
-READ8_MEMBER( micral_state::unk_r )
+u8 micral_state::unk_r()
 {
 	return 0x96;
 }
 
-READ8_MEMBER( micral_state::keyin_r )
+u8 micral_state::keyin_r()
 {
-	m_uart->set_input_pin(AY31015_RDAV, 0);
-	u8 result = m_uart->get_received_data();
-	m_uart->set_input_pin(AY31015_RDAV, 1);
+	m_uart->write_rdav(0);
+	u8 result = m_uart->receive();
+	m_uart->write_rdav(1);
 	return result;
 }
 
-READ8_MEMBER( micral_state::video_r )
+u8 micral_state::video_r(offs_t offset)
 {
 	if (offset)
 		return 0x07;
 	else
-		return m_p_videoram[s_curpos];
+		return m_vram[s_curpos];
 }
 
-WRITE8_MEMBER( micral_state::video_w )
+void micral_state::video_w(offs_t offset, u8 data)
 {
 	if (offset)
 	{
@@ -131,10 +149,10 @@ WRITE8_MEMBER( micral_state::video_w )
 			s_curpos = (s_curpos & 0xff) | ((s_data & 0x1f) << 8);
 		else
 		if (s_command == 0xa0)
-			m_p_videoram[s_curpos] = s_data;
+			m_vram[s_curpos] = s_data;
 
 		//if (s_command < 0x10)
-			//m_crtc->write(space, s_command, s_data);
+			//m_crtc->write(s_command, s_data);
 	}
 	else
 	{
@@ -143,43 +161,45 @@ WRITE8_MEMBER( micral_state::video_w )
 }
 
 
-static ADDRESS_MAP_START( mem_map, AS_PROGRAM, 8, micral_state )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0xf7ff) AM_RAM
-	AM_RANGE(0xf800, 0xfeff) AM_ROM
-	AM_RANGE(0xff00, 0xffef) AM_RAM
-	AM_RANGE(0xfff6, 0xfff7) // AM_WRITENOP // unknown ports
-	AM_RANGE(0xfff8, 0xfff9) AM_READWRITE(video_r, video_w)
-	AM_RANGE(0xfffa, 0xfffa) AM_READ(keyin_r)
-	AM_RANGE(0xfffb, 0xfffb) AM_READ(unk_r)
-	AM_RANGE(0xfffc, 0xfffc) AM_READ(status_r)
-	AM_RANGE(0xfffd, 0xffff) // more unknown ports
-ADDRESS_MAP_END
+void micral_state::mem_map(address_map &map)
+{
+	map.unmap_value_high();
+	map(0x0000, 0xffef).ram().share("mainram");
+	map(0xf800, 0xfeff).rom().region("maincpu", 0);
+	map(0xfff6, 0xfff7); // .nopw(); // unknown ports
+	map(0xfff8, 0xfff9).rw(FUNC(micral_state::video_r), FUNC(micral_state::video_w));
+	map(0xfffa, 0xfffa).r(FUNC(micral_state::keyin_r));
+	map(0xfffb, 0xfffb).r(FUNC(micral_state::unk_r));
+	map(0xfffc, 0xfffc).r(FUNC(micral_state::status_r));
+	map(0xfffd, 0xffff); // more unknown ports
+}
 
-static ADDRESS_MAP_START( mem_kbd, AS_PROGRAM, 8, micral_state )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x03ff) AM_ROM
-	AM_RANGE(0x8000, 0x8000) AM_RAM // byte returned to main cpu after receiving irq
-	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("X0")
-	AM_RANGE(0x8002, 0x8002) AM_READ_PORT("X1")
-	AM_RANGE(0x8004, 0x8004) AM_READ_PORT("X2")
-	AM_RANGE(0x8008, 0x8008) AM_READ_PORT("X3")
-	AM_RANGE(0x8010, 0x8010) AM_READ_PORT("X4")
-	AM_RANGE(0x8020, 0x8020) AM_READ_PORT("X5")
-	AM_RANGE(0x8040, 0x8040) AM_READ_PORT("X6")
-	AM_RANGE(0x8080, 0x8080) AM_READ_PORT("X7")
-	AM_RANGE(0x8100, 0x8100) AM_READ_PORT("X8")
-	AM_RANGE(0x8200, 0x8200) AM_READ_PORT("X9")
-	AM_RANGE(0x8400, 0x8400) AM_READ_PORT("X10")
-	AM_RANGE(0x8800, 0x8800) AM_READ_PORT("X11")
-	AM_RANGE(0x9000, 0x9000) AM_READ_PORT("X12")
-	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("X13")
-ADDRESS_MAP_END
+void micral_state::mem_kbd(address_map &map)
+{
+	map.unmap_value_high();
+	map(0x0000, 0x03ff).rom();
+	map(0x8000, 0x8000).ram(); // byte returned to main cpu after receiving irq
+	map(0x8001, 0x8001).portr("X0");
+	map(0x8002, 0x8002).portr("X1");
+	map(0x8004, 0x8004).portr("X2");
+	map(0x8008, 0x8008).portr("X3");
+	map(0x8010, 0x8010).portr("X4");
+	map(0x8020, 0x8020).portr("X5");
+	map(0x8040, 0x8040).portr("X6");
+	map(0x8080, 0x8080).portr("X7");
+	map(0x8100, 0x8100).portr("X8");
+	map(0x8200, 0x8200).portr("X9");
+	map(0x8400, 0x8400).portr("X10");
+	map(0x8800, 0x8800).portr("X11");
+	map(0x9000, 0x9000).portr("X12");
+	map(0xa000, 0xa000).portr("X13");
+}
 
-static ADDRESS_MAP_START( io_kbd, AS_IO, 8, micral_state )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ_PORT("X14")
-ADDRESS_MAP_END
+void micral_state::io_kbd(address_map &map)
+{
+	map.global_mask(0xff);
+	map(0x00, 0x00).portr("X14");
+}
 
 /* Input ports */
 static INPUT_PORTS_START( micral )
@@ -317,7 +337,7 @@ uint32_t micral_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 				gfx = 0;
 				if (ra < 9)
 				{
-					chr = m_p_videoram[x+ma];
+					chr = m_vram[x+ma];
 					gfx = m_p_chargen[(chr<<4) | ra ];
 					if (((s_curpos & 0xff)==x) && ((s_curpos >> 8)==y))
 						gfx ^= 0xff;
@@ -338,82 +358,107 @@ uint32_t micral_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 	return 0;
 }
 
-DRIVER_INIT_MEMBER( micral_state, micral )
+void micral_state::machine_reset()
 {
-	//uint8_t *main = memregion("maincpu")->base();
-
-	//membank("bankr0")->configure_entry(1, &main[0xf800]);
-	//membank("bankr0")->configure_entry(0, &main[0x10000]);
-	//membank("bankw0")->configure_entry(0, &main[0xf800]);
-}
-
-MACHINE_RESET_MEMBER( micral_state, micral )
-{
-	//membank("bankr0")->set_entry(0); // point at rom
-	//membank("bankw0")->set_entry(0); // always write to ram
-	m_maincpu->set_state_int(Z80_PC, 0xf800);
-
 	// no idea if these are hard-coded, or programmable
-	m_uart->set_input_pin(AY31015_XR, 0);
-	m_uart->set_input_pin(AY31015_XR, 1);
-	m_uart->set_input_pin(AY31015_SWE, 0);
-	m_uart->set_input_pin(AY31015_NP, 1);
-	m_uart->set_input_pin(AY31015_TSB, 0);
-	m_uart->set_input_pin(AY31015_NB1, 1);
-	m_uart->set_input_pin(AY31015_NB2, 1);
-	m_uart->set_input_pin(AY31015_EPS, 1);
-	m_uart->set_input_pin(AY31015_CS, 1);
-	m_uart->set_input_pin(AY31015_CS, 0);
+	m_uart->write_xr(0);
+	m_uart->write_xr(1);
+	m_uart->write_swe(0);
+	m_uart->write_np(1);
+	m_uart->write_tsb(0);
+	m_uart->write_nb1(1);
+	m_uart->write_nb2(1);
+	m_uart->write_eps(1);
+	m_uart->write_cs(1);
+	m_uart->write_cs(0);
+
+	address_space &program = m_maincpu->space(AS_PROGRAM);
+	program.install_rom(0x0000, 0x07ff, m_rom);   // do it here for F3
+	m_rom_shadow_tap = program.install_read_tap(0xf800, 0xffff, "rom_shadow_r",[this](offs_t offset, u8 &data, u8 mem_mask)
+	{
+		if (!machine().side_effects_disabled())
+		{
+			// delete this tap
+			m_rom_shadow_tap->remove();
+
+			// reinstall ram over the rom shadow
+			m_maincpu->space(AS_PROGRAM).install_ram(0x0000, 0x07ff, m_ram);
+		}
+
+		// return the original data
+		return data;
+	});
 }
 
-static MACHINE_CONFIG_START( micral )
-	// basic machine hardware
-	MCFG_CPU_ADD( "maincpu", Z80, XTAL_4MHz )
-	MCFG_CPU_PROGRAM_MAP(mem_map)
-	// no i/o ports on main cpu
-	MCFG_CPU_ADD( "keyboard", Z80, XTAL_1MHz ) // freq unknown
-	MCFG_CPU_PROGRAM_MAP(mem_kbd)
-	MCFG_CPU_IO_MAP(io_kbd)
+void micral_state::machine_start()
+{
+	m_vram = make_unique_clear<u8[]>(0x2000);
+	save_pointer(NAME(m_vram), 0x2000);
+	save_item(NAME(s_curpos));
+	save_item(NAME(s_command));
+	save_item(NAME(s_data));
+}
 
-	MCFG_MACHINE_RESET_OVERRIDE(micral_state, micral)
+void micral_state::micral(machine_config &config)
+{
+	// basic machine hardware
+	Z80(config, m_maincpu, XTAL(4'000'000));
+	m_maincpu->set_addrmap(AS_PROGRAM, &micral_state::mem_map);
+	// no i/o ports on main cpu
+	z80_device &keyboard(Z80(config, "keyboard", XTAL(1'000'000))); // freq unknown
+	keyboard.set_addrmap(AS_PROGRAM, &micral_state::mem_kbd);
+	keyboard.set_addrmap(AS_IO, &micral_state::io_kbd);
 
 	// video hardware
-	MCFG_SCREEN_ADD_MONOCHROME("screen", RASTER, rgb_t::green())
-	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250))
-	MCFG_SCREEN_UPDATE_DRIVER(micral_state, screen_update)
-	MCFG_SCREEN_SIZE(640, 240)
-	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 239)
-	MCFG_SCREEN_PALETTE("palette")
-	MCFG_PALETTE_ADD_MONOCHROME("palette")
-	//MCFG_GFXDECODE_ADD("gfxdecode", "palette", micral)
+	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER, rgb_t::green()));
+	screen.set_refresh_hz(60);
+	screen.set_vblank_time(ATTOSECONDS_IN_USEC(250));
+	screen.set_screen_update(FUNC(micral_state::screen_update));
+	screen.set_size(640, 240);
+	screen.set_visarea(0, 639, 0, 239);
+	screen.set_palette("palette");
+	PALETTE(config, "palette", palette_device::MONOCHROME);
+	//GFXDECODE(config, "gfxdecode", "palette", gfx_micral);
 
-	MCFG_DEVICE_ADD("crtc", CRT5037, 4000000)  // xtal freq unknown
-	MCFG_TMS9927_CHAR_WIDTH(8)  // unknown
-	//MCFG_TMS9927_VSYN_CALLBACK(DEVWRITELINE(TMS5501_TAG, tms5501_device, sens_w))
-	MCFG_VIDEO_SET_SCREEN("screen")
+	CRT5037(config, m_crtc, 4000000 / 8);  // xtal freq unknown
+	m_crtc->set_char_width(8);  // unknown
+	//m_crtc->vsyn_callback().set(TMS5501_TAG, FUNC(tms5501_device::sens_w));
+	m_crtc->set_screen("screen");
 
 	/* sound hardware */
-	//MCFG_SPEAKER_STANDARD_MONO("mono")
-	//MCFG_SOUND_ADD("beeper", BEEP, 2000)
-	//MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	//SPEAKER(config, "mono").front_center();
+	//BEEP(config, m_beep, 2000).add_route(ALL_OUTPUTS, "mono", 0.50);
 
-	MCFG_DEVICE_ADD("uart", AY51013, 0) // CDP6402
-	MCFG_AY51013_TX_CLOCK(153600)
-	MCFG_AY51013_RX_CLOCK(153600)
-	MCFG_AY51013_READ_SI_CB(DEVREADLINE("rs232", rs232_port_device, rxd_r))
-	MCFG_AY51013_WRITE_SO_CB(DEVWRITELINE("rs232", rs232_port_device, write_txd))
-	MCFG_RS232_PORT_ADD("rs232", default_rs232_devices, "keyboard")
-MACHINE_CONFIG_END
+	AY31015(config, m_uart); // CDP6402
+	m_uart->read_si_callback().set("rs232", FUNC(rs232_port_device::rxd_r));
+	m_uart->write_so_callback().set("rs232", FUNC(rs232_port_device::write_txd));
+
+	clock_device &uart_clock(CLOCK(config, "uart_clock", 153600));
+	uart_clock.signal_handler().set(m_uart, FUNC(ay31015_device::write_tcp));
+	uart_clock.signal_handler().append(m_uart, FUNC(ay31015_device::write_rcp));
+
+	RS232_PORT(config, "rs232", default_rs232_devices, "keyboard");
+}
 
 ROM_START( micral )
-	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "8022g.rom", 0xf800, 0x0800, CRC(882732a9) SHA1(3f37b82c450a54aedec209bd46fcbcf131c86313) )
+	ROM_REGION( 0x0800, "maincpu", 0 )
+	ROM_LOAD( "8022g.rom",    0x0000, 0x0800, CRC(882732a9) SHA1(3f37b82c450a54aedec209bd46fcbcf131c86313) )
 
-	ROM_REGION( 0x400, "keyboard", 0 )
-	ROM_LOAD( "2010221.rom", 0x000, 0x400, CRC(65123378) SHA1(401f0a648b78bf1662a1cd2546e83ba8e3cb7a42) )
+	ROM_REGION( 0x0400, "keyboard", 0 )
+	ROM_LOAD( "2010221.rom",  0x0000, 0x0400, CRC(65123378) SHA1(401f0a648b78bf1662a1cd2546e83ba8e3cb7a42) )
 
-	ROM_REGION( 0x2000, "vram", ROMREGION_ERASEFF )
+	// Using the chargen from 'c10' for now.
+	ROM_REGION( 0x2000, "chargen", 0 )
+	ROM_LOAD( "c10_char.bin", 0x0000, 0x2000, BAD_DUMP CRC(cb530b6f) SHA1(95590bbb433db9c4317f535723b29516b9b9fcbf))
+ROM_END
+
+ROM_START( questarm )
+	ROM_REGION( 0x0800, "maincpu", 0 )
+	ROM_LOAD( "qm_547_1.rom", 0x0000, 0x0800, CRC(8e6dc953) SHA1(b31375af8c6769578d2000fff3e751e94e7ae4d4) )
+
+	// using the keyboard ROM from 'micral' for now
+	ROM_REGION( 0x0400, "keyboard", 0 )
+	ROM_LOAD( "2010221.rom",  0x0000, 0x0400, CRC(65123378) SHA1(401f0a648b78bf1662a1cd2546e83ba8e3cb7a42) )
 
 	// Using the chargen from 'c10' for now.
 	ROM_REGION( 0x2000, "chargen", 0 )
@@ -422,5 +467,6 @@ ROM_END
 
 /* Driver */
 
-//    YEAR  NAME    PARENT  COMPAT  MACHINE    INPUT    CLASS          INIT     COMPANY     FULLNAME         FLAGS
-COMP( 1981, micral, 0,      0,      micral,    micral,  micral_state,  micral,  "Bull R2E", "Micral 80-22G", MACHINE_IS_SKELETON )
+//    YEAR  NAME      PARENT  COMPAT  MACHINE  INPUT   CLASS         INIT         COMPANY           FULLNAME         FLAGS
+COMP( 1981, micral,   0,      0,      micral,  micral, micral_state, empty_init, "Bull R2E",       "Micral 80-22G", MACHINE_IS_SKELETON | MACHINE_SUPPORTS_SAVE )
+COMP( 1982, questarm, micral, 0,      micral,  micral, micral_state, empty_init, "Honeywell Bull", "Questar/M",     MACHINE_IS_SKELETON | MACHINE_SUPPORTS_SAVE )

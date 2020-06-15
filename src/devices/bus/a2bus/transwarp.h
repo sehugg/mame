@@ -25,11 +25,6 @@ public:
 	// construction/destruction
 	a2bus_transwarp_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	virtual const tiny_rom_entry *device_rom_region() const override;
-
-	DECLARE_READ8_MEMBER( dma_r );
-	DECLARE_WRITE8_MEMBER( dma_w );
-
 protected:
 	a2bus_transwarp_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
@@ -39,6 +34,7 @@ protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 	virtual ioport_constructor device_input_ports() const override;
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+	virtual const tiny_rom_entry *device_rom_region() const override;
 
 	// overrides of standard a2bus slot functions
 	virtual bool take_c800() override;
@@ -46,13 +42,20 @@ protected:
 private:
 	bool m_bEnabled;
 	bool m_bReadA2ROM;
+	bool m_bIn1MHzMode;
 	emu_timer *m_timer;
 
 	required_device<cpu_device> m_ourcpu;
 	required_region_ptr<uint8_t> m_rom;
 	required_ioport m_dsw1, m_dsw2;
 
+	uint8_t dma_r(offs_t offset);
+	void dma_w(offs_t offset, uint8_t data);
+
+	void m65c02_mem(address_map &map);
+
 	void hit_slot(int slot);
+	void hit_slot_joy();
 };
 
 // device type definition

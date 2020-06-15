@@ -17,7 +17,7 @@
   I/O devices
 ***************************************************************************/
 
-READ8_MEMBER(galaxy_state::galaxy_keyboard_r)
+uint8_t galaxy_state::galaxy_keyboard_r(offs_t offset)
 {
 	if (offset == 0)
 	{
@@ -30,7 +30,7 @@ READ8_MEMBER(galaxy_state::galaxy_keyboard_r)
 	}
 }
 
-WRITE8_MEMBER(galaxy_state::galaxy_latch_w)
+void galaxy_state::galaxy_latch_w(uint8_t data)
 {
 	double val = (((data >>6) & 1 ) + ((data >> 2) & 1) - 1) * 32000;
 	m_latch_value = data;
@@ -62,7 +62,7 @@ IRQ_CALLBACK_MEMBER(galaxy_state::galaxy_irq_callback)
 #define GALAXY_SNAPSHOT_V1_SIZE 8268
 #define GALAXY_SNAPSHOT_V2_SIZE 8244
 
-void galaxy_state::galaxy_setup_snapshot (const uint8_t * data, uint32_t size)
+void galaxy_state::galaxy_setup_snapshot(const uint8_t * data, uint32_t size)
 {
 	switch (size)
 	{
@@ -122,7 +122,7 @@ void galaxy_state::galaxy_setup_snapshot (const uint8_t * data, uint32_t size)
 	m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
-SNAPSHOT_LOAD_MEMBER( galaxy_state, galaxy )
+SNAPSHOT_LOAD_MEMBER(galaxy_state::snapshot_cb)
 {
 	uint8_t* snapshot_data;
 
@@ -148,7 +148,7 @@ SNAPSHOT_LOAD_MEMBER( galaxy_state, galaxy )
   Driver Initialization
 ***************************************************************************/
 
-DRIVER_INIT_MEMBER(galaxy_state,galaxy)
+void galaxy_state::init_galaxy()
 {
 	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
@@ -189,9 +189,9 @@ MACHINE_RESET_MEMBER(galaxy_state,galaxy)
 	m_interrupts_enabled = true;
 }
 
-DRIVER_INIT_MEMBER(galaxy_state,galaxyp)
+void galaxy_state::init_galaxyp()
 {
-	DRIVER_INIT_CALL(galaxy);
+	init_galaxy();
 }
 
 MACHINE_RESET_MEMBER(galaxy_state,galaxyp)

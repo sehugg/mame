@@ -224,7 +224,8 @@ DEFINE_DEVICE_TYPE(S3C44B0, s3c44b0_device, "s3c44b0", "Samsung S3C44B0 SoC")
 
 s3c44b0_device::s3c44b0_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, S3C44B0, tag, owner, clock)
-	, m_cpu(nullptr)
+	, device_video_interface(mconfig, *this)
+	, m_cpu(*this, finder_base::DUMMY_TAG)
 	, m_port_r_cb(*this)
 	, m_port_w_cb(*this)
 	, m_scl_w_cb(*this)
@@ -255,8 +256,6 @@ s3c44b0_device::s3c44b0_device(const machine_config &mconfig, const char *tag, d
 
 void s3c44b0_device::device_start()
 {
-	m_cpu = machine().device<cpu_device>("maincpu");
-
 	m_port_r_cb.resolve();
 	m_port_w_cb.resolve();
 	m_scl_w_cb.resolve();
@@ -265,6 +264,7 @@ void s3c44b0_device::device_start()
 	m_data_r_cb.resolve_safe(0);
 	m_data_w_cb.resolve();
 
+	m_cpu->space(AS_PROGRAM).cache(m_cache);
 
 	for (int i = 0; i < 6; i++) m_pwm.timer[i] = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(s3c44b0_device::pwm_timer_exp),this));
 	for (auto & elem : m_uart) elem.timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(s3c44b0_device::uart_timer_exp),this));
@@ -330,8 +330,6 @@ void s3c44b0_device::device_start()
 	save_item(NAME(m_lcd.vpos_max));
 	save_item(NAME(m_lcd.vpos_end));
 	save_item(NAME(m_lcd.frame_time));
-
-	machine().save().register_postload(save_prepost_delegate(FUNC(s3c44b0_device::s3c44b0_postload), this));
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -445,7 +443,13 @@ void s3c44b0_device::device_start()
 }
 
 
-void s3c44b0_device::s3c44b0_postload()
+//-------------------------------------------------
+//  device_post_load - called after the loading a
+//  saved state, so that registered variables can
+//  be expaneded as necessary
+//-------------------------------------------------
+
+void s3c44b0_device::device_post_load()
 {
 	m_lcd.frame_period = HZ_TO_ATTOSECONDS(m_lcd.framerate);
 	m_lcd.scantime = m_lcd.frame_period / m_lcd.vpos_end;
@@ -533,27 +537,25 @@ void s3c44b0_device::lcd_dma_init()
 
 void s3c44b0_device::lcd_dma_read(int count, uint8_t *data)
 {
-	address_space &space = m_cpu->space(AS_PROGRAM);
-	uint8_t *vram = (uint8_t *)space.get_read_ptr(m_lcd.vramaddr_cur);
 	for (int i = 0; i < count / 2; i++)
 	{
 		if (m_lcd.bswp == 0)
 		{
 			if ((m_lcd.vramaddr_cur & 2) == 0)
 			{
-				data[0] = *(vram + 3);
-				data[1] = *(vram + 2);
+				data[0] = m_cache.read_byte(m_lcd.vramaddr_cur + 3);
+				data[1] = m_cache.read_byte(m_lcd.vramaddr_cur + 2);
 			}
 			else
 			{
-				data[0] = *(vram - 1);
-				data[1] = *(vram - 2);
+				data[0] = m_cache.read_byte(m_lcd.vramaddr_cur - 1);
+				data[1] = m_cache.read_byte(m_lcd.vramaddr_cur - 2);
 			}
 		}
 		else
 		{
-			data[0] = *(vram + 0);
-			data[1] = *(vram + 1);
+			data[0] = m_cache.read_byte(m_lcd.vramaddr_cur + 0);
+			data[1] = m_cache.read_byte(m_lcd.vramaddr_cur + 1);
 		}
 		m_lcd.vramaddr_cur += 2;
 		m_lcd.pagewidth_cur++;
@@ -565,11 +567,6 @@ void s3c44b0_device::lcd_dma_read(int count, uint8_t *data)
 				lcd_dma_reload();
 			}
 			m_lcd.pagewidth_cur = 0;
-			vram = (uint8_t *)space.get_read_ptr(m_lcd.vramaddr_cur);
-		}
-		else
-		{
-			vram += 2;
 		}
 		data += 2;
 	}
@@ -747,7 +744,6 @@ READ32_MEMBER( s3c44b0_device::lcd_r )
 
 void s3c44b0_device::lcd_configure()
 {
-	screen_device *screen = machine().first_screen();
 	int dismode, clkval, lineval, wdly, hozval, lineblank, wlh, mclk;
 	double vclk, framerate;
 	int width, height;
@@ -776,7 +772,7 @@ void s3c44b0_device::lcd_configure()
 	height = lineval + 1;
 	m_lcd.framerate = framerate;
 	verboselog( *this, 3, "video_screen_configure %d %d %f\n", width, height, m_lcd.framerate);
-	screen->configure(screen->width(), screen->height(), screen->visible_area(), HZ_TO_ATTOSECONDS(m_lcd.framerate));
+	screen().configure(screen().width(), screen().height(), screen().visible_area(), HZ_TO_ATTOSECONDS(m_lcd.framerate));
 	m_lcd.hpos_min = 25;
 	m_lcd.hpos_max = 25 + width - 1;
 	m_lcd.hpos_end = 25 + width - 1 + 25;
@@ -800,13 +796,12 @@ void s3c44b0_device::lcd_configure()
 
 void s3c44b0_device::lcd_start()
 {
-	screen_device *screen = machine().first_screen();
 	verboselog( *this, 1, "LCD start\n");
 	lcd_configure();
 	lcd_dma_init();
 	m_lcd.vpos = m_lcd.vpos_min;
 	m_lcd.hpos = m_lcd.hpos_min;
-	m_lcd.frame_time = screen->time_until_pos( 0, 0);
+	m_lcd.frame_time = screen().time_until_pos( 0, 0);
 	m_lcd.timer->adjust(m_lcd.frame_time, 0);
 	m_lcd.frame_time = machine().time() + m_lcd.frame_time;
 }

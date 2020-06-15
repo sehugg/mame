@@ -19,17 +19,6 @@ TIMER_CALLBACK_MEMBER(pecom_state::reset_tick)
 
 void pecom_state::machine_start()
 {
-	static const char *const keynames[] = {
-		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
-		"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15", "LINE16",
-		"LINE17", "LINE18", "LINE19", "LINE20", "LINE21", "LINE22", "LINE23", "LINE24","LINE25"
-	};
-
-	for ( int i = 0; i < 26; i++ )
-	{
-		m_io_ports[i] = ioport(keynames[i]);
-	}
-
 	m_reset_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pecom_state::reset_tick),this));
 }
 
@@ -55,27 +44,27 @@ void pecom_state::machine_reset()
 	m_reset_timer->adjust(attotime::from_msec(5));
 }
 
-READ8_MEMBER(pecom_state::pecom_cdp1869_charram_r)
+uint8_t pecom_state::pecom_cdp1869_charram_r(offs_t offset)
 {
-	return m_cdp1869->char_ram_r(space, offset);
+	return m_cdp1869->char_ram_r(offset);
 }
 
-WRITE8_MEMBER(pecom_state::pecom_cdp1869_charram_w)
+void pecom_state::pecom_cdp1869_charram_w(offs_t offset, uint8_t data)
 {
-	return m_cdp1869->char_ram_w(space, offset, data);
+	return m_cdp1869->char_ram_w(offset, data);
 }
 
-READ8_MEMBER(pecom_state::pecom_cdp1869_pageram_r)
+uint8_t pecom_state::pecom_cdp1869_pageram_r(offs_t offset)
 {
-	return m_cdp1869->page_ram_r(space, offset);
+	return m_cdp1869->page_ram_r(offset);
 }
 
-WRITE8_MEMBER(pecom_state::pecom_cdp1869_pageram_w)
+void pecom_state::pecom_cdp1869_pageram_w(offs_t offset, uint8_t data)
 {
-	return m_cdp1869->page_ram_w(space, offset, data);
+	return m_cdp1869->page_ram_w(offset, data);
 }
 
-WRITE8_MEMBER(pecom_state::pecom_bank_w)
+void pecom_state::pecom_bank_w(uint8_t data)
 {
 	address_space &space2 = m_cdp1802->space(AS_PROGRAM);
 	uint8_t *rom = memregion(CDP1802_TAG)->base();
@@ -84,10 +73,10 @@ WRITE8_MEMBER(pecom_state::pecom_bank_w)
 
 	if (data==2)
 	{
-		space2.install_read_handler (0xf000, 0xf7ff, read8_delegate(FUNC(pecom_state::pecom_cdp1869_charram_r),this));
-		space2.install_write_handler(0xf000, 0xf7ff, write8_delegate(FUNC(pecom_state::pecom_cdp1869_charram_w),this));
-		space2.install_read_handler (0xf800, 0xffff, read8_delegate(FUNC(pecom_state::pecom_cdp1869_pageram_r),this));
-		space2.install_write_handler(0xf800, 0xffff, write8_delegate(FUNC(pecom_state::pecom_cdp1869_pageram_w),this));
+		space2.install_read_handler (0xf000, 0xf7ff, read8sm_delegate(*this, FUNC(pecom_state::pecom_cdp1869_charram_r)));
+		space2.install_write_handler(0xf000, 0xf7ff, write8sm_delegate(*this, FUNC(pecom_state::pecom_cdp1869_charram_w)));
+		space2.install_read_handler (0xf800, 0xffff, read8sm_delegate(*this, FUNC(pecom_state::pecom_cdp1869_pageram_r)));
+		space2.install_write_handler(0xf800, 0xffff, write8sm_delegate(*this, FUNC(pecom_state::pecom_cdp1869_pageram_w)));
 	}
 	else
 	{
@@ -100,7 +89,7 @@ WRITE8_MEMBER(pecom_state::pecom_bank_w)
 	}
 }
 
-READ8_MEMBER(pecom_state::pecom_keyboard_r)
+uint8_t pecom_state::pecom_keyboard_r()
 {
 	/*
 	   INP command BUS -> M(R(X)) BUS -> D
@@ -109,7 +98,7 @@ READ8_MEMBER(pecom_state::pecom_keyboard_r)
 	   used to determine keyboard line reading
 	*/
 	uint16_t addr = m_cdp1802->state_int(cosmac_device::COSMAC_R0 + m_cdp1802->state_int(cosmac_device::COSMAC_X));
-	/* just in case somone is reading non existing ports */
+	/* just in case someone is reading non existing ports */
 	if (addr<0x7cca || addr>0x7ce3) return 0;
 	return m_io_ports[addr - 0x7cca]->read() & 0x03;
 }
@@ -156,7 +145,7 @@ WRITE_LINE_MEMBER(pecom_state::q_w)
 	m_cassette->output(state ? -1.0 : +1.0);
 }
 
-WRITE8_MEMBER(pecom_state::sc_w )
+void pecom_state::sc_w(uint8_t data)
 {
 	switch (data)
 	{

@@ -14,7 +14,7 @@
 #include "screen.h"
 
 
-READ8_MEMBER( vector06_state::vector06_8255_portb_r )
+uint8_t vector06_state::vector06_8255_portb_r()
 {
 	uint8_t key = 0xff;
 	if (BIT(m_keyboard_mask, 0)) key &= m_line[0]->read();
@@ -28,7 +28,7 @@ READ8_MEMBER( vector06_state::vector06_8255_portb_r )
 	return key;
 }
 
-READ8_MEMBER( vector06_state::vector06_8255_portc_r )
+uint8_t vector06_state::vector06_8255_portc_r()
 {
 	uint8_t ret = m_line[8]->read();
 
@@ -38,7 +38,7 @@ READ8_MEMBER( vector06_state::vector06_8255_portc_r )
 	return ret;
 }
 
-WRITE8_MEMBER( vector06_state::vector06_8255_porta_w )
+void vector06_state::vector06_8255_porta_w(uint8_t data)
 {
 	m_keyboard_mask = data ^ 0xff;
 }
@@ -46,10 +46,10 @@ WRITE8_MEMBER( vector06_state::vector06_8255_porta_w )
 void vector06_state::vector06_set_video_mode(int width)
 {
 	rectangle visarea(0, width+64-1, 0, 256+64-1);
-	machine().first_screen()->configure(width+64, 256+64, visarea, machine().first_screen()->frame_period().attoseconds());
+	m_screen->configure(width+64, 256+64, visarea, m_screen->frame_period().attoseconds());
 }
 
-WRITE8_MEMBER( vector06_state::vector06_8255_portb_w )
+void vector06_state::vector06_8255_portb_w(uint8_t data)
 {
 	m_color_index = data & 0x0f;
 	if ((data & 0x10) != m_video_mode)
@@ -68,29 +68,29 @@ WRITE8_MEMBER( vector06_state::vector06_color_set )
 }
 
 
-READ8_MEMBER( vector06_state::vector06_romdisk_portb_r )
+uint8_t vector06_state::vector06_romdisk_portb_r()
 {
 	uint16_t addr = ((m_romdisk_msb & 0x7f) << 8) | m_romdisk_lsb;
 	if ((m_romdisk_msb & 0x80) && m_cart->exists() && addr < m_cart->get_rom_size())
-		return m_cart->read_rom(space, addr);
+		return m_cart->read_rom(addr);
 	else
-		return m_ay->ay8910_read_ym();
+		return m_ay->data_r();
 }
 
-WRITE8_MEMBER(vector06_state::vector06_romdisk_portb_w)
+void vector06_state::vector06_romdisk_portb_w(uint8_t data)
 {
 	m_aylatch = data;
 }
 
-WRITE8_MEMBER( vector06_state::vector06_romdisk_porta_w )
+void vector06_state::vector06_romdisk_porta_w(uint8_t data)
 {
 	m_romdisk_lsb = data;
 }
 
-WRITE8_MEMBER( vector06_state::vector06_romdisk_portc_w )
+void vector06_state::vector06_romdisk_portc_w (uint8_t data)
 {
 	if (data & 4)
-		m_ay->ay8910_write_ym((data >> 1) & 1, m_aylatch);
+		m_ay->address_data_w((data >> 1) & 1, m_aylatch);
 	m_romdisk_msb = data;
 }
 
@@ -173,7 +173,7 @@ WRITE8_MEMBER(vector06_state::vector06_ramdisk_w)
 		update_mem();
 }
 
-WRITE8_MEMBER(vector06_state::vector06_status_callback)
+void vector06_state::vector06_status_callback(uint8_t data)
 {
 	const bool oldstate = m_stack_state;
 	m_stack_state = bool(data & i8080_cpu_device::STATUS_STACK);

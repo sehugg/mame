@@ -35,103 +35,14 @@
 
 #pragma once
 
-#include "cpu/z80/z80daisy.h"
+#include "machine/z80daisy.h"
+#include "diserial.h"
 
 //**************************************************************************
 //  DEVICE CONFIGURATION MACROS
 //**************************************************************************
 
 #define Z80SCC_USE_LOCAL_BRG 0
-
-/* Variant ADD macros - use the right one to enable the right feature set! */
-#define MCFG_SCC8030_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC8030, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-#define MCFG_SCC80C30_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC80C30, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-#define MCFG_SCC80230_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC80230, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-#define MCFG_SCC8530_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC8530N, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-#define MCFG_SCC85C30_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC85C30, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-#define MCFG_SCC85230_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC85230, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-#define MCFG_SCC85233_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC85233, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-#define MCFG_SCC8523L_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, SCC8523L, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-/* generic ADD macro - Avoid using it directly, see above for correct variant instead */
-#define MCFG_Z80SCC_ADD(_tag, _clock, _rxa, _txa, _rxb, _txb) \
-	MCFG_DEVICE_ADD(_tag, Z80SCC, _clock) \
-	MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb)
-
-/* Generic macros */
-#define MCFG_Z80SCC_OFFSETS(_rxa, _txa, _rxb, _txb) \
-	z80scc_device::configure_channels(*device, _rxa, _txa, _rxb, _txb);
-
-#define MCFG_Z80SCC_OUT_INT_CB(_devcb) \
-	devcb = &z80scc_device::set_out_int_callback(*device, DEVCB_##_devcb);
-
-// Port A callbacks
-#define MCFG_Z80SCC_OUT_TXDA_CB(_devcb) \
-	devcb = &z80scc_device::set_out_txd_callback<0>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_DTRA_CB(_devcb) \
-	devcb = &z80scc_device::set_out_dtr_callback<0>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_RTSA_CB(_devcb) \
-	devcb = &z80scc_device::set_out_rts_callback<0>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_WREQA_CB(_devcb) \
-	devcb = &z80scc_device::set_out_wreq_callback<0>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_SYNCA_CB(_devcb) \
-	devcb = &z80scc_device::set_out_sync_callback<0>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_RXDRQA_CB(_devcb) \
-	devcb = &z80scc_device::set_out_rxdrq_callback<0>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_TXDRQA_CB(_devcb) \
-	devcb = &z80scc_device::set_out_txdrq_callback<0>(*device, DEVCB_##_devcb);
-
-// Port B callbacks
-#define MCFG_Z80SCC_OUT_TXDB_CB(_devcb) \
-	devcb = &z80scc_device::set_out_txd_callback<1>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_DTRB_CB(_devcb) \
-	devcb = &z80scc_device::set_out_dtr_callback<1>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_RTSB_CB(_devcb) \
-	devcb = &z80scc_device::set_out_rts_callback<1>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_WREQB_CB(_devcb) \
-	devcb = &z80scc_device::set_out_wreq_callback<1>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_SYNCB_CB(_devcb) \
-	devcb = &z80scc_device::set_out_sync_callback<1>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_RXDRQB_CB(_devcb) \
-	devcb = &z80scc_device::set_out_rxdrq_callback<1>(*device, DEVCB_##_devcb);
-
-#define MCFG_Z80SCC_OUT_TXDRQB_CB(_devcb) \
-	devcb = &z80scc_device::set_out_txdrq_callback<1>(*device, DEVCB_##_devcb);
-
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -211,13 +122,12 @@ public:
 	void m_rx_fifo_rp_step();
 	uint8_t m_rx_fifo_rp_data();
 
-	DECLARE_WRITE_LINE_MEMBER( write_rx );
-	DECLARE_WRITE_LINE_MEMBER( cts_w );
-	DECLARE_WRITE_LINE_MEMBER( dcd_w );
-	DECLARE_WRITE_LINE_MEMBER( ri_w );
-	DECLARE_WRITE_LINE_MEMBER( rxc_w );
-	DECLARE_WRITE_LINE_MEMBER( txc_w );
-	DECLARE_WRITE_LINE_MEMBER( sync_w );
+	void write_rx(int state);
+	void cts_w(int state);
+	void dcd_w(int state);
+	void rxc_w(int state);
+	void txc_w(int state);
+	void sync_w(int state);
 
 	int m_rxc;
 	int m_txc;
@@ -417,55 +327,50 @@ class z80scc_device : public device_t, public device_z80daisy_interface
 	friend class z80scc_channel;
 
 public:
-	// construction/destruction
-	z80scc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	auto out_txda_callback() { return m_out_txd_cb[0].bind(); }
+	auto out_dtra_callback() { return m_out_dtr_cb[0].bind(); }
+	auto out_rtsa_callback() { return m_out_rts_cb[0].bind(); }
+	auto out_wreqa_callback() { return m_out_wreq_cb[0].bind(); }
+	auto out_synca_callback() { return m_out_sync_cb[0].bind(); }
+	auto out_rxdrqa_callback() { return m_out_rxdrq_cb[0].bind(); }
+	auto out_txdrqa_callback() { return m_out_txdrq_cb[0].bind(); }
+	auto out_txdb_callback() { return m_out_txd_cb[1].bind(); }
+	auto out_dtrb_callback() { return m_out_dtr_cb[1].bind(); }
+	auto out_rtsb_callback() { return m_out_rts_cb[1].bind(); }
+	auto out_wreqb_callback() { return m_out_wreq_cb[1].bind(); }
+	auto out_syncb_callback() { return m_out_sync_cb[1].bind(); }
+	auto out_rxdrqb_callback() { return m_out_rxdrq_cb[1].bind(); }
+	auto out_txdrqb_callback() { return m_out_txdrq_cb[1].bind(); }
+	auto out_int_callback() { return m_out_int_cb.bind(); }
 
-	template <unsigned N, class Object> static devcb_base &set_out_txd_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_txd_cb[N].set_callback(std::forward<Object>(cb)); }
-	template <unsigned N, class Object> static devcb_base &set_out_dtr_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_dtr_cb[N].set_callback(std::forward<Object>(cb)); }
-	template <unsigned N, class Object> static devcb_base &set_out_rts_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_rts_cb[N].set_callback(std::forward<Object>(cb)); }
-	template <unsigned N, class Object> static devcb_base &set_out_wreq_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_wreq_cb[N].set_callback(std::forward<Object>(cb)); }
-	template <unsigned N, class Object> static devcb_base &set_out_sync_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_sync_cb[N].set_callback(std::forward<Object>(cb)); }
-	template <unsigned N, class Object> static devcb_base &set_out_rxdrq_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_rxdrq_cb[N].set_callback(std::forward<Object>(cb)); }
-	template <unsigned N, class Object> static devcb_base &set_out_txdrq_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_txdrq_cb[N].set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_out_int_callback(device_t &device, Object &&cb) { return downcast<z80scc_device &>(device).m_out_int_cb.set_callback(std::forward<Object>(cb)); }
+	void set_cputag(const char *tag) { m_cputag = tag; }
 
-	static void static_set_cputag(device_t &device, const char *tag)
+	void configure_channels(int rxa, int txa, int rxb, int txb)
 	{
-		z80scc_device &dev = downcast<z80scc_device &>(device);
-		dev.m_cputag = tag;
+		m_rxca = rxa;
+		m_txca = txa;
+		m_rxcb = rxb;
+		m_txcb = txb;
 	}
 
-	static void configure_channels(device_t &device, int rxa, int txa, int rxb, int txb)
-	{
-		z80scc_device &dev = downcast<z80scc_device &>(device);
-		dev.m_rxca = rxa;
-		dev.m_txca = txa;
-		dev.m_rxcb = rxb;
-		dev.m_txcb = txb;
-	}
-
-	DECLARE_READ8_MEMBER( cd_ab_r );
-	DECLARE_WRITE8_MEMBER( cd_ab_w );
-	DECLARE_READ8_MEMBER( cd_ba_r );
-	DECLARE_WRITE8_MEMBER( cd_ba_w );
-	DECLARE_READ8_MEMBER( ba_cd_r );
-	DECLARE_WRITE8_MEMBER( ba_cd_w );
-	DECLARE_READ8_MEMBER( ba_cd_inv_r );
-	DECLARE_WRITE8_MEMBER( ba_cd_inv_w );
+	uint8_t dc_ab_r(offs_t offset);
+	void dc_ab_w(offs_t offset, uint8_t data);
+	uint8_t ab_dc_r(offs_t offset);
+	void ab_dc_w(offs_t offset, uint8_t data);
 
 	/* Definitions moved to z80scc.c for enhancements */
-	DECLARE_READ8_MEMBER( da_r );  // { return m_chanA->data_read(); }
-	DECLARE_WRITE8_MEMBER( da_w ); // { m_chanA->data_write(data); }
-	DECLARE_READ8_MEMBER( db_r );  // { return m_chanB->data_read(); }
-	DECLARE_WRITE8_MEMBER( db_w ); // { m_chanB->data_write(data); }
+	uint8_t da_r(offs_t offset);
+	void da_w(offs_t offset, uint8_t data);
+	uint8_t db_r(offs_t offset);
+	void db_w(offs_t offset, uint8_t data);
 
-	DECLARE_READ8_MEMBER( ca_r ) { return m_chanA->control_read(); }
-	DECLARE_WRITE8_MEMBER( ca_w ) { m_chanA->control_write(data); }
-	DECLARE_READ8_MEMBER( cb_r ) { return m_chanB->control_read(); }
-	DECLARE_WRITE8_MEMBER( cb_w ) { m_chanB->control_write(data); }
+	uint8_t ca_r(offs_t offset)            { return m_chanA->control_read(); }
+	void ca_w(offs_t offset, uint8_t data) { m_chanA->control_write(data); }
+	uint8_t cb_r(offs_t offset)            { return m_chanB->control_read(); }
+	void cb_w(offs_t offset, uint8_t data) { m_chanB->control_write(data); }
 
-	DECLARE_READ8_MEMBER( zbus_r );
-	DECLARE_WRITE8_MEMBER( zbus_w );
+	uint8_t zbus_r(offs_t offset);
+	void zbus_w(offs_t offset, uint8_t data);
 
 	// interrupt acknowledge
 	int m1_r();
@@ -473,21 +378,19 @@ public:
 	// Single registers instances accessed from both channels
 	uint8_t m_wr9;  // REG_WR9_MASTER_INT_CTRL
 
-	DECLARE_WRITE_LINE_MEMBER( rxa_w ) { m_chanA->write_rx(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxb_w ) { m_chanB->write_rx(state); }
-	DECLARE_WRITE_LINE_MEMBER( ctsa_w ) { m_chanA->cts_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( ctsb_w ) { m_chanB->cts_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( dcda_w ) { m_chanA->dcd_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( dcdb_w ) { m_chanB->dcd_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( ria_w ) { m_chanA->ri_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rib_w ) { m_chanB->ri_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxca_w ) { m_chanA->rxc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxcb_w ) { m_chanB->rxc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( txca_w ) { m_chanA->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( txcb_w ) { m_chanB->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( rxtxcb_w ) { m_chanB->rxc_w(state); m_chanB->txc_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( synca_w ) { m_chanA->sync_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( syncb_w ) { m_chanB->sync_w(state); }
+	void rxa_w(int state) { m_chanA->write_rx(state); }
+	void rxb_w(int state) { m_chanB->write_rx(state); }
+	void ctsa_w(int state) { m_chanA->cts_w(state); }
+	void ctsb_w(int state) { m_chanB->cts_w(state); }
+	void dcda_w(int state) { m_chanA->dcd_w(state); }
+	void dcdb_w(int state) { m_chanB->dcd_w(state); }
+	void rxca_w(int state) { m_chanA->rxc_w(state); }
+	void rxcb_w(int state) { m_chanB->rxc_w(state); }
+	void txca_w(int state) { m_chanA->txc_w(state); }
+	void txcb_w(int state) { m_chanB->txc_w(state); }
+	void rxtxcb_w(int state) { m_chanB->rxc_w(state); m_chanB->txc_w(state); }
+	void synca_w(int state) { m_chanA->sync_w(state); }
+	void syncb_w(int state) { m_chanB->sync_w(state); }
 	int update_extint(int i);
 	int get_extint_priority(int type);
 
@@ -497,7 +400,7 @@ protected:
 	// device-level overrides
 	virtual void device_resolve_objects() override;
 	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_reset_after_children() override;
 	virtual void device_add_mconfig(machine_config &config) override;
 
 	// device_z80daisy_interface overrides
@@ -517,7 +420,6 @@ protected:
 	// Variants in the SCC family
 	enum
 	{
-		TYPE_Z80SCC   = 0x001,
 		TYPE_SCC8030  = 0x002,
 		TYPE_SCC80C30 = 0x004,
 		TYPE_SCC80230 = 0x008,
@@ -551,16 +453,17 @@ protected:
 	int m_txcb;
 
 	// internal state
-	devcb_write_line    m_out_txd_cb[2];
-	devcb_write_line    m_out_dtr_cb[2];
-	devcb_write_line    m_out_rts_cb[2];
-	devcb_write_line    m_out_wreq_cb[2];
-	devcb_write_line    m_out_sync_cb[2];
-	devcb_write_line    m_out_rxdrq_cb[2];
-	devcb_write_line    m_out_txdrq_cb[2];
+	devcb_write_line::array<2> m_out_txd_cb;
+	devcb_write_line::array<2> m_out_dtr_cb;
+	devcb_write_line::array<2> m_out_rts_cb;
+	devcb_write_line::array<2> m_out_wreq_cb;
+	devcb_write_line::array<2> m_out_sync_cb;
+	devcb_write_line::array<2> m_out_rxdrq_cb;
+	devcb_write_line::array<2> m_out_txdrq_cb;
 
 	devcb_write_line    m_out_int_cb;
 
+	int m_out_int_state;
 	int m_int_state[6]; // interrupt state
 	int m_int_source[6]; // interrupt source
 
@@ -618,7 +521,6 @@ public:
 };
 
 // device type definition
-DECLARE_DEVICE_TYPE(Z80SCC,         z80scc_device)
 DECLARE_DEVICE_TYPE(Z80SCC_CHANNEL, z80scc_channel)
 DECLARE_DEVICE_TYPE(SCC8030,        scc8030_device)
 DECLARE_DEVICE_TYPE(SCC80C30,       scc80c30_device)

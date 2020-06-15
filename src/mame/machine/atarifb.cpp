@@ -11,38 +11,38 @@
 #include "sound/discrete.h"
 
 
-WRITE8_MEMBER(atarifb_state::atarifb_out1_w)
+void atarifb_state::atarifb_out1_w(uint8_t data)
 {
 	m_CTRLD = data;
 
-	m_discrete->write(space, ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
-	m_discrete->write(space, ATARIFB_HIT_EN, data & 0x02);         // Hit
-	m_discrete->write(space, ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
-	m_discrete->write(space, ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
+	m_discrete->write(ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
+	m_discrete->write(ATARIFB_HIT_EN, data & 0x02);         // Hit
+	m_discrete->write(ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
+	m_discrete->write(ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
 }
 
 
-WRITE8_MEMBER(atarifb_state::atarifb4_out1_w)
+void atarifb_state::atarifb4_out1_w(uint8_t data)
 {
 	m_CTRLD = data;
 
-	m_discrete->write(space, ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
-	m_discrete->write(space, ATARIFB_HIT_EN, data & 0x02);         // Hit
-	m_discrete->write(space, ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
-	m_discrete->write(space, ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
+	m_discrete->write(ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
+	m_discrete->write(ATARIFB_HIT_EN, data & 0x02);         // Hit
+	m_discrete->write(ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
+	m_discrete->write(ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
 
 	machine().bookkeeping().coin_counter_w(1, data & 0x80);
 }
 
 
-WRITE8_MEMBER(atarifb_state::abaseb_out1_w)
+void atarifb_state::abaseb_out1_w(uint8_t data)
 {
 	m_CTRLD = data;
 
-	m_discrete->write(space, ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
-	m_discrete->write(space, ATARIFB_HIT_EN, data & 0x02);         // Hit
-	m_discrete->write(space, ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
-	m_discrete->write(space, ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
+	m_discrete->write(ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
+	m_discrete->write(ATARIFB_HIT_EN, data & 0x02);         // Hit
+	m_discrete->write(ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
+	m_discrete->write(ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
 
 	if (data & 0x80)
 	{
@@ -59,7 +59,7 @@ WRITE8_MEMBER(atarifb_state::abaseb_out1_w)
 }
 
 
-WRITE8_MEMBER(atarifb_state::soccer_out1_w)
+void atarifb_state::soccer_out1_w(uint8_t data)
 {
 	m_CTRLD = data;
 
@@ -71,27 +71,27 @@ WRITE8_MEMBER(atarifb_state::soccer_out1_w)
 	/* bit 5-6 = trackball CTRL bits */
 	/* bit 7 = Rule LED */
 
-	m_discrete->write(space, ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
-	m_discrete->write(space, ATARIFB_HIT_EN, data & 0x02);         // Hit
-	m_discrete->write(space, ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
-	m_discrete->write(space, ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
+	m_discrete->write(ATARIFB_WHISTLE_EN, data & 0x01);     // Whistle
+	m_discrete->write(ATARIFB_HIT_EN, data & 0x02);         // Hit
+	m_discrete->write(ATARIFB_ATTRACT_EN, data & 0x10);     // Attract
+	m_discrete->write(ATARIFB_NOISE_EN, data & 0x04);           // Noise Enable / Kicker
 
-//  output().set_led_value(0, data & 0x10);  // !!!!!!!!!! Is this correct????
-	output().set_led_value(1, data & 0x80);
+//  m_leds[0] = BIT(data, 4);  // !!!!!!!!!! Is this correct????
+	m_leds[1] = BIT(data, 7);
 }
 
 
-WRITE8_MEMBER(atarifb_state::atarifb_out2_w)
+void atarifb_state::atarifb_out2_w(uint8_t data)
 {
-	m_discrete->write(space, ATARIFB_CROWD_DATA, data & 0x0f); // Crowd
+	m_discrete->write(ATARIFB_CROWD_DATA, data & 0x0f); // Crowd
 
 	machine().bookkeeping().coin_counter_w(0, data & 0x10);
 }
 
 
-WRITE8_MEMBER(atarifb_state::soccer_out2_w)
+void atarifb_state::soccer_out2_w(uint8_t data)
 {
-	m_discrete->write(space, ATARIFB_CROWD_DATA, data & 0x0f); // Crowd
+	m_discrete->write(ATARIFB_CROWD_DATA, data & 0x0f); // Crowd
 
 	machine().bookkeeping().coin_counter_w(0, data & 0x10);
 	machine().bookkeeping().coin_counter_w(1, data & 0x20);
@@ -107,7 +107,7 @@ WRITE8_MEMBER(atarifb_state::soccer_out2_w)
  *************************************/
 
 /* FIXME: almost surely not tied with screen vertical position */
-WRITE8_MEMBER(atarifb_state::atarifb_out3_w)
+void atarifb_state::atarifb_out3_w(uint8_t data)
 {
 	int loop = m_screen->vpos() >= 123;
 
@@ -134,7 +134,7 @@ WRITE8_MEMBER(atarifb_state::atarifb_out3_w)
 }
 
 
-READ8_MEMBER(atarifb_state::atarifb_in0_r)
+uint8_t atarifb_state::atarifb_in0_r()
 {
 	if ((m_CTRLD & 0x20) == 0x00)
 	{
@@ -171,7 +171,7 @@ READ8_MEMBER(atarifb_state::atarifb_in0_r)
 }
 
 
-READ8_MEMBER(atarifb_state::atarifb_in2_r)
+uint8_t atarifb_state::atarifb_in2_r()
 {
 	if ((m_CTRLD & 0x20) == 0x00)
 	{
@@ -200,7 +200,7 @@ READ8_MEMBER(atarifb_state::atarifb_in2_r)
 	}
 }
 
-READ8_MEMBER(atarifb_state::atarifb4_in0_r)
+uint8_t atarifb_state::atarifb4_in0_r()
 {
 	/* LD1 and LD2 low, return sign bits */
 	if ((m_CTRLD & 0x60) == 0x00)
@@ -266,7 +266,7 @@ READ8_MEMBER(atarifb_state::atarifb4_in0_r)
 }
 
 
-READ8_MEMBER(atarifb_state::atarifb4_in2_r)
+uint8_t atarifb_state::atarifb4_in2_r()
 {
 	if ((m_CTRLD & 0x40) == 0x00)
 	{

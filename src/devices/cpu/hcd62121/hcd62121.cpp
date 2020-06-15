@@ -21,6 +21,7 @@ TODO:
 
 #include "emu.h"
 #include "hcd62121.h"
+#include "hcd62121d.h"
 
 #include "debugger.h"
 
@@ -48,7 +49,7 @@ constexpr u8 FLAG_ZL = 0x02;
 constexpr u8 FLAG_ZH = 0x01;
 
 
-DEFINE_DEVICE_TYPE(HCD62121, hcd62121_cpu_device, "hcd62121_cpu_device", "Hitachi HCD62121")
+DEFINE_DEVICE_TYPE(HCD62121, hcd62121_cpu_device, "hcd62121", "Hitachi HCD62121")
 
 
 hcd62121_cpu_device::hcd62121_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
@@ -376,7 +377,7 @@ void hcd62121_cpu_device::device_start()
 	state_add(HCD62121_R78, "R78", m_reg[0x00]).callimport().callexport().formatstr("%8s");
 	state_add(HCD62121_R7C, "R7C", m_reg[0x00]).callimport().callexport().formatstr("%8s");
 
-	m_icountptr = &m_icount;
+	set_icountptr(m_icount);
 }
 
 
@@ -819,7 +820,7 @@ void hcd62121_cpu_device::execute_run()
 	{
 		offs_t pc = (m_cseg << 16) | m_ip;
 
-		debugger_instruction_hook(this, pc);
+		debugger_instruction_hook(pc);
 		m_prev_pc = pc;
 
 		u8 op = read_op();
@@ -1171,6 +1172,23 @@ void hcd62121_cpu_device::execute_run()
 				read_iregreg(size, reg1, reg2, true);
 
 				op_and(size);
+			}
+			break;
+
+		case 0x50:      /* xorb ir1,r2 */
+		case 0x51:      /* xorw ir1,r2 */
+		case 0x52:      /* xorq ir1,r2 */
+		case 0x53:      /* xort ir1,r2 */
+			{
+				int size = datasize(op);
+				u8 reg1 = read_op();
+				u8 reg2 = read_op();
+
+				read_iregreg(size, reg1, reg2, true);
+
+				op_xor(size);
+
+				write_iregreg(size, reg1, reg2);
 			}
 			break;
 
@@ -1751,9 +1769,7 @@ void hcd62121_cpu_device::execute_run()
 	} while (m_icount > 0);
 }
 
-
-offs_t hcd62121_cpu_device::disasm_disassemble(std::ostream &stream, offs_t pc, const u8 *oprom, const u8 *opram, uint32_t options)
+std::unique_ptr<util::disasm_interface> hcd62121_cpu_device::create_disassembler()
 {
-	extern CPU_DISASSEMBLE(hcd62121);
-	return CPU_DISASSEMBLE_NAME(hcd62121)(this, stream, pc, oprom, opram, options);
+	return std::make_unique<hcd62121_disassembler>();
 }

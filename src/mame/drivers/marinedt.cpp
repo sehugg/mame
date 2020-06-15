@@ -9,12 +9,13 @@
 
     TODO:
     - discrete sound
-    - imperfect colors: unused bit 2 of color prom, guesswokred sea gradient, mg16 entirely unused.
+    - imperfect colors: unused bit 2 of color prom, guessworked sea gradient, mg16 entirely unused.
       also unused colors 0x10-0x1f (might be a flashing bank)
     - collision detection isn't perfect, sometimes octopus gets stuck and dies even if moves are still available.
       HW collision detection isn't perfect even from the reference, presumably needs a trojan run on the real HW.
     - ROM writes (irq mask?)
     - Merge devices with crbaloon/bking/grchamp drivers (PC3259).
+    - Currently defaults to cocktail instead of upright. When upright chosen, screen is upside down. (MT 07311)
 
 *****************************************************************************************************************
 
@@ -102,10 +103,12 @@ Lower PCB is plugged in with components facing up.
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
+#include "emupal.h"
 #include "screen.h"
 #include "speaker.h"
+#include "tilemap.h"
 
-#define MAIN_CLOCK XTAL_9_987MHz
+#define MAIN_CLOCK XTAL(9'987'000)
 
 class marinedt_state : public driver_device
 {
@@ -120,19 +123,7 @@ public:
 	{
 	}
 
-	// screen updates
-	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	DECLARE_PALETTE_INIT(marinedt);
-	DECLARE_READ8_MEMBER(trackball_r);
-	DECLARE_READ8_MEMBER(pc3259_r);
-	DECLARE_WRITE8_MEMBER(vram_w);
-	DECLARE_WRITE8_MEMBER(obj_0_w);
-	DECLARE_WRITE8_MEMBER(obj_1_w);
-	DECLARE_WRITE8_MEMBER(bgm_w);
-	DECLARE_WRITE8_MEMBER(sfx_w);
-	DECLARE_WRITE8_MEMBER(layer_enable_w);
-	DECLARE_WRITE8_MEMBER(output_w);
-	TILE_GET_INFO_MEMBER(get_tile_info);
+	void marinedt(machine_config &config);
 
 protected:
 	// driver_device overrides
@@ -142,6 +133,23 @@ protected:
 	virtual void video_start() override;
 
 private:
+	// screen updates
+	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void marinedt_palette(palette_device &palette) const;
+	uint8_t trackball_r();
+	uint8_t pc3259_r(offs_t offset);
+	void vram_w(offs_t offset, uint8_t data);
+	void obj_0_w(offs_t offset, uint8_t data);
+	void obj_1_w(offs_t offset, uint8_t data);
+	void bgm_w(uint8_t data);
+	void sfx_w(uint8_t data);
+	void layer_enable_w(uint8_t data);
+	void output_w(uint8_t data);
+	TILE_GET_INFO_MEMBER(get_tile_info);
+
+	void marinedt_io(address_map &map);
+	void marinedt_map(address_map &map);
+
 	// devices
 	required_device<cpu_device> m_maincpu;
 	required_device<screen_device> m_screen;
@@ -174,7 +182,7 @@ TILE_GET_INFO_MEMBER(marinedt_state::get_tile_info)
 {
 	int code = m_vram[tile_index];
 
-	SET_TILE_INFO_MEMBER(0, code, 0, 0);
+	tileinfo.set(0, code, 0, 0);
 }
 
 // initialize sea bitmap gradient
@@ -205,7 +213,7 @@ void marinedt_state::init_seabitmap()
 
 void marinedt_state::video_start()
 {
-	m_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(FUNC(marinedt_state::get_tile_info),this), TILEMAP_SCAN_ROWS, 8, 8, 32, 32);
+	m_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(marinedt_state::get_tile_info)), TILEMAP_SCAN_ROWS, 8, 8, 32, 32);
 
 	m_tilemap->set_transparent_pen(0);
 
@@ -247,7 +255,7 @@ uint32_t marinedt_state::screen_update( screen_device &screen, bitmap_ind16 &bit
 	return 0;
 }
 
-WRITE8_MEMBER(marinedt_state::vram_w)
+void marinedt_state::vram_w(offs_t offset, uint8_t data)
 {
 	m_vram[offset] = data;
 	m_tilemap->mark_tile_dirty(offset);
@@ -279,21 +287,21 @@ inline void marinedt_state::obj_reg_w(uint8_t which, uint8_t reg,uint8_t data)
 	gfx->transpen(m_obj[which].bitmap,visarea,tilenum,color,fx,!fy,m_obj[which].x,m_obj[which].y,0);
 }
 
-WRITE8_MEMBER(marinedt_state::obj_0_w) { obj_reg_w(0,offset,data); }
-WRITE8_MEMBER(marinedt_state::obj_1_w) { obj_reg_w(1,offset,data); }
+void marinedt_state::obj_0_w(offs_t offset, uint8_t data) { obj_reg_w(0,offset,data); }
+void marinedt_state::obj_1_w(offs_t offset, uint8_t data) { obj_reg_w(1,offset,data); }
 
-READ8_MEMBER(marinedt_state::trackball_r)
+uint8_t marinedt_state::trackball_r()
 {
 	return (m_in_track[m_in_select & 3])->read();
 }
 
 // discrete sound
-WRITE8_MEMBER(marinedt_state::bgm_w)
+void marinedt_state::bgm_w(uint8_t data)
 {
 	// ...
 }
 
-WRITE8_MEMBER(marinedt_state::sfx_w)
+void marinedt_state::sfx_w(uint8_t data)
 {
 	/*
 	 x--- ---- unknown, probably ties to PC3259 pin 16 like crbaloon
@@ -308,7 +316,7 @@ WRITE8_MEMBER(marinedt_state::sfx_w)
 //      popmessage("%02x",data);
 }
 
-WRITE8_MEMBER(marinedt_state::layer_enable_w)
+void marinedt_state::layer_enable_w(uint8_t data)
 {
 	/*
 	    ---x ---- enabled when shark appears (enables red gradient on sea bitmap apparently)
@@ -320,7 +328,7 @@ WRITE8_MEMBER(marinedt_state::layer_enable_w)
 	m_sea_bank = (data & 0x10) >> 4;
 }
 
-WRITE8_MEMBER(marinedt_state::output_w)
+void marinedt_state::output_w(uint8_t data)
 {
 	/*
 	    ---- x--- trackball input select (x/y)
@@ -399,7 +407,7 @@ inline uint32_t marinedt_state::obj_to_layer_collision()
 	return 0;
 }
 
-READ8_MEMBER(marinedt_state::pc3259_r)
+uint8_t marinedt_state::pc3259_r(offs_t offset)
 {
 	uint32_t rest,reso;
 	uint8_t reg = offset >> 2;
@@ -434,28 +442,30 @@ READ8_MEMBER(marinedt_state::pc3259_r)
 	return 0;
 }
 
-static ADDRESS_MAP_START( marinedt_map, AS_PROGRAM, 8, marinedt_state )
-	ADDRESS_MAP_GLOBAL_MASK(0x7fff) /* A15 is not decoded */
-	AM_RANGE(0x0000, 0x3fff) AM_ROM AM_REGION("ipl",0)
-	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0400) AM_RAM
-	AM_RANGE(0x4800, 0x4bff) AM_MIRROR(0x0400) AM_RAM_WRITE(vram_w) AM_SHARE("vram")
-ADDRESS_MAP_END
+void marinedt_state::marinedt_map(address_map &map)
+{
+	map.global_mask(0x7fff); /* A15 is not decoded */
+	map(0x0000, 0x3fff).rom().region("ipl", 0);
+	map(0x4000, 0x43ff).mirror(0x0400).ram();
+	map(0x4800, 0x4bff).mirror(0x0400).ram().w(FUNC(marinedt_state::vram_w)).share("vram");
+}
 
-static ADDRESS_MAP_START( marinedt_io, AS_IO, 8, marinedt_state )
-	ADDRESS_MAP_GLOBAL_MASK(0x0f)
-	AM_RANGE(0x00, 0x00) AM_READ_PORT("DSW1")
-	AM_RANGE(0x01, 0x01) AM_READ(trackball_r)
-	AM_RANGE(0x02, 0x02) AM_SELECT(0xc) AM_READ(pc3259_r)
-	AM_RANGE(0x02, 0x04) AM_WRITE(obj_0_w)
-	AM_RANGE(0x03, 0x03) AM_READ_PORT("SYSTEM")
-	AM_RANGE(0x04, 0x04) AM_READ_PORT("DSW2")
-	AM_RANGE(0x05, 0x05) AM_WRITE(bgm_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(sfx_w)
-	AM_RANGE(0x08, 0x0b) AM_WRITE(obj_1_w)
-	AM_RANGE(0x0d, 0x0d) AM_WRITE(layer_enable_w)
-	AM_RANGE(0x0e, 0x0e) AM_WRITENOP // watchdog
-	AM_RANGE(0x0f, 0x0f) AM_WRITE(output_w)
-ADDRESS_MAP_END
+void marinedt_state::marinedt_io(address_map &map)
+{
+	map.global_mask(0x0f);
+	map(0x00, 0x00).portr("DSW1");
+	map(0x01, 0x01).r(FUNC(marinedt_state::trackball_r));
+	map(0x02, 0x02).select(0xc).r(FUNC(marinedt_state::pc3259_r));
+	map(0x02, 0x04).w(FUNC(marinedt_state::obj_0_w));
+	map(0x03, 0x03).portr("SYSTEM");
+	map(0x04, 0x04).portr("DSW2");
+	map(0x05, 0x05).w(FUNC(marinedt_state::bgm_w));
+	map(0x06, 0x06).w(FUNC(marinedt_state::sfx_w));
+	map(0x08, 0x0b).w(FUNC(marinedt_state::obj_1_w));
+	map(0x0d, 0x0d).w(FUNC(marinedt_state::layer_enable_w));
+	map(0x0e, 0x0e).nopw(); // watchdog
+	map(0x0f, 0x0f).w(FUNC(marinedt_state::output_w));
+}
 
 static INPUT_PORTS_START( marinedt )
 	PORT_START("SYSTEM")
@@ -563,7 +573,7 @@ static const gfx_layout objlayout =
 	32*32*2
 };
 
-static GFXDECODE_START( marinedt )
+static GFXDECODE_START( gfx_marinedt )
 	GFXDECODE_ENTRY( "gfx1", 0, charlayout,     0, 4 )
 	GFXDECODE_ENTRY( "gfx2", 0, objlayout,     48, 4 )
 	GFXDECODE_ENTRY( "gfx3", 0, objlayout,     32, 4 )
@@ -580,71 +590,66 @@ void marinedt_state::machine_reset()
 }
 
 
-PALETTE_INIT_MEMBER(marinedt_state, marinedt)
+void marinedt_state::marinedt_palette(palette_device &palette) const
 {
-	const uint8_t *color_prom = memregion("proms")->base();
-	int i;
-	int bit0, bit1, bit2;
-	int r, g, b;
-
-	for (i = 0; i < 64; i++)
+	uint8_t const *const color_prom = memregion("proms")->base();
+	for (int i = 0; i < 64; i++)
 	{
-		/* red component */
-		bit0 = (color_prom[i] >> 0) & 0x01;
-		bit1 = (color_prom[i] >> 1) & 0x01;
-//      bit2 = (color_prom[i] >> 2) & 0x01;
-		r = (0x55 * bit0 + 0xaa * bit1);
+		int bit0, bit1, bit2;
 
-		/* green component */
-		bit0 = (color_prom[i] >> 3) & 0x01;
-		bit1 = (color_prom[i] >> 4) & 0x01;
-		g = (0x55 * bit0 + 0xaa * bit1);
+		// red component
+		bit0 = BIT(color_prom[i], 0);
+		bit1 = BIT(color_prom[i], 1);
+		//bit2 = BIT(color_prom[i], 2);
+		int const r = (0x55 * bit0) + (0xaa * bit1);
 
-		/* blue component */
-		bit0 = (color_prom[i] >> 5) & 0x01;
-		bit1 = (color_prom[i] >> 6) & 0x01;
-		bit2 = (color_prom[i] >> 7) & 0x01;
-		b = (0x55 * bit0 + 0xaa * bit1);
+		// green component
+		bit0 = BIT(color_prom[i], 3);
+		bit1 = BIT(color_prom[i], 4);
+		int const g = (0x55 * bit0) + (0xaa * bit1);
+
+		// blue component
+		bit0 = BIT(color_prom[i], 5);
+		bit1 = BIT(color_prom[i], 6);
+		bit2 = BIT(color_prom[i], 7);
+		int b = (0x55 * bit0) + (0xaa * bit1);
 		// matches yellow haired siren
-		if(bit2 == 0)
-			b/=2;
+		if (bit2 == 0)
+			b /= 2;
 
 		palette.set_pen_color(i, rgb_t(r, g, b));
 	}
 
-
-	for (i = 0; i < 32; i++)
+	for (int i = 0; i < 32; i++)
 	{
-		b = color_prom[i+0x60];
-		palette.set_pen_color(64+31-i, rgb_t(0, 0, b));
-		palette.set_pen_color(64+63-i, rgb_t(0xff, 0, b));
+		int const b = color_prom[i + 0x60];
+		palette.set_pen_color(64 + 31 - i, rgb_t(0, 0, b));
+		palette.set_pen_color(64 + 63 - i, rgb_t(0xff, 0, b));
 	}
 }
 
-static MACHINE_CONFIG_START( marinedt )
-
+void marinedt_state::marinedt(machine_config &config)
+{
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",Z80,MAIN_CLOCK/4)
-	MCFG_CPU_PROGRAM_MAP(marinedt_map)
-	MCFG_CPU_IO_MAP(marinedt_io)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", marinedt_state,  irq0_line_hold)
+	Z80(config, m_maincpu, MAIN_CLOCK/4);
+	m_maincpu->set_addrmap(AS_PROGRAM, &marinedt_state::marinedt_map);
+	m_maincpu->set_addrmap(AS_IO, &marinedt_state::marinedt_io);
+	m_maincpu->set_vblank_int("screen", FUNC(marinedt_state::irq0_line_hold));
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_UPDATE_DRIVER(marinedt_state, screen_update)
-	MCFG_SCREEN_RAW_PARAMS(MAIN_CLOCK/2, 328, 0, 256, 263, 32, 256) // template to get ~60 fps
-	MCFG_SCREEN_PALETTE("palette")
+	SCREEN(config, m_screen, SCREEN_TYPE_RASTER);
+	m_screen->set_screen_update(FUNC(marinedt_state::screen_update));
+	m_screen->set_raw(MAIN_CLOCK/2, 328, 0, 256, 263, 32, 256); // template to get ~60 fps
+	m_screen->set_palette("palette");
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", marinedt)
+	GFXDECODE(config, m_gfxdecode, "palette", gfx_marinedt);
 
-	MCFG_PALETTE_ADD("palette", 64+64)
-	MCFG_PALETTE_INIT_OWNER(marinedt_state, marinedt)
+	PALETTE(config, "palette", FUNC(marinedt_state::marinedt_palette), 64 + 64);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-//  MCFG_SOUND_ADD("aysnd", AY8910, MAIN_CLOCK/4)
-//  MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
-MACHINE_CONFIG_END
+	SPEAKER(config, "mono").front_center();
+	//AY8910(config, "aysnd", MAIN_CLOCK/4).add_route(ALL_OUTPUTS, "mono", 0.30);
+}
 
 
 /***************************************************************************
@@ -681,4 +686,4 @@ ROM_START( marinedt )
 	ROM_LOAD( "mg17.bpr", 0x0060, 0x0020, CRC(13261a02) SHA1(050edd18e4f79d19d5206f55f329340432fd4099) ) // sea bitmap colors
 ROM_END
 
-GAME( 1981, marinedt,  0,   marinedt,  marinedt, marinedt_state,  0,       ROT270, "Taito",      "Marine Date", MACHINE_NOT_WORKING | MACHINE_UNEMULATED_PROTECTION | MACHINE_IMPERFECT_COLORS | MACHINE_NO_SOUND )
+GAME( 1981, marinedt, 0, marinedt, marinedt, marinedt_state, empty_init, ROT270, "Taito", "Marine Date", MACHINE_NOT_WORKING | MACHINE_UNEMULATED_PROTECTION | MACHINE_IMPERFECT_COLORS | MACHINE_NO_SOUND )

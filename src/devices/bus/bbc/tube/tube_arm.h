@@ -29,9 +29,6 @@ public:
 	// construction/destruction
 	bbc_tube_arm_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER( ram_r );
-	DECLARE_WRITE8_MEMBER( ram_w );
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -41,8 +38,8 @@ protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 	virtual const tiny_rom_entry *device_rom_region() const override;
 
-	virtual DECLARE_READ8_MEMBER( host_r ) override;
-	virtual DECLARE_WRITE8_MEMBER( host_w ) override;
+	virtual uint8_t host_r(offs_t offset) override;
+	virtual void host_w(offs_t offset, uint8_t data) override;
 
 private:
 	required_device<arm_cpu_device> m_arm;
@@ -51,6 +48,11 @@ private:
 	required_memory_region m_bootstrap;
 
 	bool m_rom_select;
+
+	uint8_t ram_r(offs_t offset);
+	void ram_w(offs_t offset, uint8_t data);
+
+	void tube_arm_mem(address_map &map);
 };
 
 
