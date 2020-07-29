@@ -27,7 +27,7 @@ DEFINE_DEVICE_TYPE(SPG28X_IO, spg28x_io_device, "spg28x_io", "SPG280-series Syst
 #define LOG_EXT_MEM         (1U << 27)
 #define LOG_EXTINT          (1U << 28)
 #define LOG_SPI             (1U << 29)
-#define LOG_ADC				(1U << 30)
+#define LOG_ADC             (1U << 30)
 #define LOG_IO              (LOG_IO_READS | LOG_IO_WRITES | LOG_IRQS | LOG_GPIO | LOG_UART | LOG_I2C | LOG_TIMERS | LOG_EXTINT | LOG_UNKNOWN_IO | LOG_SPI | LOG_ADC)
 #define LOG_ALL             (LOG_IO | LOG_VLINES | LOG_SEGMENT | LOG_WATCHDOG | LOG_FIQ | LOG_SIO | LOG_EXT_MEM | LOG_ADC)
 
@@ -396,7 +396,7 @@ uint16_t spg2xx_io_device::clock_rng(int which)
 
 
 
-READ16_MEMBER(spg2xx_io_device::io_r)
+uint16_t spg2xx_io_device::io_r(offs_t offset)
 {
 	static const char *const gpioregs[] = { "GPIO Data Port", "GPIO Buffer Port", "GPIO Direction Port", "GPIO Attribute Port", "GPIO IRQ/Latch Port" };
 	static const char gpioports[] = { 'A', 'B', 'C' };
@@ -497,7 +497,7 @@ READ16_MEMBER(spg2xx_io_device::io_r)
 	return val;
 }
 
-READ16_MEMBER(spg2xx_io_device::io_extended_r)
+uint16_t spg2xx_io_device::io_extended_r(offs_t offset)
 {
 	// this set of registers might only be on the 24x not the 11x
 
@@ -755,7 +755,7 @@ void spg2xx_io_device::update_timer_c_src()
 }
 
 
-WRITE16_MEMBER(spg28x_io_device::io_extended_w)
+void spg28x_io_device::io_extended_w(offs_t offset, uint16_t data)
 {
 	offset += REG_UART_CTRL;
 
@@ -767,11 +767,11 @@ WRITE16_MEMBER(spg28x_io_device::io_extended_w)
 	}
 	else
 	{
-		spg2xx_io_device::io_extended_w(space, offset - REG_UART_CTRL, data, mem_mask);
+		spg2xx_io_device::io_extended_w(offset - REG_UART_CTRL, data);
 	}
 }
 
-WRITE16_MEMBER(spg2xx_io_device::io_w)
+void spg2xx_io_device::io_w(offs_t offset, uint16_t data)
 {
 	static const char *const gpioregs[] = { "GPIO Data Port", "GPIO Buffer Port", "GPIO Direction Port", "GPIO Attribute Port", "GPIO IRQ/Latch Port" };
 	static const char gpioports[3] = { 'A', 'B', 'C' };
@@ -1214,7 +1214,7 @@ WRITE16_MEMBER(spg2xx_io_device::io_w)
 
 
 
-WRITE16_MEMBER(spg2xx_io_device::io_extended_w)
+void spg2xx_io_device::io_extended_w(offs_t offset, uint16_t data)
 {
 	// this set of registers might only be on the 24x not the 11x
 
@@ -1655,7 +1655,7 @@ void spg2xx_io_device::check_irqs(const uint16_t changed)
 	if (changed & 0x0c00) // Timer A, Timer B IRQ
 	{
 		LOGMASKED(LOG_TIMERS, "%ssserting IRQ2 (%04x, %04x)\n", (IO_IRQ_ENABLE & IO_IRQ_STATUS & 0x0c00) ? "A" : "Dea", (IO_IRQ_ENABLE & IO_IRQ_STATUS & 0x0c00), changed);
-		
+
 		if (m_timer_irq_cb)
 			m_timer_irq_cb((IO_IRQ_ENABLE & IO_IRQ_STATUS & 0x0c00) ? ASSERT_LINE : CLEAR_LINE);
 		else
@@ -1693,7 +1693,7 @@ void spg2xx_io_device::check_irqs(const uint16_t changed)
 	if (changed & 0x008b) // TMB1, TMB2, 4Hz, key change IRQ
 	{
 		LOGMASKED(LOG_IRQS, "%ssserting IRQ7 (%04x, %04x)\n", (IO_IRQ_ENABLE & IO_IRQ_STATUS & 0x008b) ? "A" : "Dea", (IO_IRQ_ENABLE & IO_IRQ_STATUS & 0x008b), changed);
-		if (m_ffreq_tmr2_irq_cb)	
+		if (m_ffreq_tmr2_irq_cb)
 			m_ffreq_tmr2_irq_cb((IO_IRQ_ENABLE & IO_IRQ_STATUS & 0x008b) ? ASSERT_LINE : CLEAR_LINE);
 		else
 			logerror("spg2xx_io_device::check_irqs, attempted to use m_ffreq_tmr2_irq_cb without setting it\n");

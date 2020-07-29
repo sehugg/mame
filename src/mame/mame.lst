@@ -3266,6 +3266,9 @@ cfa3000                         // 1989 Henson CFA 3000
 daisy                           // 1987 Comus Daisy
 discmon                         // 1988 Arbiter Discmonitor
 discmate                        // 1988 Arbiter Discmate
+mpc800                          // 1987 MasterPieCe 800
+mpc900                          // 1988 MasterPieCe 900
+mpc900gx                        // 1990 MasterPieCe 900GX
 econx25                         // 1986 Econet X25 Gateway
 ltmpbp                          // 1985 LTM Portable (B+)
 ltmpm                           // 1986 LTM Portable (Master)
@@ -9425,6 +9428,9 @@ bp1200                          // (c) 1991 BP Microsystems
 @source:br8641.cpp
 br8641                          //
 
+@source:braiplus.cpp
+braiplus                        //
+
 @source:brkthru.cpp
 brkthru                         // (c) 1986 Data East USA (US)
 brkthruj                        // (c) 1986 Data East Corporation (Japan)
@@ -9895,6 +9901,7 @@ dfeveron                        // (c) 1998 Cave + Nihon System license
 donpachi                        // (c) 1995 Atlus/Cave
 donpachihk                      // (c) 1995 Atlus/Cave
 donpachij                       // (c) 1995 Atlus/Cave
+donpachijs                      // (c) 1995 Atlus/Cave
 donpachikr                      // (c) 1995 Atlus/Cave
 esprade                         // (c) 1998 Atlus/Cave
 espradej                        // (c) 1998 Atlus/Cave (Japan)
@@ -10044,8 +10051,6 @@ yamato2                         // (c) 1983 Sega
 @source:ccs2810.cpp
 ccs2422                         //
 ccs2810                         //
-
-@source:ccs300.cpp
 ccs300                          //
 
 @source:cd100.cpp
@@ -15900,6 +15905,7 @@ gnw_dkjr                        // Nintendo
 gnw_dkjrp                       // Nintendo
 gnw_dkong                       // Nintendo
 gnw_dkong2                      // Nintendo
+gnw_dkong3                      // Nintendo
 gnw_egg                         // Nintendo
 gnw_fire                        // Nintendo
 gnw_fireatk                     // Nintendo
@@ -16237,7 +16243,6 @@ vitaminc                        // (c) 1989 Home Data
 
 @source:homelab.cpp
 brailab4                        //
-braiplus                        //
 homelab2                        //
 homelab3                        //
 homelab4                        //
@@ -19386,8 +19391,10 @@ lkageb3                         // bootleg
 lkageo                          // A54 (c) 1984 Taito Corporation
 lkageoo                         // A54 (c) 1984 Taito Corporation
 
-@source:llc.cpp
+@source:llc1.cpp
 llc1                            //
+
+@source:llc2.cpp
 llc2                            //
 
 @source:lms46.cpp
@@ -31692,6 +31699,7 @@ timetp36
 majkon
 majgnc
 sudopptv
+zudugo
 ablping
 vgpocket
 vgpmini
@@ -32732,7 +32740,6 @@ pengo4                          // 834-0386 (c) 1982 Sega
 pengo5                          // 834-0386 (c) 1982 Sega
 pengob                          // bootleg
 penta                           // bootleg
-schick                          // Microhard
 
 @source:pentagon.cpp
 pent1024                        //
@@ -34587,6 +34594,7 @@ raiden2e                        // (c) 1993 Seibu Kaihatsu
 raiden2eup
 raiden2ea                       // (c) 1993 Seibu Kaihatsu
 raiden2eg                       // (c) 1993 Seibu Kaihatsu + Tuning license
+raiden2es                       // (c) 1993 Seibu Kaihatsu
 raiden2eu                       // (c) 1993 Seibu Kaihatsu + Fabtek license
 raiden2eua                      // (c) 1993 Seibu Kaihatsu + Fabtek license
 raiden2f                        // (c) 1993 Seibu Kaihatsu
@@ -35624,6 +35632,9 @@ sbuggera                        // (c) 1981 Game-A-Tron
 @source:sc2.cpp
 sc2                             //
 sc2a                            //
+
+@source:schick.cpp
+schick                          // Microhard
 
 @source:scm_500.cpp
 scm_500                         //

@@ -335,6 +335,8 @@ if (BUSES["BBC_FDC"]~=null) then
 		MAME_DIR .. "src/devices/bus/bbc/fdc/microware.h",
 		MAME_DIR .. "src/devices/bus/bbc/fdc/opus.cpp",
 		MAME_DIR .. "src/devices/bus/bbc/fdc/opus.h",
+		MAME_DIR .. "src/devices/bus/bbc/fdc/solidisk.cpp",
+		MAME_DIR .. "src/devices/bus/bbc/fdc/solidisk.h",
 		MAME_DIR .. "src/devices/bus/bbc/fdc/watford.cpp",
 		MAME_DIR .. "src/devices/bus/bbc/fdc/watford.h",
 	}
@@ -3736,6 +3738,8 @@ if (BUSES["SPECTRUM"]~=null) then
 		MAME_DIR .. "src/devices/bus/spectrum/beta.h",
 		MAME_DIR .. "src/devices/bus/spectrum/beta128.cpp",
 		MAME_DIR .. "src/devices/bus/spectrum/beta128.h",
+		MAME_DIR .. "src/devices/bus/spectrum/d40.cpp",
+		MAME_DIR .. "src/devices/bus/spectrum/d40.h",
 		MAME_DIR .. "src/devices/bus/spectrum/intf1.cpp",
 		MAME_DIR .. "src/devices/bus/spectrum/intf1.h",
 		MAME_DIR .. "src/devices/bus/spectrum/intf2.cpp",

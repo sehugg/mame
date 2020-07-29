@@ -659,7 +659,7 @@ static INPUT_PORTS_START( fordrace )
 	PORT_BIT( 0x0fff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(spg2xx_game_fordrace_state, wheel_r)
 
 	PORT_START("WHEEL_REAL")
-	PORT_BIT(0x1fff, 0x0000, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(100) PORT_MINMAX(0x00,0x1fff) PORT_NAME("Wheel")  
+	PORT_BIT(0x1fff, 0x0000, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(100) PORT_MINMAX(0x00,0x1fff) PORT_NAME("Wheel")
 INPUT_PORTS_END
 
 CUSTOM_INPUT_MEMBER(spg2xx_game_fordrace_state::wheel_r)
@@ -669,7 +669,7 @@ CUSTOM_INPUT_MEMBER(spg2xx_game_fordrace_state::wheel_r)
 
 CUSTOM_INPUT_MEMBER(spg2xx_game_fordrace_state::wheel2_r)
 {
-//	return 0x0800;
+//  return 0x0800;
 	uint16_t dat = ioport("WHEEL_REAL")->read();
 
 	return ((dat >> 1) ^ 0xfff) + (dat & 1);
@@ -1076,9 +1076,9 @@ void spg2xx_game_senspeed_state::senspeed(machine_config &config)
 	m_maincpu->portb_out().set(FUNC(spg2xx_game_senspeed_state::portb_w));
 
 	/*
-		ATMLH806
-		02B 1
-		A7J4565E
+	    ATMLH806
+	    02B 1
+	    A7J4565E
 	*/
 	I2C_24C01(config, "i2cmem", 0); // saves 0x80 bytes, but loading fails?
 }
@@ -1663,7 +1663,7 @@ CONS( 2006, ablkickb,   0,        0, ablkickb,  ablkickb,  spg2xx_game_albkickb_
 
 CONS( 2007, lxspidaj,   0,        0, spg2xx,    lxspidaj,  spg2xx_game_albkickb_state, init_ablkickb, "Lexibook",                                               "Spider-Man Super TV Air Jet (Lexibook Junior, JG6000SP)",               MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS )
 
-CONS( 2006, fordrace,   0,        0, fordrace,  fordrace,  spg2xx_game_fordrace_state, empty_init,    "Excalibur Electronics",                                  "Ford Racing",                                                           MACHINE_NOT_WORKING | MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS )
+CONS( 2006, fordrace,   0,        0, fordrace,  fordrace,  spg2xx_game_fordrace_state, empty_init,    "Excalibur Electronics",                                  "Ford Racing",                                                           MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS )
 
 CONS( 2008, comil,      0,        0, comil,     comil,     spg2xx_game_comil_state,    empty_init,    "Character Options",                                      "Who Wants to Be a Millionaire? (Character Options, Plug and Play, UK)", MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS )
 
@@ -1686,7 +1686,7 @@ CONS( 2009, gssytts,    0,        0, gssytts,   guitarss,  spg2xx_game_gssytts_s
 CONS( 2006, vtechtvssp, 0,        0, spg2xx,    spg2xx,    spg2xx_game_state,          empty_init,    "VTech",                                                  "TV Station (VTech, Spain)",                                             MACHINE_NOT_WORKING )
 CONS( 2006, vtechtvsgr, 0,        0, spg2xx,    spg2xx,    spg2xx_game_state,          empty_init,    "VTech",                                                  "TV Learning Station (VTech, Germany)",                                  MACHINE_NOT_WORKING )
 
-CONS( 2008, senspeed,  0,         0, senspeed,  senspeed,  spg2xx_game_senspeed_state, empty_init,    "Senario",                                                "Speed Racer (Senario)",                                                 MACHINE_NOT_WORKING )
+CONS( 2008, senspeed,  0,         0, senspeed,  senspeed,  spg2xx_game_senspeed_state, empty_init,    "Senario",                                                "Speed Racer (Senario)",                                                 MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS )
 
 CONS( 200?, jjstrip,    0,        0, tvsprt10,  jjstrip,   spg2xx_game_state,          empty_init,    "Shiggles Inc.",                                          "Club Jenna Presents: Jenna Jameson's Strip Poker",                      MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS )
 
