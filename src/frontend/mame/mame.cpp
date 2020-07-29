@@ -437,9 +437,11 @@ bool emulator_info::standalone() { return false; }
 
 #if defined(EMSCRIPTEN)
 
-void js_lua_string(const char* val) {
-        mame_machine_manager::instance()->lua()->load_string(val);
+static std::string __last_js_string = "";
+
+const char* js_lua_string(const char* val) {
+	__last_js_string = mame_machine_manager::instance()->lua()->load_string(val).as<std::string>();
+	return __last_js_string.c_str();
 }
 
 #endif /* defined(EMSCRIPTEN) */
-

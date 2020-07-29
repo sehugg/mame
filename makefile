@@ -24,19 +24,19 @@
 # BENCHMARKS = 1
 # OSD = sdl
 
-# NO_OPENGL = 0
+NO_OPENGL = 1
 # USE_DISPATCH_GL = 0
 # MODERN_WIN_API = 0
 # DIRECTINPUT = 7
 # USE_SDL = 1
 # SDL_INI_PATH = .;$HOME/.mame/;ini;
 # SDL2_MULTIAPI = 1
-# NO_USE_MIDI = 1
-# NO_USE_PORTAUDIO = 1
+NO_USE_MIDI = 1
+NO_USE_PORTAUDIO = 1
 # USE_TAPTUN = 1
 # USE_PCAP = 1
 # USE_QTDEBUG = 1
-# NO_X11 = 1
+NO_X11 = 1
 # NO_USE_XINPUT = 1
 # NO_USE_XINPUT_WII_LIGHTGUN_HACK = 1
 # FORCE_DRC_C_BACKEND = 1
@@ -1883,3 +1883,21 @@ $(GENDIR)/mame.pot: FORCE
 translation: $(GENDIR)/mame.pot
 	$(SILENT) find language -name "*.po" -print0 | xargs -0 -n 1 -I %% msgmerge -U -N %% $<
 	$(SILENT) find language -name "*.po" -print0 | xargs -0 -n 1 -I %% msgattrib --clear-fuzzy --empty %% -o %%
+
+# Emscripten for 8bitworkshop
+
+8bitws:
+	emmake make SUBTARGET=8bitws SOURCES\
+	=src/mame/drivers/atari400.cpp\
+	,src/mame/drivers/a2600.cpp\
+	,src/mame/drivers/a7800.cpp\
+	,src/mame/drivers/nes.cpp\
+	,src/mame/drivers/apple2e.cpp\
+	,src/mame/drivers/apple2gs.cpp\
+	 NOWERROR=1 -j 4
+
+#	,src/mame/drivers/astrocde.cpp\
+#	,src/mame/drivers/channelf.cpp\
+#	,src/mame/drivers/coleco.cpp\
+#	,src/mame/drivers/gb.cpp\
+#	,src/mame/drivers/pc.cpp\

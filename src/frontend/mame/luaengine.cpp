@@ -3048,7 +3048,7 @@ void lua_engine::resume(void *ptr, int nparam)
 	luaL_unref(m_lua_state, LUA_REGISTRYINDEX, nparam);
 }
 
-void lua_engine::run(sol::load_result res)
+sol::object lua_engine::run(sol::load_result res)
 {
 	if(res.valid())
 	{
@@ -3057,10 +3057,15 @@ void lua_engine::run(sol::load_result res)
 		{
 			sol::error err = ret;
 			osd_printf_error("[LUA ERROR] in run: %s\n", err.what());
+			return sol::lua_nil;
+		} else {
+			return ret.get<sol::object>();
 		}
 	}
-	else
+	else {
 		osd_printf_error("[LUA ERROR] %d loading Lua script\n", (int)res.status());
+		return sol::lua_nil;
+	}
 }
 
 //-------------------------------------------------
@@ -3076,9 +3081,9 @@ void lua_engine::load_script(const char *filename)
 //  execute_string - execute script from string
 //-------------------------------------------------
 
-void lua_engine::load_string(const char *value)
+sol::object lua_engine::load_string(const char *value)
 {
-	run(sol().load(value));
+	return run(sol().load(value));
 }
 
 //-------------------------------------------------
