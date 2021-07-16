@@ -14,7 +14,7 @@
 
 # REGENIE = 1
 # VERBOSE = 1
-# NOWERROR = 1
+NOWERROR = 1
 # IGNORE_GIT = 1
 
 # TARGET = mame
@@ -24,7 +24,7 @@
 # BENCHMARKS = 1
 # OSD = sdl
 
-# NO_OPENGL = 1
+NO_OPENGL = 1
 # USE_DISPATCH_GL = 0
 # MODERN_WIN_API = 0
 # DIRECTINPUT = 7
@@ -87,8 +87,8 @@
 # TARGETOS = windows
 # CROSS_BUILD = 1
 # TOOLCHAIN =
-# OVERRIDE_CC = cc
-# OVERRIDE_CXX = c++
+#OVERRIDE_CC = emcc
+#OVERRIDE_CXX = emcc
 # OVERRIDE_LD = ld
 
 # DEPRECATED = 0
@@ -1886,7 +1886,8 @@ translation: $(GENDIR)/mame.pot
 
 # Emscripten for 8bitworkshop
 
-EMARGS= NOWERROR=1 -j 4
+EMARGS= -j 2 
+#LDOPTS = -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s USE_SDL=2 -s LEGACY_GL_EMULATION=1
 
 8bitws:
 	emmake make SUBTARGET=8bitws SOURCES\
@@ -1908,12 +1909,15 @@ EMARGS= NOWERROR=1 -j 4
 	,src/mame/drivers/odyssey2.cpp\
 	 $(EMARGS)
 
-8bitwspc:
-	emmake make SUBTARGET=8bitwspc SOURCES\
-	=src/mame/drivers/pc.cpp\
-	,src/mame/drivers/apple2e.cpp\
+8bitcbm:
+	emmake make SUBTARGET=8bitcbm SOURCES\
+	=src/mame/drivers/apple2e.cpp\
 	,src/mame/drivers/apple2gs.cpp\
 	,src/mame/drivers/c64.cpp\
+	,src/mame/drivers/c65.cpp\
 	,src/mame/drivers/c128.cpp\
 	,src/mame/drivers/vic20.cpp\
+	,src/mame/drivers/pet.cpp\
+	,src/mame/drivers/cbm2.cpp\
+	,src/mame/drivers/amiga.cpp\
 	 $(EMARGS)
